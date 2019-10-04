@@ -2,7 +2,6 @@ package subscriber
 
 import (
 	"fmt"
-	"log"
 	"net/url"
 	"time"
 )
@@ -40,7 +39,7 @@ func (rpc RpcSubscription) readMessages(interval time.Duration, filter Filter) {
 }
 
 func (rpc RpcSubscriber) SubscribeToEvents(channel chan<- Event, filter Filter, confirmation ...interface{}) (ISubscription, error) {
-	log.Printf("Using RPC endpoint: %s", rpc.Endpoint.String())
+	fmt.Printf("Using RPC endpoint: %s", rpc.Endpoint.String())
 
 	subscription := RpcSubscription{
 		endpoint:  rpc.Endpoint,
