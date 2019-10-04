@@ -24,3 +24,7 @@ type ISubscription interface {
 type ISubscriber interface {
 	SubscribeToEvents(channel chan<- Event, filter Filter, confirmation ...interface{}) (ISubscription, error)
 }
+
+type IParser interface {
+	ParseResponse(data []byte) ([]Event, bool)
+}
