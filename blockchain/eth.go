@@ -1,4 +1,4 @@
-package eth
+package blockchain
 
 import (
 	"encoding/json"
@@ -46,16 +46,14 @@ type jsonrpcMessage struct {
 	Result  json.RawMessage `json:"result,omitempty"`
 }
 
-type FilterMessage struct {
+type EthFilterMessage struct {
 	fq ethereum.FilterQuery
 }
 
-func CreateFilterMessage(addressStr string, topicsStr []string) FilterMessage {
+func CreateEthFilterMessage(addressesStr []string, topicsStr []string) EthFilterMessage {
 	var addresses []common.Address
-	if len(addressStr) != 0 {
-		addresses = []common.Address{
-			common.HexToAddress(addressStr),
-		}
+	for _, a := range addressesStr {
+		addresses = append(addresses, common.HexToAddress(a))
 	}
 
 	var topics [][]common.Hash
@@ -68,7 +66,7 @@ func CreateFilterMessage(addressStr string, topicsStr []string) FilterMessage {
 	}
 	topics = append(topics, t)
 
-	return FilterMessage{
+	return EthFilterMessage{
 		fq: ethereum.FilterQuery{
 			Addresses: addresses,
 			Topics:    topics,
@@ -76,7 +74,7 @@ func CreateFilterMessage(addressStr string, topicsStr []string) FilterMessage {
 	}
 }
 
-func (fm FilterMessage) Json() []byte {
+func (fm EthFilterMessage) Json() []byte {
 	filter, err := toFilterArg(fm.fq)
 	if err != nil {
 		return nil

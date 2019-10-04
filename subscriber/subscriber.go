@@ -1,5 +1,12 @@
 package subscriber
 
+type Type int
+
+const (
+	WS Type = iota
+	RPC
+)
+
 type SubConfig struct {
 	Endpoint string
 }
