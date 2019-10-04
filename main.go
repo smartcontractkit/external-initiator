@@ -263,7 +263,7 @@ func (ei ExternalInitiator) subscribe(sub store.Subscription) error {
 	iSubscriber := getSubscriber(sub.Endpoint.Url, sub.RefreshInt)
 
 	var filter subscriber.Filter
-	if sub.Endpoint.Blockchain == "blockchain" {
+	if sub.Endpoint.Blockchain == "eth" {
 		filter = blockchain.CreateEthFilterMessage(sub.Addresses, sub.Topics)
 	} else {
 		return errors.New(fmt.Sprintf("Unable to subscribe to blockchain %s", sub.Endpoint.Blockchain))
