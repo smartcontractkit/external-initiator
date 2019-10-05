@@ -88,7 +88,12 @@ func (rpc RpcSubscriber) SubscribeToEvents(channel chan<- Event, filter Filter, 
 		parser:    rpc.Parser,
 	}
 
-	go subscription.readMessages(rpc.Interval, filter)
+	interval := rpc.Interval
+	if interval <= time.Duration(0) {
+		interval = 5 * time.Second
+	}
+
+	go subscription.readMessages(interval, filter)
 
 	return subscription, nil
 }
