@@ -2,63 +2,11 @@ package subscriber
 
 import (
 	"github.com/gorilla/websocket"
-	"log"
-	"net/http"
-	"net/http/httptest"
 	"net/url"
-	"os"
 	"testing"
 )
 
-var wsMockUrl *url.URL
-
 var upgrader = websocket.Upgrader{} // use default options
-
-func TestMain(m *testing.M) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		c, err := upgrader.Upgrade(w, r, nil)
-		if err != nil {
-			log.Print("upgrade:", err)
-			return
-		}
-		defer c.Close()
-		for {
-			mt, message, err := c.ReadMessage()
-			if err != nil {
-				log.Println("read:", err)
-				break
-			}
-			log.Printf("recv: %s", message)
-
-			if string(message) == "true" {
-				// Send confirmation message
-				err = c.WriteMessage(mt, []byte("confirmation"))
-				if err != nil {
-					log.Println("write:", err)
-					break
-				}
-			}
-
-			// Send event message
-			err = c.WriteMessage(mt, []byte("event"))
-			if err != nil {
-				log.Println("write:", err)
-				break
-			}
-		}
-	}))
-	defer ts.Close()
-
-	u, err := url.Parse(ts.URL)
-	wsMockUrl = u
-	if err != nil {
-		log.Fatal(err)
-	}
-	u.Scheme = "ws"
-
-	code := m.Run()
-	os.Exit(code)
-}
 
 type MockFilter struct {
 	confirmation bool
