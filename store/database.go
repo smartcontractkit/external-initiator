@@ -13,8 +13,13 @@ type Client struct {
 	db *badger.DB
 }
 
-func ConnectToDb() (Client, error) {
-	db, err := badger.Open(badger.DefaultOptions("./db"))
+func ConnectToDb(paths ...string) (Client, error) {
+	path := "./db"
+	if len(paths) > 0 {
+		path = paths[0]
+	}
+
+	db, err := badger.Open(badger.DefaultOptions(path))
 	if err != nil {
 		return Client{}, err
 	}
