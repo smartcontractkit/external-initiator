@@ -1,7 +1,6 @@
 package subscriber
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
@@ -34,13 +33,6 @@ func (wss WebsocketSubscription) readMessages() {
 			return
 		}
 
-		var event Event
-		err = json.Unmarshal(message, &event)
-		if err != nil {
-			log.Println("Unable to unmarshal message: ", err)
-			continue
-		}
-
 		// First message is a confirmation with the subscription id
 		// Ignore this
 		if !wss.confirmed {
@@ -48,7 +40,7 @@ func (wss WebsocketSubscription) readMessages() {
 			continue
 		}
 
-		wss.events <- event
+		wss.events <- message
 	}
 }
 

@@ -11,7 +11,7 @@ type SubConfig struct {
 	Endpoint string
 }
 
-type Event interface{}
+type Event []byte
 
 type Filter interface {
 	Json() []byte
