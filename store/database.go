@@ -49,38 +49,6 @@ func (client Client) loadPrefix(prefix []byte) ([][]byte, error) {
 	return items, err
 }
 
-func (client Client) LoadEndpoints() ([]Endpoint, error) {
-	var endpoints []Endpoint
-	items, err := client.loadPrefix([]byte("endpoint-"))
-	if err != nil {
-		return endpoints, err
-	}
-
-	for _, item := range items {
-		var endpoint Endpoint
-		err := json.Unmarshal(item, &endpoint)
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-		endpoints = append(endpoints, endpoint)
-	}
-
-	return endpoints, nil
-}
-
-func (client Client) SaveEndpoint(endpoint Endpoint) error {
-	val, err := json.Marshal(endpoint)
-	if err != nil {
-		return err
-	}
-
-	return client.db.Update(func(txn *badger.Txn) error {
-		err := txn.Set([]byte(fmt.Sprintf("endpoint-%s", endpoint.Blockchain)), val)
-		return err
-	})
-}
-
 func (client Client) LoadSubscriptions() ([]Subscription, error) {
 	var subs []Subscription
 	items, err := client.loadPrefix([]byte("subscription-"))

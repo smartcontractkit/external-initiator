@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/dgraph-io/badger"
 	"log"
-	"net/url"
 	"os"
 	"testing"
 )
@@ -14,7 +13,6 @@ import (
 var testDbPrefilled Client
 var testDbEmpty Client
 var subs []Subscription
-var endpoints []Endpoint
 
 func TestMain(m *testing.M) {
 	db, err := ConnectToDb("/tmp/external-initiator-db-test")
@@ -47,15 +45,6 @@ func TestMain(m *testing.M) {
 		},
 	}
 
-	endpoints = []Endpoint{
-		{
-			Blockchain: "abc",
-		},
-		{
-			Blockchain: "def",
-		},
-	}
-
 	txn := testDbPrefilled.db.NewTransaction(true)
 	for _, v := range subs {
 		val, err := json.Marshal(v)
@@ -69,62 +58,10 @@ func TestMain(m *testing.M) {
 			_ = txn.Set([]byte(fmt.Sprintf("subscription-%s", v.Id)), val)
 		}
 	}
-	for _, v := range endpoints {
-		val, err := json.Marshal(v)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		if err := txn.Set([]byte(fmt.Sprintf("endpoint-%s", v.Blockchain)), val); err == badger.ErrTxnTooBig {
-			_ = txn.Commit()
-			txn = testDbPrefilled.db.NewTransaction(true)
-			_ = txn.Set([]byte(fmt.Sprintf("endpoint-%s", v.Blockchain)), val)
-		}
-	}
 	_ = txn.Commit()
 
 	code := m.Run()
 	os.Exit(code)
-}
-
-func TestClient_LoadEndpoints(t *testing.T) {
-	type fields struct {
-		db *badger.DB
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		results int
-		wantErr bool
-	}{
-		{
-			"no results",
-			fields{db: testDbEmpty.db},
-			0,
-			false,
-		},
-		{
-			"gives results",
-			fields{db: testDbPrefilled.db},
-			len(endpoints),
-			false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			client := Client{
-				db: tt.fields.db,
-			}
-			got, err := client.LoadEndpoints()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("LoadEndpoints() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if tt.results != len(got) {
-				t.Errorf("LoadEndpoints() got %v results, want %v", len(got), tt.results)
-			}
-		})
-	}
 }
 
 func TestClient_LoadSubscriptions(t *testing.T) {
@@ -162,69 +99,6 @@ func TestClient_LoadSubscriptions(t *testing.T) {
 			}
 			if tt.results != len(got) {
 				t.Errorf("LoadSubscriptions() got %v results, want %v", len(got), tt.results)
-			}
-		})
-	}
-}
-
-func TestClient_SaveEndpoint(t *testing.T) {
-	type fields struct {
-		db *badger.DB
-	}
-	type args struct {
-		endpoint Endpoint
-	}
-	tests := []struct {
-		name      string
-		fields    fields
-		args      args
-		checkFunc func() error
-	}{
-		{
-			"saves endpoint",
-			fields{db: testDbEmpty.db},
-			args{Endpoint{
-				Blockchain: "abc",
-				Url: url.URL{
-					Scheme: "http",
-					Host:   "localhost",
-					Path:   "/",
-				},
-			}},
-			func() error {
-				return testDbEmpty.db.View(func(txn *badger.Txn) error {
-					item, err := txn.Get([]byte("endpoint-abc"))
-					if err != nil {
-						return err
-					}
-
-					return item.Value(func(val []byte) error {
-						var endpoint Endpoint
-						err := json.Unmarshal(val, &endpoint)
-						if err != nil {
-							return err
-						}
-
-						if endpoint.Url.String() != "http://localhost/" {
-							return errors.New(fmt.Sprintf("Expected URL http://localhost/, got %s", endpoint.Url.String()))
-						}
-
-						return nil
-					})
-				})
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			client := Client{
-				db: tt.fields.db,
-			}
-			if err := client.SaveEndpoint(tt.args.endpoint); err != nil {
-				t.Errorf("SaveEndpoint() error = %v", err)
-			}
-			if err := tt.checkFunc(); err != nil {
-				t.Errorf("SaveEndpoint() checkFunc error = %v", err)
 			}
 		})
 	}
@@ -303,13 +177,6 @@ func TestClient_loadPrefix(t *testing.T) {
 		want    int
 		wantErr bool
 	}{
-		{
-			"gets all endpoints",
-			fields{db: testDbPrefilled.db},
-			args{prefix: []byte(`endpoint-`)},
-			len(endpoints),
-			false,
-		},
 		{
 			"gets all subscriptions",
 			fields{db: testDbPrefilled.db},

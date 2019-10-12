@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/jessevdk/go-flags"
 	"github.com/joho/godotenv"
 	"github.com/smartcontractkit/external-initiator/blockchain"
 	"github.com/smartcontractkit/external-initiator/chainlink"
@@ -16,31 +15,18 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"path"
+	"strings"
 	"time"
 )
-
-var opts struct {
-	Endpoints []map[string]string `short:"e" long:"endpoint" description:"A list of endpoints as name:url"`
-}
 
 func main() {
 	fmt.Println("Starting external initiator")
 
 	_ = godotenv.Load()
 
-	_, err := flags.Parse(&opts)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	ei, err := loadExternalInitiator()
 	if err != nil {
 		log.Fatal(err)
-	}
-
-	if len(ei.Endpoints) == 0 {
-		log.Fatal("No qualified endpoints provided")
 	}
 
 	ei.Run()
@@ -48,7 +34,6 @@ func main() {
 
 func loadExternalInitiator() (ExternalInitiator, error) {
 	ei := ExternalInitiator{
-		Endpoints:           map[string]store.Endpoint{},
 		Subscriptions:       map[string]store.Subscription{},
 		ActiveSubscriptions: []*ActiveSubscription{},
 	}
@@ -59,16 +44,6 @@ func loadExternalInitiator() (ExternalInitiator, error) {
 	}
 	defer db.Close()
 
-	endpoints, err := db.LoadEndpoints()
-	if err != nil {
-		return ei, err
-	}
-
-	for _, endpoint := range endpoints {
-		fmt.Printf("Loading endpoint from DB: %s - %s\n", endpoint.Blockchain, endpoint.Url.String())
-		ei.Endpoints[endpoint.Blockchain] = endpoint
-	}
-
 	subscriptions, err := db.LoadSubscriptions()
 	if err != nil {
 		return ei, err
@@ -78,38 +53,10 @@ func loadExternalInitiator() (ExternalInitiator, error) {
 		ei.Subscriptions[subscription.Id] = subscription
 	}
 
-	for _, e := range opts.Endpoints {
-		for key, val := range e {
-			u, err := url.Parse(val)
-			if err != nil {
-				fmt.Println("Error parsing endpoint URL: ", err)
-				continue
-			}
-
-			switch key {
-			case "eth":
-				fmt.Printf("Adding ETH endpoint: %s\n", u.String())
-				endpoint := store.Endpoint{
-					Url:        *u,
-					Type:       subscriber.WS,
-					Blockchain: "eth",
-				}
-				ei.Endpoints["eth"] = endpoint
-				err := db.SaveEndpoint(endpoint)
-				if err != nil {
-					fmt.Println(err)
-				}
-			default:
-				fmt.Println("Unknown blockchain for endpoint: ", key)
-			}
-		}
-	}
-
 	return ei, nil
 }
 
 type ExternalInitiator struct {
-	Endpoints           map[string]store.Endpoint
 	Subscriptions       map[string]store.Subscription
 	ActiveSubscriptions []*ActiveSubscription
 }
@@ -155,6 +102,8 @@ type RequestBody struct {
 	NodeURL      string   `json:"node_url"`
 	AccessKey    string   `json:"access_key"`
 	AccessSecret string   `json:"access_secret"`
+	Type         string   `json:"type"`
+	Endpoint     string   `json:"endpoint"`
 }
 
 func (ei ExternalInitiator) handler(w http.ResponseWriter, r *http.Request) {
@@ -173,10 +122,7 @@ func (ei ExternalInitiator) handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p := r.URL.Path
-	base := path.Base(p)
-
-	err = ei.validateRequest(t, base)
+	err = ei.validateRequest(t)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprint(w, err)
@@ -184,7 +130,12 @@ func (ei ExternalInitiator) handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	e, _ := url.Parse(t.NodeURL)
-	endpoint := ei.Endpoints[base]
+	u, _ := url.Parse(t.Endpoint)
+
+	urlType := subscriber.RPC
+	if strings.HasPrefix(u.Scheme, "ws") {
+		urlType = subscriber.WS
+	}
 
 	sub := store.Subscription{
 		Id:        uuid.New().String(),
@@ -196,7 +147,11 @@ func (ei ExternalInitiator) handler(w http.ResponseWriter, r *http.Request) {
 			AccessSecret: t.AccessSecret,
 			Endpoint:     *e,
 		},
-		Endpoint:   endpoint,
+		Endpoint: store.Endpoint{
+			Url:        *u,
+			Type:       urlType,
+			Blockchain: t.Type,
+		},
 		RefreshInt: t.RefreshInt,
 	}
 
@@ -211,22 +166,15 @@ func (ei ExternalInitiator) handler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, sub.Id)
 }
 
-func (ei ExternalInitiator) validateRequest(t RequestBody, base string) error {
-	if base == "." || base == "/" {
-		return errors.New("missing endpoint name")
-	}
-
-	_, ok := ei.Endpoints[base]
-	if !ok {
-		return errors.New("endpoint not found")
-	}
-
-	validations := [5]int{
+func (ei ExternalInitiator) validateRequest(t RequestBody) error {
+	validations := [...]int{
 		len(t.JobID),
 		len(t.Addresses) + len(t.Topics),
 		len(t.NodeURL),
 		len(t.AccessKey),
 		len(t.AccessSecret),
+		len(t.Endpoint),
+		len(t.Type),
 	}
 
 	for _, v := range validations {
@@ -236,6 +184,11 @@ func (ei ExternalInitiator) validateRequest(t RequestBody, base string) error {
 	}
 
 	_, err := url.Parse(t.NodeURL)
+	if err != nil {
+		return err
+	}
+
+	_, err = url.Parse(t.Endpoint)
 	if err != nil {
 		return err
 	}
@@ -263,9 +216,10 @@ func (ei ExternalInitiator) subscribe(sub store.Subscription) error {
 	iSubscriber := getSubscriber(sub.Endpoint.Url, sub.RefreshInt)
 
 	var filter subscriber.Filter
-	if sub.Endpoint.Blockchain == "eth" {
+	switch sub.Endpoint.Blockchain {
+	case "eth":
 		filter = blockchain.CreateEthFilterMessage(sub.Addresses, sub.Topics)
-	} else {
+	default:
 		return errors.New(fmt.Sprintf("Unable to subscribe to blockchain %s", sub.Endpoint.Blockchain))
 	}
 
