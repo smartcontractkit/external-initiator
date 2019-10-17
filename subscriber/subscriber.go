@@ -23,6 +23,7 @@ type ISubscription interface {
 
 type ISubscriber interface {
 	SubscribeToEvents(channel chan<- Event, filter Filter, confirmation ...interface{}) (ISubscription, error)
+	Test() error
 }
 
 type IParser interface {

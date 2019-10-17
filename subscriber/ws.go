@@ -11,6 +11,15 @@ type WebsocketSubscriber struct {
 	Endpoint url.URL
 }
 
+func (wss WebsocketSubscriber) Test() error {
+	c, _, err := websocket.DefaultDialer.Dial(wss.Endpoint.String(), nil)
+	if err != nil {
+		return err
+	}
+	c.Close()
+	return nil
+}
+
 type WebsocketSubscription struct {
 	connection *websocket.Conn
 	done       chan bool

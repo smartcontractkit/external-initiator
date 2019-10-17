@@ -1,6 +1,7 @@
 package subscriber
 
 import (
+	"net/url"
 	"testing"
 	"time"
 )
@@ -65,4 +66,38 @@ func TestSendGetRequest(t *testing.T) {
 			return
 		}
 	})
+}
+
+func TestRpcSubscriber_Test(t *testing.T) {
+	invalid, _ := url.Parse("http://localhost:9999/invalid")
+
+	type fields struct {
+		Endpoint url.URL
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		wantErr bool
+	}{
+		{
+			"succeeds connecting to valid endpoint",
+			fields{Endpoint: *rpcMockUrl},
+			false,
+		},
+		{
+			"fails connecting to invalid endpoint",
+			fields{Endpoint: *invalid},
+			true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rpc := RpcSubscriber{
+				Endpoint: tt.fields.Endpoint,
+			}
+			if err := rpc.Test(); (err != nil) != tt.wantErr {
+				t.Errorf("Test() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
 }

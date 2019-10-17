@@ -81,3 +81,37 @@ func TestWebsocketSubscriber_SubscribeToEvents(t *testing.T) {
 		}
 	})
 }
+
+func TestWebsocketSubscriber_Test(t *testing.T) {
+	invalid, _ := url.Parse("ws://localhost:9999/invalid")
+
+	type fields struct {
+		Endpoint url.URL
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		wantErr bool
+	}{
+		{
+			"succeeds connecting to valid endpoint",
+			fields{Endpoint: *wsMockUrl},
+			false,
+		},
+		{
+			"fails connecting to invalid endpoint",
+			fields{Endpoint: *invalid},
+			true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			wss := WebsocketSubscriber{
+				Endpoint: tt.fields.Endpoint,
+			}
+			if err := wss.Test(); (err != nil) != tt.wantErr {
+				t.Errorf("Test() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}

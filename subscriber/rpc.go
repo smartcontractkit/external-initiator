@@ -15,6 +15,11 @@ type RpcSubscriber struct {
 	Parser   IParser
 }
 
+func (rpc RpcSubscriber) Test() error {
+	_, err := sendGetRequest(rpc.Endpoint.String())
+	return err
+}
+
 type RpcSubscription struct {
 	endpoint  url.URL
 	done      chan struct{}

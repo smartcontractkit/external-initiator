@@ -208,6 +208,9 @@ func (ei ExternalInitiator) saveAndSubscribe(sub store.Subscription) error {
 func (ei ExternalInitiator) subscribe(sub store.Subscription) error {
 	events := make(chan subscriber.Event)
 	iSubscriber := getSubscriber(sub.Endpoint.Url, sub.RefreshInt)
+	if err := iSubscriber.Test(); err != nil {
+		return err
+	}
 
 	var filter subscriber.Filter
 	switch sub.Endpoint.Blockchain {
