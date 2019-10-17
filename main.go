@@ -106,12 +106,18 @@ func (ei ExternalInitiator) listenOnPort(port int) {
 }
 
 type RequestBody struct {
-	JobID      string   `json:"job_id"`
-	Addresses  []string `json:"addresses"`
-	Topics     []string `json:"topics"`
-	RefreshInt int      `json:"refresh_interval"`
-	Type       string   `json:"type"`
-	Endpoint   string   `json:"endpoint"`
+	JobID  string `json:"jobId"`
+	Type   string `json:"type"`
+	Params struct {
+		Type   string `json:"type"`
+		Config struct {
+			Endpoint   string `json:"endpoint"`
+			ChainId    string `json:"chainId"`
+			RefreshInt int    `json:"refreshInterval"`
+		} `json:"config"`
+		Addresses []string `json:"addresses"`
+		Topics    []string `json:"topics"`
+	} `json:"params"`
 }
 
 func (ei ExternalInitiator) handler(w http.ResponseWriter, r *http.Request) {
@@ -137,7 +143,7 @@ func (ei ExternalInitiator) handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, _ := url.Parse(t.Endpoint)
+	u, _ := url.Parse(t.Params.Config.Endpoint)
 
 	urlType := subscriber.RPC
 	if strings.HasPrefix(u.Scheme, "ws") {
@@ -147,14 +153,14 @@ func (ei ExternalInitiator) handler(w http.ResponseWriter, r *http.Request) {
 	sub := store.Subscription{
 		Id:        uuid.New().String(),
 		Job:       t.JobID,
-		Addresses: t.Addresses,
-		Topics:    t.Topics,
+		Addresses: t.Params.Addresses,
+		Topics:    t.Params.Topics,
 		Endpoint: store.Endpoint{
 			Url:        *u,
 			Type:       urlType,
 			Blockchain: t.Type,
 		},
-		RefreshInt: t.RefreshInt,
+		RefreshInt: t.Params.Config.RefreshInt,
 	}
 
 	err = ei.saveAndSubscribe(sub)
@@ -169,11 +175,13 @@ func (ei ExternalInitiator) handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ei ExternalInitiator) validateRequest(t RequestBody) error {
-	validations := [...]int{
+	validations := []int{
 		len(t.JobID),
-		len(t.Addresses) + len(t.Topics),
-		len(t.Endpoint),
-		len(t.Type),
+		len(t.Params.Type),
+	}
+
+	if t.Params.Type == blockchain.ETH {
+		validations = append(validations, len(t.Params.Addresses)+len(t.Params.Topics), len(t.Params.Config.Endpoint))
 	}
 
 	for _, v := range validations {
@@ -182,9 +190,11 @@ func (ei ExternalInitiator) validateRequest(t RequestBody) error {
 		}
 	}
 
-	_, err := url.Parse(t.Endpoint)
-	if err != nil {
-		return err
+	if t.Params.Type == blockchain.ETH {
+		_, err := url.Parse(t.Params.Config.Endpoint)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -214,7 +224,7 @@ func (ei ExternalInitiator) subscribe(sub store.Subscription) error {
 
 	var filter subscriber.Filter
 	switch sub.Endpoint.Blockchain {
-	case "ethereum":
+	case blockchain.ETH:
 		filter = blockchain.CreateEthFilterMessage(sub.Addresses, sub.Topics)
 	default:
 		return errors.New(fmt.Sprintf("Unable to subscribe to blockchain %s", sub.Endpoint.Blockchain))

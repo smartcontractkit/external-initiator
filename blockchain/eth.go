@@ -9,6 +9,8 @@ import (
 	"math/big"
 )
 
+const ETH = "ethereum"
+
 func toBlockNumArg(number *big.Int) string {
 	if number == nil {
 		return "latest"
