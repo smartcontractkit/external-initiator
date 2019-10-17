@@ -33,9 +33,19 @@ func main() {
 }
 
 func loadExternalInitiator() (ExternalInitiator, error) {
+	u, err := url.Parse(os.Getenv("CL_URL"))
+	if err != nil {
+		return ExternalInitiator{}, err
+	}
+
 	ei := ExternalInitiator{
 		Subscriptions:       map[string]store.Subscription{},
 		ActiveSubscriptions: []*ActiveSubscription{},
+		Node: chainlink.Node{
+			AccessKey:    os.Getenv("CL_ACCESS_KEY"),
+			AccessSecret: os.Getenv("CL_ACCESS_SECRET"),
+			Endpoint:     *u,
+		},
 	}
 
 	db, err := store.ConnectToDb()
@@ -59,6 +69,7 @@ func loadExternalInitiator() (ExternalInitiator, error) {
 type ExternalInitiator struct {
 	Subscriptions       map[string]store.Subscription
 	ActiveSubscriptions []*ActiveSubscription
+	Node                chainlink.Node
 }
 
 func (ei ExternalInitiator) listenForShutdown(interrupt chan os.Signal) {
@@ -95,15 +106,12 @@ func (ei ExternalInitiator) listenOnPort(port int) {
 }
 
 type RequestBody struct {
-	JobID        string   `json:"job_id"`
-	Addresses    []string `json:"addresses"`
-	Topics       []string `json:"topics"`
-	RefreshInt   int      `json:"refresh_interval"`
-	NodeURL      string   `json:"node_url"`
-	AccessKey    string   `json:"access_key"`
-	AccessSecret string   `json:"access_secret"`
-	Type         string   `json:"type"`
-	Endpoint     string   `json:"endpoint"`
+	JobID      string   `json:"job_id"`
+	Addresses  []string `json:"addresses"`
+	Topics     []string `json:"topics"`
+	RefreshInt int      `json:"refresh_interval"`
+	Type       string   `json:"type"`
+	Endpoint   string   `json:"endpoint"`
 }
 
 func (ei ExternalInitiator) handler(w http.ResponseWriter, r *http.Request) {
@@ -129,7 +137,6 @@ func (ei ExternalInitiator) handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	e, _ := url.Parse(t.NodeURL)
 	u, _ := url.Parse(t.Endpoint)
 
 	urlType := subscriber.RPC
@@ -142,11 +149,6 @@ func (ei ExternalInitiator) handler(w http.ResponseWriter, r *http.Request) {
 		Job:       t.JobID,
 		Addresses: t.Addresses,
 		Topics:    t.Topics,
-		Node: chainlink.Node{
-			AccessKey:    t.AccessKey,
-			AccessSecret: t.AccessSecret,
-			Endpoint:     *e,
-		},
 		Endpoint: store.Endpoint{
 			Url:        *u,
 			Type:       urlType,
@@ -170,9 +172,6 @@ func (ei ExternalInitiator) validateRequest(t RequestBody) error {
 	validations := [...]int{
 		len(t.JobID),
 		len(t.Addresses) + len(t.Topics),
-		len(t.NodeURL),
-		len(t.AccessKey),
-		len(t.AccessSecret),
 		len(t.Endpoint),
 		len(t.Type),
 	}
@@ -183,12 +182,7 @@ func (ei ExternalInitiator) validateRequest(t RequestBody) error {
 		}
 	}
 
-	_, err := url.Parse(t.NodeURL)
-	if err != nil {
-		return err
-	}
-
-	_, err = url.Parse(t.Endpoint)
+	_, err := url.Parse(t.Endpoint)
 	if err != nil {
 		return err
 	}
@@ -232,6 +226,7 @@ func (ei ExternalInitiator) subscribe(sub store.Subscription) error {
 		Subscription: sub,
 		Interface:    subscription,
 		Events:       events,
+		Node:         ei.Node,
 	}
 	ei.ActiveSubscriptions = append(ei.ActiveSubscriptions, as)
 
@@ -244,10 +239,11 @@ type ActiveSubscription struct {
 	Subscription store.Subscription
 	Interface    subscriber.ISubscription
 	Events       chan subscriber.Event
+	Node         chainlink.Node
 }
 
 func (as ActiveSubscription) publishUpdates(event subscriber.Event) {
-	err := as.Subscription.Node.TriggerJob(as.Subscription.Job)
+	err := as.Node.TriggerJob(as.Subscription.Job)
 	if err != nil {
 		fmt.Println(err)
 	}

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/dgraph-io/badger"
-	"github.com/smartcontractkit/external-initiator/chainlink"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"net/url"
 )
@@ -92,7 +91,6 @@ type Subscription struct {
 	Job        string
 	Addresses  []string
 	Topics     []string
-	Node       chainlink.Node
 	Endpoint   Endpoint
 	RefreshInt int
 }
