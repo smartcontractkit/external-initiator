@@ -1,7 +1,6 @@
 package subscriber
 
 import (
-	"net/url"
 	"testing"
 	"time"
 )
@@ -16,7 +15,7 @@ func TestRpcSubscriber_SubscribeToEvents(t *testing.T) {
 	t.Run("subscribes to rpc endpoint", func(t *testing.T) {
 		u := *rpcMockUrl
 		u.Path = "/test/1"
-		rpc := RpcSubscriber{Endpoint: u, Parser: Parser{}, Interval: 1 * time.Second}
+		rpc := RpcSubscriber{Endpoint: u.String(), Parser: Parser{}, Interval: 1 * time.Second}
 
 		events := make(chan Event)
 		filter := MockFilter{true}
@@ -69,10 +68,8 @@ func TestSendGetRequest(t *testing.T) {
 }
 
 func TestRpcSubscriber_Test(t *testing.T) {
-	invalid, _ := url.Parse("http://localhost:9999/invalid")
-
 	type fields struct {
-		Endpoint url.URL
+		Endpoint string
 	}
 	tests := []struct {
 		name    string
@@ -81,12 +78,12 @@ func TestRpcSubscriber_Test(t *testing.T) {
 	}{
 		{
 			"succeeds connecting to valid endpoint",
-			fields{Endpoint: *rpcMockUrl},
+			fields{Endpoint: rpcMockUrl.String()},
 			false,
 		},
 		{
 			"fails connecting to invalid endpoint",
-			fields{Endpoint: *invalid},
+			fields{Endpoint: "http://localhost:9999/invalid"},
 			true,
 		},
 	}

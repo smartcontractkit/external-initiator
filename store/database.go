@@ -1,96 +1,119 @@
 package store
 
 import (
-	"encoding/json"
+	"bytes"
+	"database/sql/driver"
+	"encoding/csv"
 	"fmt"
-	"github.com/dgraph-io/badger"
-	"github.com/smartcontractkit/external-initiator/subscriber"
-	"net/url"
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"github.com/pkg/errors"
+	"github.com/smartcontractkit/external-initiator/store/migrations"
 )
 
-type Client struct {
-	db *badger.DB
-}
+const sqlDialect = "postgres"
 
-func ConnectToDb(paths ...string) (Client, error) {
-	path := "./db"
-	if len(paths) > 0 {
-		path = paths[0]
+// SQLStringArray is a string array stored in the database as comma separated values.
+type SQLStringArray []string
+
+// Scan implements the sql Scanner interface.
+func (arr *SQLStringArray) Scan(src interface{}) error {
+	if src == nil {
+		*arr = nil
 	}
-
-	db, err := badger.Open(badger.DefaultOptions(path))
+	v, err := driver.String.ConvertValue(src)
 	if err != nil {
-		return Client{}, err
+		return errors.New("failed to scan StringArray")
+	}
+	str, ok := v.(string)
+	if !ok {
+		return nil
 	}
 
-	return Client{db}, nil
+	buf := bytes.NewBufferString(str)
+	r := csv.NewReader(buf)
+	ret, err := r.Read()
+	if err != nil {
+		return errors.Wrap(err, "badly formatted csv string array")
+	}
+	*arr = ret
+	return nil
 }
 
-func (client Client) Close() {
-	client.db.Close()
+// Value implements the driver Valuer interface.
+func (arr SQLStringArray) Value() (driver.Value, error) {
+	var buf bytes.Buffer
+	w := csv.NewWriter(&buf)
+	err := w.Write(arr)
+	if err != nil {
+		return nil, errors.Wrap(err, "csv encoding of string array")
+	}
+	w.Flush()
+	return buf.String(), nil
 }
 
-func (client Client) loadPrefix(prefix []byte) ([][]byte, error) {
-	var items [][]byte
-	err := client.db.View(func(txn *badger.Txn) error {
-		it := txn.NewIterator(badger.DefaultIteratorOptions)
-		defer it.Close()
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			item := it.Item()
-			val, err := item.ValueCopy(nil)
-			if err != nil {
-				return err
-			}
-			items = append(items, val)
-		}
-		return nil
-	})
-	return items, err
+type Client struct {
+	db *gorm.DB
+}
+
+func ConnectToDb(uri string) (*Client, error) {
+	db, err := gorm.Open(sqlDialect, uri)
+	if err != nil {
+		return nil, fmt.Errorf("unable to open %s for gorm DB: %+v", uri, err)
+	}
+	if err = migrations.Migrate(db); err != nil {
+		return nil, errors.Wrap(err, "newDBStore#Migrate")
+	}
+	store := &Client{
+		db: db.Set("gorm:auto_preload", true),
+	}
+	return store, nil
+}
+
+func (client Client) Close() error {
+	return client.db.Close()
 }
 
 func (client Client) LoadSubscriptions() ([]Subscription, error) {
-	var subs []Subscription
-	items, err := client.loadPrefix([]byte("subscription-"))
-	if err != nil {
-		return subs, err
+	var sqlSubs []*Subscription
+	if err := client.db.Find(&sqlSubs).Error; err != nil {
+		return nil, err
 	}
 
-	for _, item := range items {
-		var sub Subscription
-		err := json.Unmarshal(item, &sub)
-		if err != nil {
-			fmt.Println(err)
-			continue
+	subs := make([]Subscription, len(sqlSubs))
+	for i, sub := range sqlSubs {
+		subs[i] = Subscription{
+			Model:       sub.Model,
+			ReferenceId: sub.ReferenceId,
+			Job:         sub.Job,
+			Addresses:   []string(sub.Addresses),
+			Topics:      []string(sub.Topics),
+			Endpoint:    sub.Endpoint,
+			RefreshInt:  sub.RefreshInt,
 		}
-		subs = append(subs, sub)
 	}
 
 	return subs, nil
 }
 
-func (client Client) SaveSubscription(sub Subscription) error {
-	val, err := json.Marshal(sub)
-	if err != nil {
-		return err
-	}
-
-	return client.db.Update(func(txn *badger.Txn) error {
-		err := txn.Set([]byte(fmt.Sprintf("subscription-%s", sub.Id)), val)
-		return err
-	})
+func (client Client) SaveSubscription(sub *Subscription) error {
+	return client.db.Create(sub).Error
 }
 
 type Endpoint struct {
-	Url        url.URL
-	Type       subscriber.Type
-	Blockchain string
+	gorm.Model
+	Url            string
+	Type           int
+	Blockchain     string
+	SubscriptionID uint
 }
 
 type Subscription struct {
-	Id         string
-	Job        string
-	Addresses  []string
-	Topics     []string
-	Endpoint   Endpoint
-	RefreshInt int
+	gorm.Model
+	ReferenceId string
+	Job         string
+	Addresses   SQLStringArray
+	Topics      SQLStringArray
+	Endpoint    Endpoint
+	RefreshInt  int
 }

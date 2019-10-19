@@ -48,11 +48,11 @@ func loadExternalInitiator() (ExternalInitiator, error) {
 		},
 	}
 
-	db, err := store.ConnectToDb()
+	db, err := store.ConnectToDb(os.Getenv("DATABASE_URL"))
 	if err != nil {
 		return ei, err
 	}
-	defer db.Close()
+	ei.DB = db
 
 	subscriptions, err := db.LoadSubscriptions()
 	if err != nil {
@@ -60,7 +60,7 @@ func loadExternalInitiator() (ExternalInitiator, error) {
 	}
 
 	for _, subscription := range subscriptions {
-		ei.Subscriptions[subscription.Id] = subscription
+		ei.Subscriptions[subscription.ReferenceId] = subscription
 	}
 
 	return ei, nil
@@ -70,6 +70,7 @@ type ExternalInitiator struct {
 	Subscriptions       map[string]store.Subscription
 	ActiveSubscriptions []*ActiveSubscription
 	Node                chainlink.Node
+	DB                  *store.Client
 }
 
 func (ei ExternalInitiator) listenForShutdown(interrupt chan os.Signal) {
@@ -78,6 +79,10 @@ func (ei ExternalInitiator) listenForShutdown(interrupt chan os.Signal) {
 	for _, sub := range ei.ActiveSubscriptions {
 		sub.Interface.Unsubscribe()
 		close(sub.Events)
+	}
+	err := ei.DB.Close()
+	if err != nil {
+		fmt.Println(err)
 	}
 	fmt.Println("All subscriptions closed. Bye!")
 	os.Exit(0)
@@ -89,7 +94,7 @@ func (ei ExternalInitiator) Run() {
 	go ei.listenForShutdown(interrupt)
 
 	for _, sub := range ei.Subscriptions {
-		err := ei.subscribe(sub)
+		err := ei.subscribe(&sub)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -143,21 +148,19 @@ func (ei ExternalInitiator) handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, _ := url.Parse(t.Params.Config.Endpoint)
-
 	urlType := subscriber.RPC
-	if strings.HasPrefix(u.Scheme, "ws") {
+	if strings.HasPrefix(t.Params.Config.Endpoint, "ws") {
 		urlType = subscriber.WS
 	}
 
-	sub := store.Subscription{
-		Id:        uuid.New().String(),
-		Job:       t.JobID,
-		Addresses: t.Params.Addresses,
-		Topics:    t.Params.Topics,
+	sub := &store.Subscription{
+		ReferenceId: uuid.New().String(),
+		Job:         t.JobID,
+		Addresses:   t.Params.Addresses,
+		Topics:      t.Params.Topics,
 		Endpoint: store.Endpoint{
-			Url:        *u,
-			Type:       urlType,
+			Url:        t.Params.Config.Endpoint,
+			Type:       int(urlType),
 			Blockchain: t.Type,
 		},
 		RefreshInt: t.Params.Config.RefreshInt,
@@ -171,7 +174,7 @@ func (ei ExternalInitiator) handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	fmt.Fprintf(w, sub.Id)
+	fmt.Fprintf(w, sub.ReferenceId)
 }
 
 func (ei ExternalInitiator) validateRequest(t RequestBody) error {
@@ -200,14 +203,8 @@ func (ei ExternalInitiator) validateRequest(t RequestBody) error {
 	return nil
 }
 
-func (ei ExternalInitiator) saveAndSubscribe(sub store.Subscription) error {
-	db, err := store.ConnectToDb()
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	err = db.SaveSubscription(sub)
+func (ei ExternalInitiator) saveAndSubscribe(sub *store.Subscription) error {
+	err := ei.DB.SaveSubscription(sub)
 	if err != nil {
 		return err
 	}
@@ -215,7 +212,7 @@ func (ei ExternalInitiator) saveAndSubscribe(sub store.Subscription) error {
 	return ei.subscribe(sub)
 }
 
-func (ei ExternalInitiator) subscribe(sub store.Subscription) error {
+func (ei ExternalInitiator) subscribe(sub *store.Subscription) error {
 	events := make(chan subscriber.Event)
 	iSubscriber := getSubscriber(sub.Endpoint.Url, sub.RefreshInt)
 	if err := iSubscriber.Test(); err != nil {
@@ -249,7 +246,7 @@ func (ei ExternalInitiator) subscribe(sub store.Subscription) error {
 }
 
 type ActiveSubscription struct {
-	Subscription store.Subscription
+	Subscription *store.Subscription
 	Interface    subscriber.ISubscription
 	Events       chan subscriber.Event
 	Node         chainlink.Node
@@ -272,9 +269,9 @@ func (ei ExternalInitiator) ListenForUpdates(sub *ActiveSubscription) {
 	}
 }
 
-func getSubscriber(endpointUrl url.URL, interval int) subscriber.ISubscriber {
+func getSubscriber(endpointUrl string, interval int) subscriber.ISubscriber {
 	var sub subscriber.ISubscriber
-	if endpointUrl.Scheme == "ws" || endpointUrl.Scheme == "wss" {
+	if strings.HasPrefix(endpointUrl, "ws") {
 		sub = subscriber.WebsocketSubscriber{Endpoint: endpointUrl}
 	} else {
 		sub = subscriber.RpcSubscriber{Endpoint: endpointUrl, Interval: time.Duration(interval) * time.Second}

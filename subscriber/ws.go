@@ -4,15 +4,14 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
-	"net/url"
 )
 
 type WebsocketSubscriber struct {
-	Endpoint url.URL
+	Endpoint string
 }
 
 func (wss WebsocketSubscriber) Test() error {
-	c, _, err := websocket.DefaultDialer.Dial(wss.Endpoint.String(), nil)
+	c, _, err := websocket.DefaultDialer.Dial(wss.Endpoint, nil)
 	if err != nil {
 		return err
 	}
@@ -54,9 +53,9 @@ func (wss WebsocketSubscription) readMessages() {
 }
 
 func (wss WebsocketSubscriber) SubscribeToEvents(channel chan<- Event, filter Filter, confirmation ...interface{}) (ISubscription, error) {
-	fmt.Printf("Connecting to WS endpoint: %s\n", wss.Endpoint.String())
+	fmt.Printf("Connecting to WS endpoint: %s\n", wss.Endpoint)
 
-	c, _, err := websocket.DefaultDialer.Dial(wss.Endpoint.String(), nil)
+	c, _, err := websocket.DefaultDialer.Dial(wss.Endpoint, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +74,7 @@ func (wss WebsocketSubscriber) SubscribeToEvents(channel chan<- Event, filter Fi
 		return nil, err
 	}
 
-	fmt.Printf("Connected to %s\n", wss.Endpoint.String())
+	fmt.Printf("Connected to %s\n", wss.Endpoint)
 
 	return subscription, nil
 }

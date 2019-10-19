@@ -1,210 +1,113 @@
 package store
 
 import (
-	"encoding/json"
-	"errors"
+	"database/sql"
 	"fmt"
-	"github.com/dgraph-io/badger"
-	"log"
+	"github.com/smartcontractkit/external-initiator/blockchain"
+	"github.com/smartcontractkit/external-initiator/subscriber"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"net/url"
 	"os"
 	"testing"
+	"time"
 )
 
-var testDbPrefilled Client
-var testDbEmpty Client
-var subs []Subscription
-
-func TestMain(m *testing.M) {
-	db, err := ConnectToDb("/tmp/external-initiator-db-test")
-	testDbPrefilled = db
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer testDbPrefilled.Close()
-	_ = testDbPrefilled.db.DropAll()
-
-	testDbEmpty, err = ConnectToDb("/tmp/external-initiator-db-empty")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer testDbEmpty.Close()
-	_ = testDbEmpty.db.DropAll()
-
-	subs = []Subscription{
-		{
-			Id:  "abc",
-			Job: "def",
-		},
-		{
-			Id:  "123",
-			Job: "456",
-		},
-		{
-			Id:  "xyz",
-			Job: "æøå",
-		},
-	}
-
-	txn := testDbPrefilled.db.NewTransaction(true)
-	for _, v := range subs {
-		val, err := json.Marshal(v)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		if err := txn.Set([]byte(fmt.Sprintf("subscription-%s", v.Id)), val); err == badger.ErrTxnTooBig {
-			_ = txn.Commit()
-			txn = testDbPrefilled.db.NewTransaction(true)
-			_ = txn.Set([]byte(fmt.Sprintf("subscription-%s", v.Id)), val)
-		}
-	}
-	_ = txn.Commit()
-
-	code := m.Run()
-	os.Exit(code)
+type Config struct {
+	DatabaseURL string
 }
 
-func TestClient_LoadSubscriptions(t *testing.T) {
-	type fields struct {
-		db *badger.DB
+func createTestDB(t *testing.T, parsed *url.URL) *url.URL {
+	require.True(t, len(parsed.Path) > 1)
+	dbname := fmt.Sprintf("%s_%d", parsed.Path[1:], time.Now().Unix())
+	db, err := sql.Open(sqlDialect, parsed.String())
+	if err != nil {
+		t.Fatalf("unable to open postgres database for creating test db: %+v", err)
 	}
-	tests := []struct {
-		name    string
-		fields  fields
-		results int
-		wantErr bool
-	}{
-		{
-			"no results",
-			fields{db: testDbEmpty.db},
-			0,
-			false,
-		},
-		{
-			"gives results",
-			fields{db: testDbPrefilled.db},
-			len(subs),
-			false,
-		},
+	defer db.Close()
+
+	//`CREATE DATABASE $1` does not seem to work w CREATE DATABASE
+	_, err = db.Exec(fmt.Sprintf("CREATE DATABASE %s", dbname))
+	if err != nil {
+		t.Fatalf("unable to create postgres test database: %+v", err)
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			client := Client{
-				db: tt.fields.db,
-			}
-			got, err := client.LoadSubscriptions()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("LoadSubscriptions() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if tt.results != len(got) {
-				t.Errorf("LoadSubscriptions() got %v results, want %v", len(got), tt.results)
-			}
-		})
+
+	newURL := *parsed
+	newURL.Path = "/" + dbname
+	return &newURL
+}
+
+func createPostgresChildDB(t *testing.T, config *Config, originalURL string) func() {
+	parsed, err := url.Parse(originalURL)
+	if err != nil {
+		t.Fatalf("unable to extract database from %v: %v", originalURL, err)
 	}
+
+	testdb := createTestDB(t, parsed)
+	config.DatabaseURL = testdb.String()
+
+	return func() {
+		reapPostgresChildDB(t, parsed, testdb)
+		config.DatabaseURL = testdb.String()
+	}
+}
+
+func reapPostgresChildDB(t *testing.T, parentURL, testURL *url.URL) {
+	db, err := sql.Open(sqlDialect, parentURL.String())
+	if err != nil {
+		t.Fatalf("Unable to connect to parent CL db to clean up test database: %v", err)
+	}
+	defer db.Close()
+
+	testdb := testURL.Path[1:]
+	dbsSQL := "DROP DATABASE " + testdb
+	_, err = db.Exec(dbsSQL)
+	if err != nil {
+		t.Fatalf("Unable to clean up previous test database: %v", err)
+	}
+}
+
+// prepareTestDB prepares the database to run tests, functionality varies
+// on the underlying database.
+// Creates a second database, and returns a cleanup callback
+// that drops said DB.
+func prepareTestDB(t *testing.T, config *Config) func() {
+	t.Helper()
+	return createPostgresChildDB(t, config, config.DatabaseURL)
 }
 
 func TestClient_SaveSubscription(t *testing.T) {
-	type fields struct {
-		db *badger.DB
+	config := Config{
+		DatabaseURL: os.Getenv("DATABASE_URL"),
 	}
-	type args struct {
-		sub Subscription
-	}
-	tests := []struct {
-		name      string
-		fields    fields
-		args      args
-		checkFunc func() error
-	}{
-		{
-			"saves subscription",
-			fields{db: testDbEmpty.db},
-			args{Subscription{
-				Id:  "uuid",
-				Job: "randjobid",
-			}},
-			func() error {
-				return testDbEmpty.db.View(func(txn *badger.Txn) error {
-					item, err := txn.Get([]byte("subscription-uuid"))
-					if err != nil {
-						return err
-					}
 
-					return item.Value(func(val []byte) error {
-						var sub Subscription
-						err := json.Unmarshal(val, &sub)
-						if err != nil {
-							return err
-						}
-
-						if sub.Job != "randjobid" {
-							return errors.New(fmt.Sprintf("Expected job id randjobid, got %s", sub.Job))
-						}
-
-						return nil
-					})
-				})
-			},
+	sub := Subscription{
+		ReferenceId: "abc",
+		Job:         "test123",
+		Addresses:   []string{"0x12345"},
+		Topics:      []string{"0xabcde"},
+		Endpoint: Endpoint{
+			Url:        "http://localhost/",
+			Type:       int(subscriber.RPC),
+			Blockchain: blockchain.ETH,
 		},
+		RefreshInt: 0,
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			client := Client{
-				db: tt.fields.db,
-			}
-			if err := client.SaveSubscription(tt.args.sub); err != nil {
-				t.Errorf("SaveSubscription() error = %v", err)
-			}
-			if err := tt.checkFunc(); err != nil {
-				t.Errorf("SaveSubscription() checkFunc error = %v", err)
-			}
-		})
-	}
-}
 
-func TestClient_loadPrefix(t *testing.T) {
-	type fields struct {
-		db *badger.DB
-	}
-	type args struct {
-		prefix []byte
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    int
-		wantErr bool
-	}{
-		{
-			"gets all subscriptions",
-			fields{db: testDbPrefilled.db},
-			args{prefix: []byte(`subscription-`)},
-			len(subs),
-			false,
-		},
-		{
-			"does not return error on invalid key",
-			fields{db: testDbPrefilled.db},
-			args{prefix: []byte(`doesnotexist-`)},
-			0,
-			false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			client := Client{
-				db: tt.fields.db,
-			}
-			got, err := client.loadPrefix(tt.args.prefix)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("loadPrefix() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if tt.want != len(got) {
-				t.Errorf("LoadSubscriptions() got %v results, want %v", len(got), tt.want)
-			}
-		})
-	}
+	cleanupDB := prepareTestDB(t, &config)
+	defer cleanupDB()
+	db, err := ConnectToDb(config.DatabaseURL)
+	require.NoError(t, err)
+	defer db.Close()
+
+	err = db.SaveSubscription(&sub)
+	require.NoError(t, err)
+
+	oldSub := sub
+	sub = Subscription{}
+	subs, err := db.LoadSubscriptions()
+	require.NoError(t, err)
+	assert.Equal(t, 1, len(subs))
+	assert.Equal(t, oldSub.ReferenceId, subs[0].ReferenceId)
+	assert.Equal(t, oldSub.Endpoint.Url, subs[0].Endpoint.Url)
 }

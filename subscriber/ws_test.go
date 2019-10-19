@@ -2,7 +2,6 @@ package subscriber
 
 import (
 	"github.com/gorilla/websocket"
-	"net/url"
 	"testing"
 )
 
@@ -20,7 +19,7 @@ func (mf MockFilter) Json() []byte {
 }
 
 func TestWebsocketSubscriber_SubscribeToEvents(t *testing.T) {
-	wss := WebsocketSubscriber{Endpoint: *wsMockUrl}
+	wss := WebsocketSubscriber{Endpoint: wsMockUrl.String()}
 
 	t.Run("subscribes and ignores confirmation message", func(t *testing.T) {
 		events := make(chan Event)
@@ -71,7 +70,7 @@ func TestWebsocketSubscriber_SubscribeToEvents(t *testing.T) {
 		events := make(chan Event)
 		filter := MockFilter{false}
 
-		nonExistantWss := WebsocketSubscriber{Endpoint: url.URL{}}
+		nonExistantWss := WebsocketSubscriber{Endpoint: ""}
 
 		sub, err := nonExistantWss.SubscribeToEvents(events, filter)
 		if err == nil {
@@ -83,10 +82,8 @@ func TestWebsocketSubscriber_SubscribeToEvents(t *testing.T) {
 }
 
 func TestWebsocketSubscriber_Test(t *testing.T) {
-	invalid, _ := url.Parse("ws://localhost:9999/invalid")
-
 	type fields struct {
-		Endpoint url.URL
+		Endpoint string
 	}
 	tests := []struct {
 		name    string
@@ -95,12 +92,12 @@ func TestWebsocketSubscriber_Test(t *testing.T) {
 	}{
 		{
 			"succeeds connecting to valid endpoint",
-			fields{Endpoint: *wsMockUrl},
+			fields{Endpoint: wsMockUrl.String()},
 			false,
 		},
 		{
 			"fails connecting to invalid endpoint",
-			fields{Endpoint: *invalid},
+			fields{Endpoint: "ws://localhost:9999/invalid"},
 			true,
 		},
 	}
