@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/smartcontractkit/external-initiator/subscriber"
 	"math/big"
 )
 
@@ -100,4 +101,12 @@ func (fm EthFilterMessage) Json() []byte {
 	}
 
 	return bytes
+}
+
+type EthParser struct{}
+
+func (parser EthParser) ParseResponse(data []byte) ([]subscriber.Event, bool) {
+	// All ETH subscription responses should be relevant,
+	// so we can just push them
+	return []subscriber.Event{data}, true
 }

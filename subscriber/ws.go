@@ -8,6 +8,7 @@ import (
 
 type WebsocketSubscriber struct {
 	Endpoint string
+	Parser   IParser
 }
 
 func (wss WebsocketSubscriber) Test() error {
@@ -24,6 +25,7 @@ type WebsocketSubscription struct {
 	done       chan bool
 	events     chan<- Event
 	confirmed  bool
+	parser     IParser
 }
 
 func (wss WebsocketSubscription) Unsubscribe() {
@@ -48,7 +50,14 @@ func (wss WebsocketSubscription) readMessages() {
 			continue
 		}
 
-		wss.events <- message
+		events, ok := wss.parser.ParseResponse(message)
+		if !ok {
+			continue
+		}
+
+		for _, event := range events {
+			wss.events <- event
+		}
 	}
 }
 
@@ -64,6 +73,7 @@ func (wss WebsocketSubscriber) SubscribeToEvents(channel chan<- Event, filter Fi
 		connection: c,
 		events:     channel,
 		confirmed:  len(confirmation) != 0, // If passed as a param, do not expect confirmation message
+		parser:     wss.Parser,
 	}
 
 	go subscription.readMessages()

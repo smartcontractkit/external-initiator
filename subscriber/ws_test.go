@@ -19,7 +19,7 @@ func (mf TestsMockFilter) Json() []byte {
 }
 
 func TestWebsocketSubscriber_SubscribeToEvents(t *testing.T) {
-	wss := WebsocketSubscriber{Endpoint: wsMockUrl.String()}
+	wss := WebsocketSubscriber{Endpoint: wsMockUrl.String(), Parser: MockParser{}}
 
 	t.Run("subscribes and ignores confirmation message", func(t *testing.T) {
 		events := make(chan Event)

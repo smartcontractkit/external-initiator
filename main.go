@@ -295,12 +295,26 @@ func (ei ExternalInitiator) ListenForUpdates(sub *ActiveSubscription) {
 	}
 }
 
+func getParser(sub store.Subscription) (subscriber.IParser, error) {
+	switch sub.Endpoint.Blockchain {
+	case blockchain.ETH:
+		return blockchain.EthParser{}, nil
+	}
+
+	return nil, errors.New("unknown Blockchain type")
+}
+
 func getSubscriber(sub store.Subscription) (subscriber.ISubscriber, error) {
+	parser, err := getParser(sub)
+	if err != nil {
+		return nil, err
+	}
+
 	switch subscriber.Type(sub.Endpoint.Type) {
 	case subscriber.WS:
-		return subscriber.WebsocketSubscriber{Endpoint: sub.Endpoint.Url}, nil
+		return subscriber.WebsocketSubscriber{Endpoint: sub.Endpoint.Url, Parser: parser}, nil
 	case subscriber.RPC:
-		return subscriber.RpcSubscriber{Endpoint: sub.Endpoint.Url, Interval: time.Duration(sub.RefreshInt) * time.Second}, nil
+		return subscriber.RpcSubscriber{Endpoint: sub.Endpoint.Url, Interval: time.Duration(sub.RefreshInt) * time.Second, Parser: parser}, nil
 	}
 
 	return nil, errors.New("unknown Endpoint type")

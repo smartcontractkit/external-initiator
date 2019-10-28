@@ -5,17 +5,11 @@ import (
 	"time"
 )
 
-type Parser struct{}
-
-func (parser Parser) ParseResponse(data []byte) ([]Event, bool) {
-	return []Event{data}, true
-}
-
 func TestRpcSubscriber_SubscribeToEvents(t *testing.T) {
 	t.Run("subscribes to rpc endpoint", func(t *testing.T) {
 		u := *rpcMockUrl
 		u.Path = "/test/1"
-		rpc := RpcSubscriber{Endpoint: u.String(), Parser: Parser{}, Interval: 1 * time.Second}
+		rpc := RpcSubscriber{Endpoint: u.String(), Parser: MockParser{}, Interval: 1 * time.Second}
 
 		events := make(chan Event)
 		filter := TestsMockFilter{true}

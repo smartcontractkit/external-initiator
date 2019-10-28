@@ -13,6 +13,12 @@ import (
 var rpcMockUrl *url.URL
 var wsMockUrl *url.URL
 
+type MockParser struct{}
+
+func (parser MockParser) ParseResponse(data []byte) ([]Event, bool) {
+	return []Event{data}, true
+}
+
 func TestMain(m *testing.M) {
 	responses := make(map[string]int)
 
