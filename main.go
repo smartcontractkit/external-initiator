@@ -2,10 +2,10 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
+	"github.com/pkg/errors"
 	"github.com/smartcontractkit/external-initiator/blockchain"
 	"github.com/smartcontractkit/external-initiator/chainlink"
 	"github.com/smartcontractkit/external-initiator/store"
@@ -94,7 +94,13 @@ func (ei ExternalInitiator) Run() {
 	go ei.listenForShutdown(interrupt)
 
 	for _, sub := range ei.Subscriptions {
-		err := ei.subscribe(&sub)
+		iSubscriber, err := ei.getAndTestSubscription(&sub)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+
+		err = ei.subscribe(&sub, iSubscriber)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -183,8 +189,14 @@ func (ei ExternalInitiator) validateRequest(t RequestBody) error {
 		len(t.Params.Type),
 	}
 
-	if t.Params.Type == blockchain.ETH {
-		validations = append(validations, len(t.Params.Addresses)+len(t.Params.Topics), len(t.Params.Config.Endpoint))
+	switch t.Params.Type {
+	case blockchain.ETH:
+		validations = append(validations,
+			len(t.Params.Addresses)+len(t.Params.Topics),
+			len(t.Params.Config.Endpoint),
+		)
+	default:
+		return errors.New("unknown blockchain")
 	}
 
 	for _, v := range validations {
@@ -203,28 +215,42 @@ func (ei ExternalInitiator) validateRequest(t RequestBody) error {
 	return nil
 }
 
+func (ei ExternalInitiator) getAndTestSubscription(sub *store.Subscription) (subscriber.ISubscriber, error) {
+	iSubscriber, err := getSubscriber(*sub)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := iSubscriber.Test(); err != nil {
+		return nil, errors.Wrap(err, "Failed testing subscriber")
+	}
+
+	return iSubscriber, nil
+}
+
 func (ei ExternalInitiator) saveAndSubscribe(sub *store.Subscription) error {
-	err := ei.DB.SaveSubscription(sub)
+	iSubscriber, err := ei.getAndTestSubscription(sub)
 	if err != nil {
 		return err
 	}
 
-	return ei.subscribe(sub)
-}
-
-func (ei ExternalInitiator) subscribe(sub *store.Subscription) error {
-	events := make(chan subscriber.Event)
-	iSubscriber := getSubscriber(sub.Endpoint.Url, sub.RefreshInt)
-	if err := iSubscriber.Test(); err != nil {
+	err = ei.DB.SaveSubscription(sub)
+	if err != nil {
 		return err
 	}
+
+	return ei.subscribe(sub, iSubscriber)
+}
+
+func (ei ExternalInitiator) subscribe(sub *store.Subscription, iSubscriber subscriber.ISubscriber) error {
+	events := make(chan subscriber.Event)
 
 	var filter subscriber.Filter
 	switch sub.Endpoint.Blockchain {
 	case blockchain.ETH:
 		filter = blockchain.CreateEthFilterMessage(sub.Addresses, sub.Topics)
 	default:
-		return errors.New(fmt.Sprintf("Unable to subscribe to blockchain %s", sub.Endpoint.Blockchain))
+		filter = subscriber.MockFilter{}
 	}
 
 	subscription, err := iSubscriber.SubscribeToEvents(events, filter)
@@ -269,12 +295,13 @@ func (ei ExternalInitiator) ListenForUpdates(sub *ActiveSubscription) {
 	}
 }
 
-func getSubscriber(endpointUrl string, interval int) subscriber.ISubscriber {
-	var sub subscriber.ISubscriber
-	if strings.HasPrefix(endpointUrl, "ws") {
-		sub = subscriber.WebsocketSubscriber{Endpoint: endpointUrl}
-	} else {
-		sub = subscriber.RpcSubscriber{Endpoint: endpointUrl, Interval: time.Duration(interval) * time.Second}
+func getSubscriber(sub store.Subscription) (subscriber.ISubscriber, error) {
+	switch subscriber.Type(sub.Endpoint.Type) {
+	case subscriber.WS:
+		return subscriber.WebsocketSubscriber{Endpoint: sub.Endpoint.Url}, nil
+	case subscriber.RPC:
+		return subscriber.RpcSubscriber{Endpoint: sub.Endpoint.Url, Interval: time.Duration(sub.RefreshInt) * time.Second}, nil
 	}
-	return sub
+
+	return nil, errors.New("unknown Endpoint type")
 }

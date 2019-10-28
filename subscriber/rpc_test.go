@@ -18,7 +18,7 @@ func TestRpcSubscriber_SubscribeToEvents(t *testing.T) {
 		rpc := RpcSubscriber{Endpoint: u.String(), Parser: Parser{}, Interval: 1 * time.Second}
 
 		events := make(chan Event)
-		filter := MockFilter{true}
+		filter := TestsMockFilter{true}
 
 		sub, err := rpc.SubscribeToEvents(events, filter)
 		if err != nil {

@@ -17,6 +17,12 @@ type Filter interface {
 	Json() []byte
 }
 
+type MockFilter struct{}
+
+func (mock MockFilter) Json() []byte {
+	return nil
+}
+
 type ISubscription interface {
 	Unsubscribe()
 }

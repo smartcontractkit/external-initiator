@@ -7,11 +7,11 @@ import (
 
 var upgrader = websocket.Upgrader{} // use default options
 
-type MockFilter struct {
+type TestsMockFilter struct {
 	confirmation bool
 }
 
-func (mf MockFilter) Json() []byte {
+func (mf TestsMockFilter) Json() []byte {
 	if mf.confirmation {
 		return []byte(`true`)
 	}
@@ -23,7 +23,7 @@ func TestWebsocketSubscriber_SubscribeToEvents(t *testing.T) {
 
 	t.Run("subscribes and ignores confirmation message", func(t *testing.T) {
 		events := make(chan Event)
-		filter := MockFilter{true}
+		filter := TestsMockFilter{true}
 
 		sub, err := wss.SubscribeToEvents(events, filter)
 		if err != nil {
@@ -48,7 +48,7 @@ func TestWebsocketSubscriber_SubscribeToEvents(t *testing.T) {
 
 	t.Run("subscribes and does not expect confirmation message", func(t *testing.T) {
 		events := make(chan Event)
-		filter := MockFilter{false}
+		filter := TestsMockFilter{false}
 
 		sub, err := wss.SubscribeToEvents(events, filter, false)
 		if err != nil {
@@ -68,7 +68,7 @@ func TestWebsocketSubscriber_SubscribeToEvents(t *testing.T) {
 
 	t.Run("fails subscribe to invalid URL", func(t *testing.T) {
 		events := make(chan Event)
-		filter := MockFilter{false}
+		filter := TestsMockFilter{false}
 
 		nonExistantWss := WebsocketSubscriber{Endpoint: ""}
 
