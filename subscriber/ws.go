@@ -3,7 +3,6 @@ package subscriber
 import (
 	"fmt"
 	"github.com/gorilla/websocket"
-	"log"
 )
 
 type WebsocketSubscriber struct {
@@ -37,9 +36,8 @@ func (wss WebsocketSubscription) readMessages() {
 	for {
 		_, message, err := wss.connection.ReadMessage()
 		if err != nil {
-			log.Println("read:", err)
 			_ = wss.connection.Close()
-			close(wss.events)
+			// TODO: Attempt reconnect
 			return
 		}
 
