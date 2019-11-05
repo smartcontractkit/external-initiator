@@ -5,6 +5,7 @@ import (
 	"github.com/smartcontractkit/external-initiator/blockchain"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -132,11 +133,13 @@ func (srv *httpService) CreateSubscription(c *gin.Context) {
 	}
 
 	if err := c.BindJSON(&req); err != nil {
+		log.Println(err)
 		c.JSON(http.StatusBadRequest, nil)
 		return
 	}
 
 	if err := validateRequest(&req); err != nil {
+		log.Println(err)
 		c.JSON(http.StatusBadRequest, nil)
 		return
 	}
@@ -144,6 +147,7 @@ func (srv *httpService) CreateSubscription(c *gin.Context) {
 	sub := newSubscriptionFromReq(&req)
 
 	if err := srv.store.SaveSubscription(sub); err != nil {
+		log.Println(err)
 		c.JSON(http.StatusInternalServerError, nil)
 		return
 	}
