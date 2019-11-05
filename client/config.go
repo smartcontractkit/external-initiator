@@ -21,8 +21,8 @@ type Config struct {
 func newConfigFromViper(v *viper.Viper) Config {
 	return Config{
 		Chainlink:          v.GetString("chainlink"),
-		ChainlinkAccessKey: v.GetString("chainlink-accesskey"),
-		ChainlinkSecret:    v.GetString("chainlink-secret"),
+		ChainlinkAccessKey: v.GetString("claccesskey"),
+		ChainlinkSecret:    v.GetString("clsecret"),
 		DatabaseURL:        v.GetString("databaseurl"),
 	}
 }
