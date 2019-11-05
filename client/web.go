@@ -67,7 +67,7 @@ type CreateSubscriptionReq struct {
 			RefreshInt int    `json:"refreshInterval"`
 		} `json:"config"`
 		Addresses []string `json:"addresses"`
-		Topics    []string `json:"topics"`
+		Topics    []string `json:"initiatorTopics"`
 	} `json:"params"`
 }
 

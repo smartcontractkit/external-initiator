@@ -44,7 +44,7 @@ func generateCreateSubscriptionReq(id, chain, endpoint string, addresses, topics
 
 	return CreateSubscriptionReq{
 		JobID:  id,
-		Type:   "external-initiator",
+		Type:   "external",
 		Params: params,
 	}
 }
@@ -86,7 +86,6 @@ func TestConfigController(t *testing.T) {
 		srv.createRouter()
 
 		req := httptest.NewRequest("POST", "/job", bytes.NewBuffer(body))
-		require.NoError(t, err)
 
 		w := httptest.NewRecorder()
 		srv.ServeHTTP(w, req)
