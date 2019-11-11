@@ -27,7 +27,7 @@ $ ./external-initiator --help
 Monitors external blockchains and relays events to Chainlink node. ENV variables can be set by prefixing flag with EI_: EI_ACCESSKEY
 
 Usage:
-  external-initiator [required flags] [flags]
+  external-initiator [endpoint configs] [flags]
 
 Flags:
       --chainlink string     The URL of the Chainlink Core service (default "localhost:6688")
