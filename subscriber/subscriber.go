@@ -1,10 +1,10 @@
 package subscriber
 
-type Type int
+type Type string
 
 const (
-	WS Type = iota
-	RPC
+	WS  Type = "ws"
+	RPC      = "rpc"
 )
 
 type SubConfig struct {

@@ -82,14 +82,19 @@ func (client Client) LoadSubscriptions() ([]Subscription, error) {
 
 	subs := make([]Subscription, len(sqlSubs))
 	for i, sub := range sqlSubs {
+		endpoint, err := client.LoadEndpoint(sub.EndpointName)
+		if err != nil {
+			continue
+		}
+
 		subs[i] = Subscription{
-			Model:       sub.Model,
-			ReferenceId: sub.ReferenceId,
-			Job:         sub.Job,
-			Addresses:   []string(sub.Addresses),
-			Topics:      []string(sub.Topics),
-			Endpoint:    sub.Endpoint,
-			RefreshInt:  sub.RefreshInt,
+			Model:        sub.Model,
+			ReferenceId:  sub.ReferenceId,
+			Job:          sub.Job,
+			Addresses:    []string(sub.Addresses),
+			Topics:       []string(sub.Topics),
+			EndpointName: sub.EndpointName,
+			Endpoint:     endpoint,
 		}
 	}
 
@@ -97,23 +102,45 @@ func (client Client) LoadSubscriptions() ([]Subscription, error) {
 }
 
 func (client Client) SaveSubscription(sub *Subscription) error {
+	if len(sub.EndpointName) == 0 {
+		sub.EndpointName = sub.Endpoint.Name
+	}
+	e, _ := client.LoadEndpoint(sub.EndpointName)
+	if e.Name != sub.EndpointName {
+		return errors.New(fmt.Sprintf("Unable to get endpoint %s", sub.EndpointName))
+	}
 	return client.db.Create(sub).Error
+}
+
+func (client Client) LoadEndpoint(name string) (Endpoint, error) {
+	var endpoint Endpoint
+	err := client.db.Where(Endpoint{Name: name}).First(&endpoint).Error
+	return endpoint, err
+}
+
+func (client Client) SaveEndpoint(endpoint *Endpoint) error {
+	return client.db.Where(Endpoint{Name: endpoint.Name}).Assign(Endpoint{
+		Url:        endpoint.Url,
+		Type:       endpoint.Type,
+		Blockchain: endpoint.Blockchain,
+	}).FirstOrCreate(endpoint).Error
 }
 
 type Endpoint struct {
 	gorm.Model
-	Url            string
-	Type           int
-	Blockchain     string
-	SubscriptionID uint
+	Url        string `json:"url"`
+	Type       string `json:"type"`
+	Blockchain string `json:"blockchain"`
+	RefreshInt int    `json:"refreshInterval"`
+	Name       string `json:"name"`
 }
 
 type Subscription struct {
 	gorm.Model
-	ReferenceId string
-	Job         string
-	Addresses   SQLStringArray
-	Topics      SQLStringArray
-	Endpoint    Endpoint
-	RefreshInt  int
+	ReferenceId  string
+	Job          string
+	Addresses    SQLStringArray
+	Topics       SQLStringArray
+	EndpointName string
+	Endpoint     Endpoint `gorm:"-"`
 }

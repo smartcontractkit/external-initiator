@@ -3,8 +3,6 @@ package store
 import (
 	"database/sql"
 	"fmt"
-	"github.com/smartcontractkit/external-initiator/blockchain"
-	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/url"
@@ -37,6 +35,16 @@ func createTestDB(t *testing.T, parsed *url.URL) *url.URL {
 	return &newURL
 }
 
+func seedTestDB(config Config) error {
+	db, err := ConnectToDb(config.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	return db.db.Create(&Endpoint{Name: "test"}).Error
+}
+
 func createPostgresChildDB(t *testing.T, config *Config, originalURL string) func() {
 	parsed, err := url.Parse(originalURL)
 	if err != nil {
@@ -45,6 +53,10 @@ func createPostgresChildDB(t *testing.T, config *Config, originalURL string) fun
 
 	testdb := createTestDB(t, parsed)
 	config.DatabaseURL = testdb.String()
+
+	if err = seedTestDB(*config); err != nil {
+		t.Fatal(err)
+	}
 
 	return func() {
 		reapPostgresChildDB(t, parsed, testdb)
@@ -81,27 +93,33 @@ func TestClient_SaveSubscription(t *testing.T) {
 		DatabaseURL: os.Getenv("DATABASE_URL"),
 	}
 
-	sub := Subscription{
-		ReferenceId: "abc",
-		Job:         "test123",
-		Addresses:   []string{"0x12345"},
-		Topics:      []string{"0xabcde"},
-		Endpoint: Endpoint{
-			Url:        "http://localhost/",
-			Type:       int(subscriber.RPC),
-			Blockchain: blockchain.ETH,
-		},
-		RefreshInt: 0,
-	}
-
 	cleanupDB := prepareTestDB(t, &config)
 	defer cleanupDB()
 	db, err := ConnectToDb(config.DatabaseURL)
 	require.NoError(t, err)
 	defer db.Close()
 
+	sub := Subscription{
+		ReferenceId:  "abc",
+		Job:          "test123",
+		Addresses:    []string{"0x12345"},
+		Topics:       []string{"0xabcde"},
+		EndpointName: "non-existent",
+	}
+
 	err = db.SaveSubscription(&sub)
-	require.NoError(t, err)
+	assert.Error(t, err)
+
+	sub = Subscription{
+		ReferenceId:  "abc",
+		Job:          "test123",
+		Addresses:    []string{"0x12345"},
+		Topics:       []string{"0xabcde"},
+		EndpointName: "test",
+	}
+
+	err = db.SaveSubscription(&sub)
+	assert.NoError(t, err)
 
 	oldSub := sub
 	sub = Subscription{}
