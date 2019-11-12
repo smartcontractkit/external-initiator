@@ -8,7 +8,6 @@ import (
 type Endpoint struct {
 	gorm.Model
 	Url        string
-	Type       string
 	Blockchain string
 	RefreshInt int
 	Name       string `gorm:"unique;not null"`

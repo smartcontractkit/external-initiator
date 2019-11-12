@@ -67,11 +67,6 @@ type service struct {
 }
 
 func validateEndpoint(endpoint store.Endpoint) error {
-	t := subscriber.Type(endpoint.Type)
-	if t != subscriber.WS && t != subscriber.RPC {
-		return errors.New("Missing or invalid endpoint type")
-	}
-
 	switch endpoint.Blockchain {
 	case blockchain.ETH:
 		// Do nothing, valid blockchain
@@ -234,7 +229,7 @@ func getSubscriber(sub store.Subscription) (subscriber.ISubscriber, error) {
 		return nil, err
 	}
 
-	switch subscriber.Type(sub.Endpoint.Type) {
+	switch blockchain.GetEndpointType(sub.Endpoint.Blockchain) {
 	case subscriber.WS:
 		return subscriber.WebsocketSubscriber{Endpoint: sub.Endpoint.Url, Parser: parser}, nil
 	case subscriber.RPC:
