@@ -120,15 +120,15 @@ func (client Client) LoadEndpoint(name string) (Endpoint, error) {
 
 func (client Client) SaveEndpoint(endpoint *Endpoint) error {
 	return client.db.Where(Endpoint{Name: endpoint.Name}).Assign(Endpoint{
-		Url:        endpoint.Url,
-		Blockchain: endpoint.Blockchain,
+		Url:  endpoint.Url,
+		Type: endpoint.Type,
 	}).FirstOrCreate(endpoint).Error
 }
 
 type Endpoint struct {
 	gorm.Model
 	Url        string `json:"url"`
-	Blockchain string `json:"blockchain"`
+	Type       string `json:"type"`
 	RefreshInt int    `json:"refreshInterval"`
 	Name       string `json:"name"`
 }

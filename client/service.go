@@ -67,7 +67,7 @@ type service struct {
 }
 
 func validateEndpoint(endpoint store.Endpoint) error {
-	switch endpoint.Blockchain {
+	switch endpoint.Type {
 	case blockchain.ETH:
 		// Do nothing, valid blockchain
 	default:
@@ -166,7 +166,7 @@ func (srv *service) subscribe(sub *store.Subscription, iSubscriber subscriber.IS
 	events := make(chan subscriber.Event)
 
 	var filter subscriber.Filter
-	switch sub.Endpoint.Blockchain {
+	switch sub.Endpoint.Type {
 	case blockchain.ETH:
 		filter = blockchain.CreateEthFilterMessage(sub.Addresses, sub.Topics)
 	default:
@@ -215,12 +215,12 @@ func (srv *service) SaveSubscription(arg *store.Subscription) error {
 }
 
 func getParser(sub store.Subscription) (subscriber.IParser, error) {
-	switch sub.Endpoint.Blockchain {
+	switch sub.Endpoint.Type {
 	case blockchain.ETH:
 		return blockchain.EthParser{}, nil
 	}
 
-	return nil, errors.New("unknown Blockchain type")
+	return nil, errors.New("unknown Type type")
 }
 
 func getSubscriber(sub store.Subscription) (subscriber.ISubscriber, error) {
@@ -229,7 +229,7 @@ func getSubscriber(sub store.Subscription) (subscriber.ISubscriber, error) {
 		return nil, err
 	}
 
-	switch blockchain.GetEndpointType(sub.Endpoint.Blockchain) {
+	switch blockchain.GetConnectionType(sub.Endpoint.Type) {
 	case subscriber.WS:
 		return subscriber.WebsocketSubscriber{Endpoint: sub.Endpoint.Url, Parser: parser}, nil
 	case subscriber.RPC:
