@@ -72,7 +72,10 @@ func validateEndpoint(endpoint store.Endpoint) error {
 		return errors.New("Missing or invalid endpoint type")
 	}
 
-	if endpoint.Blockchain != blockchain.ETH {
+	switch endpoint.Blockchain {
+	case blockchain.ETH:
+		// Do nothing, valid blockchain
+	default:
 		return errors.New("Missing or invalid endpoint blockchain")
 	}
 
