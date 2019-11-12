@@ -19,25 +19,14 @@ func (s storeFailer) SaveSubscription(arg *store.Subscription) error {
 }
 
 func generateCreateSubscriptionReq(id, chain, endpoint string, addresses, topics []string) CreateSubscriptionReq {
-	config := struct {
-		Endpoint   string `json:"endpoint"`
-		ChainId    string `json:"chainId"`
-		RefreshInt int    `json:"refreshInterval"`
-	}{
-		Endpoint: endpoint,
-	}
 	params := struct {
-		Type   string `json:"type"`
-		Config struct {
-			Endpoint   string `json:"endpoint"`
-			ChainId    string `json:"chainId"`
-			RefreshInt int    `json:"refreshInterval"`
-		} `json:"config"`
+		Type      string   `json:"type"`
+		Endpoint  string   `json:"endpoint"`
 		Addresses []string `json:"addresses"`
-		Topics    []string `json:"topics"`
+		Topics    []string `json:"initiatorTopics"`
 	}{
 		Type:      chain,
-		Config:    config,
+		Endpoint:  endpoint,
 		Addresses: addresses,
 		Topics:    topics,
 	}
@@ -58,9 +47,15 @@ func TestConfigController(t *testing.T) {
 	}{
 		{
 			"Create success",
-			generateCreateSubscriptionReq("id", "ethereum", "http://localhost:6688", []string{"0x123"}, []string{"0x123"}),
+			generateCreateSubscriptionReq("id", "ethereum", "eth-mainnet", []string{"0x123"}, []string{"0x123"}),
 			storeFailer{nil},
 			http.StatusCreated,
+		},
+		{
+			"Missing fields",
+			generateCreateSubscriptionReq("id", "", "", []string{}, []string{}),
+			storeFailer{nil},
+			http.StatusBadRequest,
 		},
 		{
 			"Decode failed",
@@ -70,8 +65,14 @@ func TestConfigController(t *testing.T) {
 		},
 		{
 			"Save failed",
-			generateCreateSubscriptionReq("id", "ethereum", "http://localhost:6688", []string{"0x123"}, []string{"0x123"}),
+			generateCreateSubscriptionReq("id", "ethereum", "eth-mainnet", []string{"0x123"}, []string{"0x123"}),
 			storeFailer{errors.New("failed save")},
+			http.StatusInternalServerError,
+		},
+		{
+			"Endpoint does not exist",
+			generateCreateSubscriptionReq("id", "ethereum", "doesnt-exist", []string{"0x123"}, []string{"0x123"}),
+			storeFailer{errors.New("Failed loading endpoint")},
 			http.StatusInternalServerError,
 		},
 	}

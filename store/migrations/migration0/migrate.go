@@ -7,20 +7,19 @@ import (
 
 type Endpoint struct {
 	gorm.Model
-	Url            string
-	Type           int
-	Blockchain     string
-	SubscriptionID uint
+	Url        string
+	Blockchain string
+	RefreshInt int
+	Name       string `gorm:"unique;not null"`
 }
 
 type Subscription struct {
 	gorm.Model
-	ReferenceId string
-	Job         string
-	Addresses   string
-	Topics      string
-	Endpoint    Endpoint
-	RefreshInt  int
+	ReferenceId  string
+	Job          string
+	Addresses    string
+	Topics       string
+	EndpointName string
 }
 
 // Migrate runs the initial migration
@@ -30,7 +29,7 @@ func Migrate(tx *gorm.DB) error {
 		return errors.Wrap(err, "failed to auto migrate Subscription")
 	}
 
-	err = tx.AutoMigrate(&Endpoint{}).AddForeignKey("subscription_id", "subscriptions(id)", "RESTRICT", "RESTRICT").Error
+	err = tx.AutoMigrate(&Endpoint{}).Error
 	if err != nil {
 		return errors.Wrap(err, "failed to auto migrate Endpoint")
 	}

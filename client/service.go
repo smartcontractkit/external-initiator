@@ -1,6 +1,7 @@
 package client
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/external-initiator/blockchain"
@@ -19,18 +20,29 @@ import (
 // SIGINT is received.
 func startService(
 	config Config,
-	store *store.Client,
+	dbClient *store.Client,
+	args []string,
 ) {
 	clUrl, err := url.Parse(normalizeLocalhost(config.Chainlink))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	srv := newService(store, chainlink.Node{
+	var endpoints []store.Endpoint
+	for _, e := range args {
+		var endpoint store.Endpoint
+		err := json.Unmarshal([]byte(e), &endpoint)
+		if err != nil {
+			continue
+		}
+		endpoints = append(endpoints, endpoint)
+	}
+
+	srv := newService(dbClient, chainlink.Node{
 		AccessKey:    config.ChainlinkAccessKey,
 		AccessSecret: config.ChainlinkSecret,
 		Endpoint:     *clUrl,
-	})
+	}, endpoints)
 	go func() {
 		err := srv.run()
 		if err != nil {
@@ -54,12 +66,38 @@ type service struct {
 	subscriptions []*ActiveSubscription
 }
 
+func validateEndpoint(endpoint store.Endpoint) error {
+	switch endpoint.Blockchain {
+	case blockchain.ETH:
+		// Do nothing, valid blockchain
+	default:
+		return errors.New("Missing or invalid endpoint blockchain")
+	}
+
+	if len(endpoint.Name) == 0 {
+		return errors.New("Missing endpoint name")
+	}
+
+	return nil
+}
+
 func newService(
-	store *store.Client,
+	dbClient *store.Client,
 	clNode chainlink.Node,
+	endpoints []store.Endpoint,
 ) *service {
+	for _, e := range endpoints {
+		if err := validateEndpoint(e); err != nil {
+			fmt.Println(err)
+			continue
+		}
+		if err := dbClient.SaveEndpoint(&e); err != nil {
+			fmt.Println(err)
+		}
+	}
+
 	return &service{
-		store:  store,
+		store:  dbClient,
 		clNode: clNode,
 	}
 }
@@ -87,6 +125,12 @@ func (srv *service) run() error {
 }
 
 func (srv *service) getAndTestSubscription(sub *store.Subscription) (subscriber.ISubscriber, error) {
+	endpoint, err := srv.store.LoadEndpoint(sub.EndpointName)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed loading endpoint")
+	}
+	sub.Endpoint = endpoint
+
 	iSubscriber, err := getSubscriber(*sub)
 	if err != nil {
 		return nil, err
@@ -185,11 +229,11 @@ func getSubscriber(sub store.Subscription) (subscriber.ISubscriber, error) {
 		return nil, err
 	}
 
-	switch subscriber.Type(sub.Endpoint.Type) {
+	switch blockchain.GetEndpointType(sub.Endpoint.Blockchain) {
 	case subscriber.WS:
 		return subscriber.WebsocketSubscriber{Endpoint: sub.Endpoint.Url, Parser: parser}, nil
 	case subscriber.RPC:
-		return subscriber.RpcSubscriber{Endpoint: sub.Endpoint.Url, Interval: time.Duration(sub.RefreshInt) * time.Second, Parser: parser}, nil
+		return subscriber.RpcSubscriber{Endpoint: sub.Endpoint.Url, Interval: time.Duration(sub.Endpoint.RefreshInt) * time.Second, Parser: parser}, nil
 	}
 
 	return nil, errors.New("unknown Endpoint type")

@@ -1,6 +1,7 @@
 package client
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/smartcontractkit/external-initiator/store"
 	"strings"
@@ -21,8 +22,8 @@ func Run() {
 func generateCmd() *cobra.Command {
 	v := viper.New()
 	newcmd := &cobra.Command{
-		Use:  "external-initiator [required flags]",
-		Args: cobra.MaximumNArgs(0),
+		Use:  "external-initiator [endpoint configs]",
+		Args: cobra.MinimumNArgs(0),
 		Long: "Monitors external blockchains and relays events to Chainlink node. ENV variables can be set by prefixing flag with EI_: EI_ACCESSKEY",
 		Run:  func(_ *cobra.Command, args []string) { runCallback(v, args, startService) },
 	}
@@ -53,7 +54,7 @@ var requiredConfig = []string{
 }
 
 // runner type matches the function signature of synchronizeForever
-type runner = func(Config, *store.Client)
+type runner = func(Config, *store.Client, []string)
 
 func runCallback(v *viper.Viper, args []string, runner runner) {
 	if err := validateParams(v, args, requiredConfig); err != nil {
@@ -70,7 +71,7 @@ func runCallback(v *viper.Viper, args []string, runner runner) {
 	}
 	defer db.Close()
 
-	runner(config, db)
+	runner(config, db, args)
 }
 
 func validateParams(v *viper.Viper, args []string, required []string) error {
@@ -85,6 +86,17 @@ func validateParams(v *viper.Viper, args []string, required []string) error {
 	if len(missing) > 0 {
 		return errors.New(strings.Join(missing, ","))
 	}
+
+	for _, a := range args {
+		var config store.Endpoint
+		err := json.Unmarshal([]byte(a), &config)
+		if err != nil {
+			msg := fmt.Sprintf("Invalid endpoint configuration provided: %v", a)
+			fmt.Println(msg)
+			return errors.Wrap(err, msg)
+		}
+	}
+
 	return nil
 }
 

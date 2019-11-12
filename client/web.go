@@ -2,17 +2,13 @@ package client
 
 import (
 	"fmt"
-	"github.com/smartcontractkit/external-initiator/blockchain"
-	"github.com/smartcontractkit/external-initiator/store"
-	"github.com/smartcontractkit/external-initiator/subscriber"
-	"log"
-	"net/http"
-	"net/url"
-	"strings"
-
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/smartcontractkit/external-initiator/blockchain"
+	"github.com/smartcontractkit/external-initiator/store"
+	"log"
+	"net/http"
 )
 
 type subscriptionStorer interface {
@@ -61,12 +57,8 @@ type CreateSubscriptionReq struct {
 	JobID  string `json:"jobId"`
 	Type   string `json:"type"`
 	Params struct {
-		Type   string `json:"type"`
-		Config struct {
-			Endpoint   string `json:"endpoint"`
-			ChainId    string `json:"chainId"`
-			RefreshInt int    `json:"refreshInterval"`
-		} `json:"config"`
+		Type      string   `json:"type"`
+		Endpoint  string   `json:"endpoint"`
 		Addresses []string `json:"addresses"`
 		Topics    []string `json:"initiatorTopics"`
 	} `json:"params"`
@@ -76,13 +68,13 @@ func validateRequest(t *CreateSubscriptionReq) error {
 	validations := []int{
 		len(t.JobID),
 		len(t.Params.Type),
+		len(t.Params.Endpoint),
 	}
 
 	switch t.Params.Type {
 	case blockchain.ETH:
 		validations = append(validations,
 			len(t.Params.Addresses)+len(t.Params.Topics),
-			len(t.Params.Config.Endpoint),
 		)
 	default:
 		return errors.New("unknown blockchain")
@@ -94,36 +86,7 @@ func validateRequest(t *CreateSubscriptionReq) error {
 		}
 	}
 
-	if t.Params.Type == blockchain.ETH {
-		_, err := url.Parse(t.Params.Config.Endpoint)
-		if err != nil {
-			return err
-		}
-	}
-
 	return nil
-}
-
-func newSubscriptionFromReq(arg *CreateSubscriptionReq) *store.Subscription {
-	urlType := subscriber.RPC
-	if strings.HasPrefix(arg.Params.Config.Endpoint, "ws") {
-		urlType = subscriber.WS
-	}
-
-	sub := &store.Subscription{
-		ReferenceId: uuid.New().String(),
-		Job:         arg.JobID,
-		Addresses:   arg.Params.Addresses,
-		Topics:      arg.Params.Topics,
-		Endpoint: store.Endpoint{
-			Url:        arg.Params.Config.Endpoint,
-			Type:       int(urlType),
-			Blockchain: arg.Params.Type,
-		},
-		RefreshInt: arg.Params.Config.RefreshInt,
-	}
-
-	return sub
 }
 
 func (srv *httpService) CreateSubscription(c *gin.Context) {
@@ -144,7 +107,13 @@ func (srv *httpService) CreateSubscription(c *gin.Context) {
 		return
 	}
 
-	sub := newSubscriptionFromReq(&req)
+	sub := &store.Subscription{
+		ReferenceId:  uuid.New().String(),
+		Job:          req.JobID,
+		Addresses:    req.Params.Addresses,
+		Topics:       req.Params.Topics,
+		EndpointName: req.Params.Endpoint,
+	}
 
 	if err := srv.store.SaveSubscription(sub); err != nil {
 		log.Println(err)

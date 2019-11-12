@@ -27,7 +27,7 @@ $ ./external-initiator --help
 Monitors external blockchains and relays events to Chainlink node. ENV variables can be set by prefixing flag with EI_: EI_ACCESSKEY
 
 Usage:
-  external-initiator [required flags] [flags]
+  external-initiator [endpoint configs] [flags]
 
 Flags:
       --chainlink string     The URL of the Chainlink Core service (default "localhost:6688")
@@ -35,4 +35,10 @@ Flags:
       --clsecret string      The secret to authenticate the node to Chainlink
       --databaseurl string   DatabaseURL configures the URL for chainlink to connect to. This must be a properly formatted URL, with a valid scheme (postgres://). (default "postgresql://postgres:password@localhost:5432/ei?sslmode=disable")
   -h, --help                 help for external-initiator
+```
+
+### Example
+
+```bash
+$ ./external-initiator "{\"name\":\"eth-mainnet\",\"blockchain\":\"ethereum\",\"url\":\"ws://localhost:8546/\"}" --chainlink "http://localhost:6688/"
 ```
