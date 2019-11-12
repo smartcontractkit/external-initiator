@@ -23,7 +23,7 @@ func generateCreateSubscriptionReq(id, chain, endpoint string, addresses, topics
 		Type      string   `json:"type"`
 		Endpoint  string   `json:"endpoint"`
 		Addresses []string `json:"addresses"`
-		Topics    []string `json:"initiatorTopics"`
+		Topics    []string `json:"eventTopics"`
 	}{
 		Type:      chain,
 		Endpoint:  endpoint,

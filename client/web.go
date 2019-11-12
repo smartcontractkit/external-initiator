@@ -60,7 +60,7 @@ type CreateSubscriptionReq struct {
 		Type      string   `json:"type"`
 		Endpoint  string   `json:"endpoint"`
 		Addresses []string `json:"addresses"`
-		Topics    []string `json:"initiatorTopics"`
+		Topics    []string `json:"eventTopics"`
 	} `json:"params"`
 }
 
