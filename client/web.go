@@ -49,7 +49,7 @@ func (srv *httpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (srv *httpService) createRouter() {
 	r := gin.Default()
 	r.GET("/health", srv.ShowHealth)
-	r.POST("/job", srv.CreateSubscription)
+	r.POST("/jobs", srv.CreateSubscription)
 	srv.router = r
 }
 

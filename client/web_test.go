@@ -86,7 +86,7 @@ func TestConfigController(t *testing.T) {
 		}
 		srv.createRouter()
 
-		req := httptest.NewRequest("POST", "/job", bytes.NewBuffer(body))
+		req := httptest.NewRequest("POST", "/jobs", bytes.NewBuffer(body))
 
 		w := httptest.NewRecorder()
 		srv.ServeHTTP(w, req)
