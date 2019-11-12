@@ -36,3 +36,9 @@ Flags:
       --databaseurl string   DatabaseURL configures the URL for chainlink to connect to. This must be a properly formatted URL, with a valid scheme (postgres://). (default "postgresql://postgres:password@localhost:5432/ei?sslmode=disable")
   -h, --help                 help for external-initiator
 ```
+
+### Example
+
+```bash
+$ ./external-initiator "{\"name\":\"eth-mainnet\",\"blockchain\":\"ethereum\",\"url\":\"ws://localhost:8546/\"}" --chainlink "http://localhost:6688/"
+```
