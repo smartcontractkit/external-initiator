@@ -42,7 +42,7 @@ func Migrate(tx *gorm.DB) error {
 
 	err = tx.AutoMigrate(&EthSubscription{}).AddForeignKey("subscription_id", "subscriptions(id)", "CASCADE", "CASCADE").Error
 	if err != nil {
-		return errors.Wrap(err, "failed to auto migrate Endpoint")
+		return errors.Wrap(err, "failed to auto migrate EthSubscription")
 	}
 
 	return nil
