@@ -12,20 +12,26 @@ import (
 	"testing"
 )
 
-type storeFailer struct{ error }
+type storeFailer struct {
+	error         error
+	endpoint      *store.Endpoint
+	endpointError error
+}
 
 func (s storeFailer) SaveSubscription(arg *store.Subscription) error {
 	return s.error
 }
 
-func generateCreateSubscriptionReq(id, chain, endpoint string, addresses, topics []string) CreateSubscriptionReq {
+func (s storeFailer) GetEndpoint(name string) (*store.Endpoint, error) {
+	return s.endpoint, s.endpointError
+}
+
+func generateCreateSubscriptionReq(id, endpoint string, addresses, topics []string) CreateSubscriptionReq {
 	params := struct {
-		Type      string   `json:"type"`
 		Endpoint  string   `json:"endpoint"`
 		Addresses []string `json:"addresses"`
-		Topics    []string `json:"initiatorTopics"`
+		Topics    []string `json:"eventTopics"`
 	}{
-		Type:      chain,
 		Endpoint:  endpoint,
 		Addresses: addresses,
 		Topics:    topics,
@@ -47,32 +53,38 @@ func TestConfigController(t *testing.T) {
 	}{
 		{
 			"Create success",
-			generateCreateSubscriptionReq("id", "ethereum", "eth-mainnet", []string{"0x123"}, []string{"0x123"}),
-			storeFailer{nil},
+			generateCreateSubscriptionReq("id", "eth-mainnet", []string{"0x123"}, []string{"0x123"}),
+			storeFailer{nil, &store.Endpoint{Name: "eth-mainnet", Type: "ethereum"}, nil},
 			http.StatusCreated,
 		},
 		{
 			"Missing fields",
-			generateCreateSubscriptionReq("id", "", "", []string{}, []string{}),
-			storeFailer{nil},
+			generateCreateSubscriptionReq("id", "", []string{}, []string{}),
+			storeFailer{nil, &store.Endpoint{Name: "eth-mainnet", Type: "ethereum"}, nil},
 			http.StatusBadRequest,
 		},
 		{
 			"Decode failed",
 			"bad json format",
-			storeFailer{errors.New("failed save")},
+			storeFailer{errors.New("failed save"), &store.Endpoint{Name: "eth-mainnet", Type: "ethereum"}, nil},
 			http.StatusBadRequest,
 		},
 		{
 			"Save failed",
-			generateCreateSubscriptionReq("id", "ethereum", "eth-mainnet", []string{"0x123"}, []string{"0x123"}),
-			storeFailer{errors.New("failed save")},
+			generateCreateSubscriptionReq("id", "eth-mainnet", []string{"0x123"}, []string{"0x123"}),
+			storeFailer{errors.New("failed save"), &store.Endpoint{Name: "eth-mainnet", Type: "ethereum"}, nil},
 			http.StatusInternalServerError,
 		},
 		{
 			"Endpoint does not exist",
-			generateCreateSubscriptionReq("id", "ethereum", "doesnt-exist", []string{"0x123"}, []string{"0x123"}),
-			storeFailer{errors.New("Failed loading endpoint")},
+			generateCreateSubscriptionReq("id", "doesnt-exist", []string{"0x123"}, []string{"0x123"}),
+			storeFailer{errors.New("Failed loading endpoint"), nil, nil},
+			http.StatusBadRequest,
+		},
+		{
+			"Failed fetching Endpoint",
+			generateCreateSubscriptionReq("id", "eth-mainnet", []string{"0x123"}, []string{"0x123"}),
+			storeFailer{nil, nil, errors.New("failed SQL query")},
 			http.StatusInternalServerError,
 		},
 	}
@@ -86,7 +98,7 @@ func TestConfigController(t *testing.T) {
 		}
 		srv.createRouter()
 
-		req := httptest.NewRequest("POST", "/job", bytes.NewBuffer(body))
+		req := httptest.NewRequest("POST", "/jobs", bytes.NewBuffer(body))
 
 		w := httptest.NewRecorder()
 		srv.ServeHTTP(w, req)

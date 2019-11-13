@@ -67,7 +67,7 @@ type service struct {
 }
 
 func validateEndpoint(endpoint store.Endpoint) error {
-	switch endpoint.Blockchain {
+	switch endpoint.Type {
 	case blockchain.ETH:
 		// Do nothing, valid blockchain
 	default:
@@ -166,9 +166,9 @@ func (srv *service) subscribe(sub *store.Subscription, iSubscriber subscriber.IS
 	events := make(chan subscriber.Event)
 
 	var filter subscriber.Filter
-	switch sub.Endpoint.Blockchain {
+	switch sub.Endpoint.Type {
 	case blockchain.ETH:
-		filter = blockchain.CreateEthFilterMessage(sub.Addresses, sub.Topics)
+		filter = blockchain.CreateEthFilterMessage(sub.Ethereum.Addresses, sub.Ethereum.Topics)
 	default:
 		filter = subscriber.MockFilter{}
 	}
@@ -214,13 +214,39 @@ func (srv *service) SaveSubscription(arg *store.Subscription) error {
 	return srv.subscribe(arg, sub)
 }
 
+func (srv *service) GetEndpoint(name string) (*store.Endpoint, error) {
+	endpoint, err := srv.store.LoadEndpoint(name)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint.Name != name {
+		return nil, nil
+	}
+	return &endpoint, nil
+}
+
 func getParser(sub store.Subscription) (subscriber.IParser, error) {
-	switch sub.Endpoint.Blockchain {
+	switch sub.Endpoint.Type {
 	case blockchain.ETH:
 		return blockchain.EthParser{}, nil
 	}
 
-	return nil, errors.New("unknown Blockchain type")
+	return nil, errors.New("unknown Type type")
+}
+
+func getConnectionType(rawUrl string) (subscriber.Type, error) {
+	u, err := url.Parse(rawUrl)
+	if err != nil {
+		return 0, err
+	}
+
+	if strings.HasPrefix(u.Scheme, "ws") {
+		return subscriber.WS, nil
+	} else if strings.HasPrefix(u.Scheme, "http") {
+		return subscriber.RPC, nil
+	}
+
+	return 0, errors.New("unknown connection scheme")
 }
 
 func getSubscriber(sub store.Subscription) (subscriber.ISubscriber, error) {
@@ -229,7 +255,12 @@ func getSubscriber(sub store.Subscription) (subscriber.ISubscriber, error) {
 		return nil, err
 	}
 
-	switch blockchain.GetEndpointType(sub.Endpoint.Blockchain) {
+	connType, err := getConnectionType(sub.Endpoint.Url)
+	if err != nil {
+		return nil, err
+	}
+
+	switch connType {
 	case subscriber.WS:
 		return subscriber.WebsocketSubscriber{Endpoint: sub.Endpoint.Url, Parser: parser}, nil
 	case subscriber.RPC:

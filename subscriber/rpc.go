@@ -74,7 +74,7 @@ func sendGetRequest(url string) ([]byte, error) {
 	}
 	defer r.Body.Close()
 
-	if r.StatusCode < 200 || r.StatusCode > 299 {
+	if r.StatusCode < 200 || r.StatusCode >= 400 {
 		return nil, errors.New("got unexpected status code")
 	}
 

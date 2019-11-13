@@ -8,7 +8,9 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pkg/errors"
+	"github.com/smartcontractkit/external-initiator/blockchain"
 	"github.com/smartcontractkit/external-initiator/store/migrations"
+	"log"
 )
 
 const sqlDialect = "postgres"
@@ -80,22 +82,31 @@ func (client Client) LoadSubscriptions() ([]Subscription, error) {
 		return nil, err
 	}
 
-	subs := make([]Subscription, len(sqlSubs))
-	for i, sub := range sqlSubs {
-		endpoint, err := client.LoadEndpoint(sub.EndpointName)
+	var subs []Subscription
+	for _, sqlSub := range sqlSubs {
+		endpoint, err := client.LoadEndpoint(sqlSub.EndpointName)
 		if err != nil {
+			log.Println(err)
 			continue
 		}
 
-		subs[i] = Subscription{
-			Model:        sub.Model,
-			ReferenceId:  sub.ReferenceId,
-			Job:          sub.Job,
-			Addresses:    []string(sub.Addresses),
-			Topics:       []string(sub.Topics),
-			EndpointName: sub.EndpointName,
+		sub := Subscription{
+			Model:        sqlSub.Model,
+			ReferenceId:  sqlSub.ReferenceId,
+			Job:          sqlSub.Job,
+			EndpointName: sqlSub.EndpointName,
 			Endpoint:     endpoint,
 		}
+
+		switch endpoint.Type {
+		case blockchain.ETH:
+			if err := client.db.Model(&sub).Related(&sub.Ethereum).Error; err != nil {
+				log.Println(err)
+				continue
+			}
+		}
+
+		subs = append(subs, sub)
 	}
 
 	return subs, nil
@@ -120,15 +131,15 @@ func (client Client) LoadEndpoint(name string) (Endpoint, error) {
 
 func (client Client) SaveEndpoint(endpoint *Endpoint) error {
 	return client.db.Where(Endpoint{Name: endpoint.Name}).Assign(Endpoint{
-		Url:        endpoint.Url,
-		Blockchain: endpoint.Blockchain,
+		Url:  endpoint.Url,
+		Type: endpoint.Type,
 	}).FirstOrCreate(endpoint).Error
 }
 
 type Endpoint struct {
 	gorm.Model
 	Url        string `json:"url"`
-	Blockchain string `json:"blockchain"`
+	Type       string `json:"type"`
 	RefreshInt int    `json:"refreshInterval"`
 	Name       string `json:"name"`
 }
@@ -137,8 +148,14 @@ type Subscription struct {
 	gorm.Model
 	ReferenceId  string
 	Job          string
-	Addresses    SQLStringArray
-	Topics       SQLStringArray
 	EndpointName string
 	Endpoint     Endpoint `gorm:"-"`
+	Ethereum     EthSubscription
+}
+
+type EthSubscription struct {
+	gorm.Model
+	SubscriptionId uint
+	Addresses      SQLStringArray
+	Topics         SQLStringArray
 }

@@ -40,5 +40,5 @@ Flags:
 ### Example
 
 ```bash
-$ ./external-initiator "{\"name\":\"eth-mainnet\",\"blockchain\":\"ethereum\",\"url\":\"ws://localhost:8546/\"}" --chainlink "http://localhost:6688/"
+$ ./external-initiator "{\"name\":\"eth-mainnet\",\"type\":\"ethereum\",\"url\":\"ws://localhost:8546/\"}" --chainlink "http://localhost:6688/"
 ```
