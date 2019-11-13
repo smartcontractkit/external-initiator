@@ -168,7 +168,7 @@ func (srv *service) subscribe(sub *store.Subscription, iSubscriber subscriber.IS
 	var filter subscriber.Filter
 	switch sub.Endpoint.Type {
 	case blockchain.ETH:
-		filter = blockchain.CreateEthFilterMessage(sub.Addresses, sub.Topics)
+		filter = blockchain.CreateEthFilterMessage(sub.Ethereum.Addresses, sub.Ethereum.Topics)
 	default:
 		filter = subscriber.MockFilter{}
 	}
@@ -212,6 +212,17 @@ func (srv *service) SaveSubscription(arg *store.Subscription) error {
 	}
 
 	return srv.subscribe(arg, sub)
+}
+
+func (srv *service) GetEndpoint(name string) (*store.Endpoint, error) {
+	endpoint, err := srv.store.LoadEndpoint(name)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint.Name != name {
+		return nil, nil
+	}
+	return &endpoint, nil
 }
 
 func getParser(sub store.Subscription) (subscriber.IParser, error) {

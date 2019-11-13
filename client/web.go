@@ -13,6 +13,7 @@ import (
 
 type subscriptionStorer interface {
 	SaveSubscription(sub *store.Subscription) error
+	GetEndpoint(name string) (*store.Endpoint, error)
 }
 
 func runWebserver(
@@ -57,27 +58,22 @@ type CreateSubscriptionReq struct {
 	JobID  string `json:"jobId"`
 	Type   string `json:"type"`
 	Params struct {
-		Type      string   `json:"type"`
 		Endpoint  string   `json:"endpoint"`
 		Addresses []string `json:"addresses"`
 		Topics    []string `json:"eventTopics"`
 	} `json:"params"`
 }
 
-func validateRequest(t *CreateSubscriptionReq) error {
+func validateRequest(t *CreateSubscriptionReq, endpointType string) error {
 	validations := []int{
 		len(t.JobID),
-		len(t.Params.Type),
-		len(t.Params.Endpoint),
 	}
 
-	switch t.Params.Type {
+	switch endpointType {
 	case blockchain.ETH:
 		validations = append(validations,
 			len(t.Params.Addresses)+len(t.Params.Topics),
 		)
-	default:
-		return errors.New("unknown blockchain")
 	}
 
 	for _, v := range validations {
@@ -101,7 +97,19 @@ func (srv *httpService) CreateSubscription(c *gin.Context) {
 		return
 	}
 
-	if err := validateRequest(&req); err != nil {
+	endpoint, err := srv.store.GetEndpoint(req.Params.Endpoint)
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusInternalServerError, nil)
+		return
+	}
+	if endpoint == nil {
+		log.Println("unknown endpoint provided")
+		c.JSON(http.StatusBadRequest, nil)
+		return
+	}
+
+	if err := validateRequest(&req, endpoint.Type); err != nil {
 		log.Println(err)
 		c.JSON(http.StatusBadRequest, nil)
 		return
@@ -110,9 +118,15 @@ func (srv *httpService) CreateSubscription(c *gin.Context) {
 	sub := &store.Subscription{
 		ReferenceId:  uuid.New().String(),
 		Job:          req.JobID,
-		Addresses:    req.Params.Addresses,
-		Topics:       req.Params.Topics,
 		EndpointName: req.Params.Endpoint,
+	}
+
+	switch endpoint.Type {
+	case blockchain.ETH:
+		sub.Ethereum = store.EthSubscription{
+			Addresses: req.Params.Addresses,
+			Topics:    req.Params.Topics,
+		}
 	}
 
 	if err := srv.store.SaveSubscription(sub); err != nil {

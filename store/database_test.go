@@ -42,7 +42,7 @@ func seedTestDB(config Config) error {
 	}
 	defer db.Close()
 
-	return db.db.Create(&Endpoint{Name: "test"}).Error
+	return db.db.Create(&Endpoint{Name: "test", Type: "ethereum", Url: "ws://localhost:8546/"}).Error
 }
 
 func createPostgresChildDB(t *testing.T, config *Config, originalURL string) func() {
@@ -102,9 +102,11 @@ func TestClient_SaveSubscription(t *testing.T) {
 	sub := Subscription{
 		ReferenceId:  "abc",
 		Job:          "test123",
-		Addresses:    []string{"0x12345"},
-		Topics:       []string{"0xabcde"},
 		EndpointName: "non-existent",
+		Ethereum: EthSubscription{
+			Addresses: []string{"0x12345"},
+			Topics:    []string{"0xabcde"},
+		},
 	}
 
 	err = db.SaveSubscription(&sub)
@@ -113,9 +115,11 @@ func TestClient_SaveSubscription(t *testing.T) {
 	sub = Subscription{
 		ReferenceId:  "abc",
 		Job:          "test123",
-		Addresses:    []string{"0x12345"},
-		Topics:       []string{"0xabcde"},
 		EndpointName: "test",
+		Ethereum: EthSubscription{
+			Addresses: []string{"0x12345"},
+			Topics:    []string{"0xabcde"},
+		},
 	}
 
 	err = db.SaveSubscription(&sub)
@@ -127,5 +131,5 @@ func TestClient_SaveSubscription(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, len(subs))
 	assert.Equal(t, oldSub.ReferenceId, subs[0].ReferenceId)
-	assert.Equal(t, oldSub.Endpoint.Url, subs[0].Endpoint.Url)
+	assert.Equal(t, oldSub.EndpointName, subs[0].Endpoint.Name)
 }
