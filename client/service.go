@@ -234,13 +234,33 @@ func getParser(sub store.Subscription) (subscriber.IParser, error) {
 	return nil, errors.New("unknown Type type")
 }
 
+func getConnectionType(rawUrl string) (subscriber.Type, error) {
+	u, err := url.Parse(rawUrl)
+	if err != nil {
+		return 0, err
+	}
+
+	if strings.HasPrefix(u.Scheme, "ws") {
+		return subscriber.WS, nil
+	} else if strings.HasPrefix(u.Scheme, "http") {
+		return subscriber.RPC, nil
+	}
+
+	return 0, errors.New("unknown connection scheme")
+}
+
 func getSubscriber(sub store.Subscription) (subscriber.ISubscriber, error) {
 	parser, err := getParser(sub)
 	if err != nil {
 		return nil, err
 	}
 
-	switch blockchain.GetConnectionType(sub.Endpoint.Type) {
+	connType, err := getConnectionType(sub.Endpoint.Url)
+	if err != nil {
+		return nil, err
+	}
+
+	switch connType {
 	case subscriber.WS:
 		return subscriber.WebsocketSubscriber{Endpoint: sub.Endpoint.Url, Parser: parser}, nil
 	case subscriber.RPC:
