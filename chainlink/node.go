@@ -39,7 +39,7 @@ func (cl Node) TriggerJob(jobId string) error {
 	}
 	defer r.Body.Close()
 
-	if r.StatusCode > 201 {
+	if r.StatusCode >= 400 {
 		return fmt.Errorf("received faulty status code: %d", r.StatusCode)
 	}
 
