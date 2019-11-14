@@ -165,15 +165,7 @@ type ActiveSubscription struct {
 func (srv *service) subscribe(sub *store.Subscription, iSubscriber subscriber.ISubscriber) error {
 	events := make(chan subscriber.Event)
 
-	var filter subscriber.Filter
-	switch sub.Endpoint.Type {
-	case blockchain.ETH:
-		filter = blockchain.CreateEthFilterMessage(sub.Ethereum.Addresses, sub.Ethereum.Topics)
-	default:
-		filter = subscriber.MockFilter{}
-	}
-
-	subscription, err := iSubscriber.SubscribeToEvents(events, filter)
+	subscription, err := iSubscriber.SubscribeToEvents(events)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -225,15 +217,6 @@ func (srv *service) GetEndpoint(name string) (*store.Endpoint, error) {
 	return &endpoint, nil
 }
 
-func getParser(sub store.Subscription) (subscriber.IParser, error) {
-	switch sub.Endpoint.Type {
-	case blockchain.ETH:
-		return blockchain.EthParser{}, nil
-	}
-
-	return nil, errors.New("unknown Type type")
-}
-
 func getConnectionType(rawUrl string) (subscriber.Type, error) {
 	u, err := url.Parse(rawUrl)
 	if err != nil {
@@ -249,22 +232,31 @@ func getConnectionType(rawUrl string) (subscriber.Type, error) {
 	return 0, errors.New("unknown connection scheme")
 }
 
+func getManager(sub store.Subscription, p subscriber.Type) (subscriber.Manager, error) {
+	switch sub.Endpoint.Type {
+	case blockchain.ETH:
+		return blockchain.CreateEthManager(p, sub.Ethereum), nil
+	}
+
+	return nil, errors.New("unknown blockchain type")
+}
+
 func getSubscriber(sub store.Subscription) (subscriber.ISubscriber, error) {
-	parser, err := getParser(sub)
+	connType, err := getConnectionType(sub.Endpoint.Url)
 	if err != nil {
 		return nil, err
 	}
 
-	connType, err := getConnectionType(sub.Endpoint.Url)
+	manager, err := getManager(sub, connType)
 	if err != nil {
 		return nil, err
 	}
 
 	switch connType {
 	case subscriber.WS:
-		return subscriber.WebsocketSubscriber{Endpoint: sub.Endpoint.Url, Parser: parser}, nil
+		return subscriber.WebsocketSubscriber{Endpoint: sub.Endpoint.Url, Manager: manager}, nil
 	case subscriber.RPC:
-		return subscriber.RpcSubscriber{Endpoint: sub.Endpoint.Url, Interval: time.Duration(sub.Endpoint.RefreshInt) * time.Second, Parser: parser}, nil
+		return subscriber.RpcSubscriber{Endpoint: sub.Endpoint.Url, Interval: time.Duration(sub.Endpoint.RefreshInt) * time.Second, Manager: manager}, nil
 	}
 
 	return nil, errors.New("unknown Endpoint type")

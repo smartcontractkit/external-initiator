@@ -53,27 +53,6 @@ func TestCreateEthFilterMessage(t *testing.T) {
 	}
 }
 
-func Test_toBlockNumArg(t *testing.T) {
-	type args struct {
-		number *big.Int
-	}
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{
-		{"empty should give latest", args{nil}, "latest"},
-		{"int should be converted to hex", args{big.NewInt(3234512922)}, "0xc0cac01a"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := toBlockNumArg(tt.args.number); got != tt.want {
-				t.Errorf("toBlockNumArg() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func Test_toFilterArg(t *testing.T) {
 	type args struct {
 		q ethereum.FilterQuery
