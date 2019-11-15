@@ -170,7 +170,11 @@ func (q filterQuery) toMapInterface() (interface{}, error) {
 		} else {
 			arg["fromBlock"] = q.FromBlock
 		}
-		arg["toBlock"] = q.ToBlock
+		if q.ToBlock == "" {
+			arg["toBlock"] = "latest"
+		} else {
+			arg["toBlock"] = q.ToBlock
+		}
 	}
 	return arg, nil
 }
