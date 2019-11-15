@@ -13,7 +13,7 @@ import (
 const ETH = "ethereum"
 
 type EthManager struct {
-	fq filterQuery
+	fq *filterQuery
 	p  subscriber.Type
 }
 
@@ -34,7 +34,7 @@ func CreateEthManager(p subscriber.Type, config store.EthSubscription) EthManage
 	topics = append(topics, t)
 
 	return EthManager{
-		fq: filterQuery{
+		fq: &filterQuery{
 			Addresses: addresses,
 			Topics:    topics,
 		},
@@ -77,6 +77,41 @@ func (e EthManager) GetTriggerJson() []byte {
 	}
 
 	return bytes
+}
+
+func (e EthManager) GetTestJson() []byte {
+	if e.p == subscriber.RPC {
+		msg := jsonrpcMessage{
+			Version: "2.0",
+			ID:      json.RawMessage(`1`),
+			Method:  "eth_blockNumber",
+		}
+
+		bytes, err := json.Marshal(msg)
+		if err != nil {
+			return nil
+		}
+
+		return bytes
+	}
+
+	return nil
+}
+
+func (e EthManager) ParseTestResponse(data []byte) error {
+	if e.p == subscriber.RPC {
+		var msg jsonrpcMessage
+		if err := json.Unmarshal(data, &msg); err != nil {
+			return err
+		}
+		var res string
+		if err := json.Unmarshal(msg.Result, &res); err != nil {
+			return err
+		}
+		e.fq.FromBlock = res
+	}
+
+	return nil
 }
 
 type ethLogResponse struct {
