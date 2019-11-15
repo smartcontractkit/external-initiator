@@ -8,7 +8,6 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pkg/errors"
-	"github.com/smartcontractkit/external-initiator/blockchain"
 	"github.com/smartcontractkit/external-initiator/store/migrations"
 	"log"
 )
@@ -99,7 +98,7 @@ func (client Client) LoadSubscriptions() ([]Subscription, error) {
 		}
 
 		switch endpoint.Type {
-		case blockchain.ETH:
+		case "ethereum":
 			if err := client.db.Model(&sub).Related(&sub.Ethereum).Error; err != nil {
 				log.Println(err)
 				continue
