@@ -7,25 +7,12 @@ import (
 
 var upgrader = websocket.Upgrader{} // use default options
 
-type TestsMockFilter struct {
-	confirmation bool
-}
-
-func (mf TestsMockFilter) Json() []byte {
-	if mf.confirmation {
-		return []byte(`true`)
-	}
-	return []byte(`false`)
-}
-
 func TestWebsocketSubscriber_SubscribeToEvents(t *testing.T) {
-	wss := WebsocketSubscriber{Endpoint: wsMockUrl.String(), Parser: MockParser{}}
-
 	t.Run("subscribes and ignores confirmation message", func(t *testing.T) {
+		wss := WebsocketSubscriber{Endpoint: wsMockUrl.String(), Manager: TestsMockManager{true}}
 		events := make(chan Event)
-		filter := TestsMockFilter{true}
 
-		sub, err := wss.SubscribeToEvents(events, filter)
+		sub, err := wss.SubscribeToEvents(events)
 		if err != nil {
 			t.Errorf("SubscribeToEvents() error = %v", err)
 			return
@@ -47,10 +34,10 @@ func TestWebsocketSubscriber_SubscribeToEvents(t *testing.T) {
 	})
 
 	t.Run("subscribes and does not expect confirmation message", func(t *testing.T) {
+		wss := WebsocketSubscriber{Endpoint: wsMockUrl.String(), Manager: TestsMockManager{false}}
 		events := make(chan Event)
-		filter := TestsMockFilter{false}
 
-		sub, err := wss.SubscribeToEvents(events, filter, false)
+		sub, err := wss.SubscribeToEvents(events, false)
 		if err != nil {
 			t.Errorf("SubscribeToEvents() error = %v", err)
 			return
@@ -67,12 +54,10 @@ func TestWebsocketSubscriber_SubscribeToEvents(t *testing.T) {
 	})
 
 	t.Run("fails subscribe to invalid URL", func(t *testing.T) {
+		wss := WebsocketSubscriber{Endpoint: "", Manager: TestsMockManager{false}}
 		events := make(chan Event)
-		filter := TestsMockFilter{false}
 
-		nonExistantWss := WebsocketSubscriber{Endpoint: ""}
-
-		sub, err := nonExistantWss.SubscribeToEvents(events, filter)
+		sub, err := wss.SubscribeToEvents(events)
 		if err == nil {
 			sub.Unsubscribe()
 			t.Error("SubscribeToEvents() expected error, but got nil")

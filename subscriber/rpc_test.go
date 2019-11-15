@@ -9,12 +9,11 @@ func TestRpcSubscriber_SubscribeToEvents(t *testing.T) {
 	t.Run("subscribes to rpc endpoint", func(t *testing.T) {
 		u := *rpcMockUrl
 		u.Path = "/test/1"
-		rpc := RpcSubscriber{Endpoint: u.String(), Parser: MockParser{}, Interval: 1 * time.Second}
+		rpc := RpcSubscriber{Endpoint: u.String(), Manager: TestsMockManager{true}, Interval: 1 * time.Second}
 
 		events := make(chan Event)
-		filter := TestsMockFilter{true}
 
-		sub, err := rpc.SubscribeToEvents(events, filter)
+		sub, err := rpc.SubscribeToEvents(events)
 		if err != nil {
 			t.Errorf("SubscribeToEvents() error = %v", err)
 			return
@@ -37,12 +36,12 @@ func TestRpcSubscriber_SubscribeToEvents(t *testing.T) {
 	})
 }
 
-func TestSendGetRequest(t *testing.T) {
+func TestSendPostRequest(t *testing.T) {
 	t.Run("succeeds on normal response", func(t *testing.T) {
 		u := *rpcMockUrl
 		u.Path = "/test/2"
 
-		_, err := sendGetRequest(u.String())
+		_, err := sendPostRequest(u.String(), TestsMockManager{}.GetTriggerJson())
 		if err != nil {
 			t.Errorf("sendGetRequest() got unexpected error = %v", err)
 			return
@@ -53,7 +52,7 @@ func TestSendGetRequest(t *testing.T) {
 		u := *rpcMockUrl
 		u.Path = "/fails"
 
-		_, err := sendGetRequest(u.String())
+		_, err := sendPostRequest(u.String(), TestsMockManager{}.GetTriggerJson())
 		if err == nil {
 			t.Error("sendGetRequest() expected error, but got nil")
 			return
