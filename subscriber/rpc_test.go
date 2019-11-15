@@ -63,6 +63,7 @@ func TestSendPostRequest(t *testing.T) {
 func TestRpcSubscriber_Test(t *testing.T) {
 	type fields struct {
 		Endpoint string
+		Manager  Manager
 	}
 	tests := []struct {
 		name    string
@@ -71,12 +72,12 @@ func TestRpcSubscriber_Test(t *testing.T) {
 	}{
 		{
 			"succeeds connecting to valid endpoint",
-			fields{Endpoint: rpcMockUrl.String()},
+			fields{Endpoint: rpcMockUrl.String(), Manager: TestsMockManager{}},
 			false,
 		},
 		{
 			"fails connecting to invalid endpoint",
-			fields{Endpoint: "http://localhost:9999/invalid"},
+			fields{Endpoint: "http://localhost:9999/invalid", Manager: TestsMockManager{}},
 			true,
 		},
 	}
@@ -84,6 +85,7 @@ func TestRpcSubscriber_Test(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			rpc := RpcSubscriber{
 				Endpoint: tt.fields.Endpoint,
+				Manager:  tt.fields.Manager,
 			}
 			if err := rpc.Test(); (err != nil) != tt.wantErr {
 				t.Errorf("Test() error = %v, wantErr %v", err, tt.wantErr)

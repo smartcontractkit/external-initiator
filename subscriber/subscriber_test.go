@@ -28,6 +28,14 @@ func (m TestsMockManager) GetTriggerJson() []byte {
 	return []byte(`false`)
 }
 
+func (m TestsMockManager) GetTestJson() []byte {
+	return nil
+}
+
+func (m TestsMockManager) ParseTestResponse(data []byte) error {
+	return nil
+}
+
 func TestMain(m *testing.M) {
 	responses := make(map[string]int)
 

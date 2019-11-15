@@ -16,8 +16,12 @@ type RpcSubscriber struct {
 }
 
 func (rpc RpcSubscriber) Test() error {
-	_, err := sendPostRequest(rpc.Endpoint, nil)
-	return err
+	resp, err := sendPostRequest(rpc.Endpoint, rpc.Manager.GetTestJson())
+	if err != nil {
+		return err
+	}
+
+	return rpc.Manager.ParseTestResponse(resp)
 }
 
 type RpcSubscription struct {

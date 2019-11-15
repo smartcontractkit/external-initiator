@@ -16,6 +16,8 @@ type Event []byte
 type Manager interface {
 	GetTriggerJson() []byte
 	ParseResponse(data []byte) ([]Event, bool)
+	GetTestJson() []byte
+	ParseTestResponse(data []byte) error
 }
 
 type ISubscription interface {
