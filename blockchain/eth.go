@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"math/big"
-	"strconv"
 )
 
 const ETH = "ethereum"
@@ -141,22 +141,22 @@ func (e EthManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 		if e.p == subscriber.RPC {
 			// Check if we can update the "fromBlock" in the query,
 			// so we only get new events from blocks we haven't queried yet
-			curBlkn, err := strconv.ParseInt(evt.BlockNumber, 0, 64)
+			curBlkn, err := hexutil.DecodeBig(evt.BlockNumber)
 			if err != nil {
 				continue
 			}
 			// Increment the block number by 1, since we want events from *after* this block number
-			curBlkn += 1
+			curBlkn.Add(curBlkn, big.NewInt(1))
 
-			fromBlkn, err := strconv.ParseInt(e.fq.FromBlock, 0, 64)
+			fromBlkn, err := hexutil.DecodeBig(e.fq.FromBlock)
 			if err != nil {
 				continue
 			}
 
 			// If our query "fromBlock" is "latest", or our current "fromBlock" is in the past compared to
 			// the last event we received, we want to update the query
-			if e.fq.FromBlock == "latest" || e.fq.FromBlock == "" || new(big.Int).SetInt64(curBlkn).Cmp(new(big.Int).SetInt64(fromBlkn)) > 0 {
-				e.fq.FromBlock = evt.BlockNumber
+			if e.fq.FromBlock == "latest" || e.fq.FromBlock == "" || curBlkn.Cmp(fromBlkn) > 0 {
+				e.fq.FromBlock = hexutil.EncodeBig(curBlkn)
 			}
 		}
 		event, err := json.Marshal(evt)
