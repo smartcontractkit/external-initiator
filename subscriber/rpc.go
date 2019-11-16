@@ -86,7 +86,7 @@ func sendPostRequest(url string, body []byte) ([]byte, error) {
 }
 
 func (rpc RpcSubscriber) SubscribeToEvents(channel chan<- Event, confirmation ...interface{}) (ISubscription, error) {
-	fmt.Printf("Using RPC endpoint: %s", rpc.Endpoint)
+	fmt.Printf("Using RPC endpoint: %s\n", rpc.Endpoint)
 
 	subscription := RpcSubscription{
 		endpoint: rpc.Endpoint,

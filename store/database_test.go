@@ -133,3 +133,53 @@ func TestClient_SaveSubscription(t *testing.T) {
 	assert.Equal(t, oldSub.ReferenceId, subs[0].ReferenceId)
 	assert.Equal(t, oldSub.EndpointName, subs[0].Endpoint.Name)
 }
+
+func TestClient_SaveEndpoint(t *testing.T) {
+	type args struct {
+		endpoint *Endpoint
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{"stores endpoint", args{endpoint: &Endpoint{
+			Url:        "http://localhost:8545/",
+			Type:       "ethereum",
+			RefreshInt: 5,
+			Name:       "eth-main",
+		}}, false},
+		{"overwrites name", args{endpoint: &Endpoint{
+			Url:        "ws://localhost:8546/",
+			Type:       "not-ethereum",
+			RefreshInt: 0,
+			Name:       "eth-main",
+		}}, false},
+	}
+
+	config := Config{
+		DatabaseURL: os.Getenv("DATABASE_URL"),
+	}
+
+	cleanupDB := prepareTestDB(t, &config)
+	defer cleanupDB()
+	db, err := ConnectToDb(config.DatabaseURL)
+	require.NoError(t, err)
+	defer db.Close()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := db.SaveEndpoint(tt.args.endpoint); (err != nil) != tt.wantErr {
+				t.Errorf("SaveEndpoint() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !tt.wantErr && err == nil {
+				e, err := db.LoadEndpoint(tt.args.endpoint.Name)
+				require.NoError(t, err)
+				assert.Equal(t, tt.args.endpoint.Name, e.Name)
+				assert.Equal(t, tt.args.endpoint.Url, e.Url)
+				assert.Equal(t, tt.args.endpoint.Type, e.Type)
+				assert.Equal(t, tt.args.endpoint.RefreshInt, e.RefreshInt)
+			}
+		})
+	}
+}

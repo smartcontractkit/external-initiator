@@ -130,8 +130,9 @@ func (client Client) LoadEndpoint(name string) (Endpoint, error) {
 
 func (client Client) SaveEndpoint(endpoint *Endpoint) error {
 	return client.db.Where(Endpoint{Name: endpoint.Name}).Assign(Endpoint{
-		Url:  endpoint.Url,
-		Type: endpoint.Type,
+		Url:        endpoint.Url,
+		Type:       endpoint.Type,
+		RefreshInt: endpoint.RefreshInt,
 	}).FirstOrCreate(endpoint).Error
 }
 
