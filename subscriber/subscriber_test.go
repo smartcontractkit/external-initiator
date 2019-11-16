@@ -81,7 +81,6 @@ func TestMain(m *testing.M) {
 					break
 				}
 			case "close":
-				fmt.Println("Got:", string(message))
 				// Close connection prematurely
 				return
 			}
