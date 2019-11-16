@@ -13,14 +13,11 @@ type SubConfig struct {
 
 type Event []byte
 
-type Filter interface {
-	Json() []byte
-}
-
-type MockFilter struct{}
-
-func (mock MockFilter) Json() []byte {
-	return nil
+type Manager interface {
+	GetTriggerJson() []byte
+	ParseResponse(data []byte) ([]Event, bool)
+	GetTestJson() []byte
+	ParseTestResponse(data []byte) error
 }
 
 type ISubscription interface {
@@ -28,7 +25,7 @@ type ISubscription interface {
 }
 
 type ISubscriber interface {
-	SubscribeToEvents(channel chan<- Event, filter Filter, confirmation ...interface{}) (ISubscription, error)
+	SubscribeToEvents(channel chan<- Event, confirmation ...interface{}) (ISubscription, error)
 	Test() error
 }
 

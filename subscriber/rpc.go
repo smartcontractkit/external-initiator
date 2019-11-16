@@ -1,6 +1,7 @@
 package subscriber
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -11,27 +12,30 @@ import (
 type RpcSubscriber struct {
 	Endpoint string
 	Interval time.Duration
-	Parser   IParser
+	Manager  Manager
 }
 
 func (rpc RpcSubscriber) Test() error {
-	_, err := sendGetRequest(rpc.Endpoint)
-	return err
+	resp, err := sendPostRequest(rpc.Endpoint, rpc.Manager.GetTestJson())
+	if err != nil {
+		return err
+	}
+
+	return rpc.Manager.ParseTestResponse(resp)
 }
 
 type RpcSubscription struct {
-	endpoint  string
-	done      chan struct{}
-	events    chan<- Event
-	confirmed bool
-	parser    IParser
+	endpoint string
+	done     chan struct{}
+	events   chan<- Event
+	manager  Manager
 }
 
 func (rpc RpcSubscription) Unsubscribe() {
 	close(rpc.done)
 }
 
-func (rpc RpcSubscription) readMessages(interval time.Duration, filter Filter) {
+func (rpc RpcSubscription) readMessages(interval time.Duration) {
 	timer := time.NewTicker(interval)
 	defer timer.Stop()
 
@@ -41,13 +45,13 @@ func (rpc RpcSubscription) readMessages(interval time.Duration, filter Filter) {
 			return
 		case <-timer.C:
 			fmt.Printf("Polling %s\n", rpc.endpoint)
-			resp, err := sendGetRequest(rpc.endpoint)
+			resp, err := sendPostRequest(rpc.endpoint, rpc.manager.GetTriggerJson())
 			if err != nil {
 				fmt.Printf("Failed polling %s: %v\n", rpc.endpoint, err)
 				continue
 			}
 
-			events, ok := rpc.parser.ParseResponse(resp)
+			events, ok := rpc.manager.ParseResponse(resp)
 			if !ok {
 				continue
 			}
@@ -59,8 +63,8 @@ func (rpc RpcSubscription) readMessages(interval time.Duration, filter Filter) {
 	}
 }
 
-func sendGetRequest(url string) ([]byte, error) {
-	request, err := http.NewRequest(http.MethodGet, url, nil)
+func sendPostRequest(url string, body []byte) ([]byte, error) {
+	request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -81,15 +85,14 @@ func sendGetRequest(url string) ([]byte, error) {
 	return ioutil.ReadAll(r.Body)
 }
 
-func (rpc RpcSubscriber) SubscribeToEvents(channel chan<- Event, filter Filter, confirmation ...interface{}) (ISubscription, error) {
+func (rpc RpcSubscriber) SubscribeToEvents(channel chan<- Event, confirmation ...interface{}) (ISubscription, error) {
 	fmt.Printf("Using RPC endpoint: %s", rpc.Endpoint)
 
 	subscription := RpcSubscription{
-		endpoint:  rpc.Endpoint,
-		done:      make(chan struct{}),
-		events:    channel,
-		confirmed: len(confirmation) != 0, // If passed as a param, do not expect confirmation message
-		parser:    rpc.Parser,
+		endpoint: rpc.Endpoint,
+		done:     make(chan struct{}),
+		events:   channel,
+		manager:  rpc.Manager,
 	}
 
 	interval := rpc.Interval
@@ -97,7 +100,7 @@ func (rpc RpcSubscriber) SubscribeToEvents(channel chan<- Event, filter Filter, 
 		interval = 5 * time.Second
 	}
 
-	go subscription.readMessages(interval, filter)
+	go subscription.readMessages(interval)
 
 	return subscription, nil
 }

@@ -7,7 +7,7 @@ import (
 
 type WebsocketSubscriber struct {
 	Endpoint string
-	Parser   IParser
+	Manager  Manager
 }
 
 func (wss WebsocketSubscriber) Test() error {
@@ -24,7 +24,7 @@ type WebsocketSubscription struct {
 	done       chan bool
 	events     chan<- Event
 	confirmed  bool
-	parser     IParser
+	manager    Manager
 }
 
 func (wss WebsocketSubscription) Unsubscribe() {
@@ -48,7 +48,7 @@ func (wss WebsocketSubscription) readMessages() {
 			continue
 		}
 
-		events, ok := wss.parser.ParseResponse(message)
+		events, ok := wss.manager.ParseResponse(message)
 		if !ok {
 			continue
 		}
@@ -59,7 +59,7 @@ func (wss WebsocketSubscription) readMessages() {
 	}
 }
 
-func (wss WebsocketSubscriber) SubscribeToEvents(channel chan<- Event, filter Filter, confirmation ...interface{}) (ISubscription, error) {
+func (wss WebsocketSubscriber) SubscribeToEvents(channel chan<- Event, confirmation ...interface{}) (ISubscription, error) {
 	fmt.Printf("Connecting to WS endpoint: %s\n", wss.Endpoint)
 
 	c, _, err := websocket.DefaultDialer.Dial(wss.Endpoint, nil)
@@ -71,12 +71,12 @@ func (wss WebsocketSubscriber) SubscribeToEvents(channel chan<- Event, filter Fi
 		connection: c,
 		events:     channel,
 		confirmed:  len(confirmation) != 0, // If passed as a param, do not expect confirmation message
-		parser:     wss.Parser,
+		manager:    wss.Manager,
 	}
 
 	go subscription.readMessages()
 
-	err = subscription.connection.WriteMessage(websocket.TextMessage, filter.Json())
+	err = subscription.connection.WriteMessage(websocket.TextMessage, wss.Manager.GetTriggerJson())
 	if err != nil {
 		subscription.Unsubscribe()
 		return nil, err

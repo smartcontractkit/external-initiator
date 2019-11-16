@@ -13,10 +13,27 @@ import (
 var rpcMockUrl *url.URL
 var wsMockUrl *url.URL
 
-type MockParser struct{}
+type TestsMockManager struct {
+	confirmation bool
+}
 
-func (parser MockParser) ParseResponse(data []byte) ([]Event, bool) {
+func (m TestsMockManager) ParseResponse(data []byte) ([]Event, bool) {
 	return []Event{data}, true
+}
+
+func (m TestsMockManager) GetTriggerJson() []byte {
+	if m.confirmation {
+		return []byte(`true`)
+	}
+	return []byte(`false`)
+}
+
+func (m TestsMockManager) GetTestJson() []byte {
+	return nil
+}
+
+func (m TestsMockManager) ParseTestResponse(data []byte) error {
+	return nil
 }
 
 func TestMain(m *testing.M) {
