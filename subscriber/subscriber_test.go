@@ -72,13 +72,18 @@ func TestMain(m *testing.M) {
 			}
 			log.Printf("recv: %s", message)
 
-			if string(message) == "true" {
+			switch string(message) {
+			case "true":
 				// Send confirmation message
 				err = c.WriteMessage(mt, []byte("confirmation"))
 				if err != nil {
 					log.Println("write:", err)
 					break
 				}
+			case "close":
+				fmt.Println("Got:", string(message))
+				// Close connection prematurely
+				return
 			}
 
 			// Send event message
