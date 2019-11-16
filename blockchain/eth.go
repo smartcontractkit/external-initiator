@@ -114,6 +114,11 @@ func (e EthManager) ParseTestResponse(data []byte) error {
 	return nil
 }
 
+type ethSubscribeResponse struct {
+	Subscription string          `json:"subscription"`
+	Result       json.RawMessage `json:"result"`
+}
+
 type ethLogResponse struct {
 	LogIndex         string   `json:"logIndex"`
 	BlockNumber      string   `json:"blockNumber"`
@@ -131,14 +136,34 @@ func (e EthManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 		return nil, false
 	}
 
-	var rawEvents []ethLogResponse
-	if err := json.Unmarshal(msg.Result, &rawEvents); err != nil {
-		return nil, false
-	}
-
 	var events []subscriber.Event
-	for _, evt := range rawEvents {
-		if e.p == subscriber.RPC {
+
+	switch e.p {
+	case subscriber.WS:
+		var res ethSubscribeResponse
+		if err := json.Unmarshal(msg.Params, &res); err != nil {
+			return nil, false
+		}
+
+		var evt ethLogResponse
+		if err := json.Unmarshal(res.Result, &evt); err != nil {
+			return nil, false
+		}
+
+		event, err := json.Marshal(evt)
+		if err != nil {
+			return nil, false
+		}
+
+		events = append(events, event)
+
+	case subscriber.RPC:
+		var rawEvents []ethLogResponse
+		if err := json.Unmarshal(msg.Result, &rawEvents); err != nil {
+			return nil, false
+		}
+
+		for _, evt := range rawEvents {
 			// Check if we can update the "fromBlock" in the query,
 			// so we only get new events from blocks we haven't queried yet
 			curBlkn, err := hexutil.DecodeBig(evt.BlockNumber)
@@ -158,12 +183,13 @@ func (e EthManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 			if e.fq.FromBlock == "latest" || e.fq.FromBlock == "" || curBlkn.Cmp(fromBlkn) > 0 {
 				e.fq.FromBlock = hexutil.EncodeBig(curBlkn)
 			}
+
+			event, err := json.Marshal(evt)
+			if err != nil {
+				continue
+			}
+			events = append(events, event)
 		}
-		event, err := json.Marshal(evt)
-		if err != nil {
-			continue
-		}
-		events = append(events, event)
 	}
 
 	return events, true
