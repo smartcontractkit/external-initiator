@@ -3,6 +3,7 @@ package subscriber
 import (
 	"fmt"
 	"github.com/gorilla/websocket"
+	"time"
 )
 
 type WebsocketSubscriber struct {
@@ -19,25 +20,40 @@ func (wss WebsocketSubscriber) Test() error {
 	return nil
 }
 
-type WebsocketSubscription struct {
+type wsConn struct {
 	connection *websocket.Conn
-	done       chan bool
-	events     chan<- Event
-	confirmed  bool
-	manager    Manager
+	closing    bool
+}
+
+type WebsocketSubscription struct {
+	conn      *wsConn
+	done      chan bool
+	events    chan<- Event
+	confirmed bool
+	manager   Manager
+	endpoint  string
 }
 
 func (wss WebsocketSubscription) Unsubscribe() {
-	_ = wss.connection.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-	_ = wss.connection.Close()
+	wss.conn.closing = true
+	_ = wss.conn.connection.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+	_ = wss.conn.connection.Close()
+}
+
+func (wss WebsocketSubscription) forceClose() {
+	wss.conn.closing = false
+	_ = wss.conn.connection.Close()
 }
 
 func (wss WebsocketSubscription) readMessages() {
 	for {
-		_, message, err := wss.connection.ReadMessage()
+		_, message, err := wss.conn.connection.ReadMessage()
 		if err != nil {
-			_ = wss.connection.Close()
-			// TODO: Attempt reconnect
+			_ = wss.conn.connection.Close()
+			if !wss.conn.closing {
+				wss.reconnect()
+				return
+			}
 			return
 		}
 
@@ -59,6 +75,33 @@ func (wss WebsocketSubscription) readMessages() {
 	}
 }
 
+func (wss WebsocketSubscription) init() {
+	go wss.readMessages()
+
+	err := wss.conn.connection.WriteMessage(websocket.TextMessage, wss.manager.GetTriggerJson())
+	if err != nil {
+		wss.forceClose()
+		return
+	}
+
+	fmt.Printf("Connected to %s\n", wss.endpoint)
+}
+
+func (wss WebsocketSubscription) reconnect() {
+	fmt.Printf("Lost WS connection to %s\nRetrying in %vs\n", wss.endpoint, 3)
+	time.Sleep(3 * time.Second)
+
+	c, _, err := websocket.DefaultDialer.Dial(wss.endpoint, nil)
+	if err != nil {
+		fmt.Println("Reconnect failed:", err)
+		wss.reconnect()
+		return
+	}
+
+	wss.conn.connection = c
+	wss.init()
+}
+
 func (wss WebsocketSubscriber) SubscribeToEvents(channel chan<- Event, confirmation ...interface{}) (ISubscription, error) {
 	fmt.Printf("Connecting to WS endpoint: %s\n", wss.Endpoint)
 
@@ -68,21 +111,13 @@ func (wss WebsocketSubscriber) SubscribeToEvents(channel chan<- Event, confirmat
 	}
 
 	subscription := WebsocketSubscription{
-		connection: c,
-		events:     channel,
-		confirmed:  len(confirmation) != 0, // If passed as a param, do not expect confirmation message
-		manager:    wss.Manager,
+		conn:      &wsConn{connection: c},
+		events:    channel,
+		confirmed: len(confirmation) != 0, // If passed as a param, do not expect confirmation message
+		manager:   wss.Manager,
+		endpoint:  wss.Endpoint,
 	}
-
-	go subscription.readMessages()
-
-	err = subscription.connection.WriteMessage(websocket.TextMessage, wss.Manager.GetTriggerJson())
-	if err != nil {
-		subscription.Unsubscribe()
-		return nil, err
-	}
-
-	fmt.Printf("Connected to %s\n", wss.Endpoint)
+	subscription.init()
 
 	return subscription, nil
 }

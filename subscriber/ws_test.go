@@ -64,6 +64,53 @@ func TestWebsocketSubscriber_SubscribeToEvents(t *testing.T) {
 			return
 		}
 	})
+
+	t.Run("subscribes and attempts reconnect", func(t *testing.T) {
+		wss := WebsocketSubscriber{Endpoint: wsMockUrl.String(), Manager: &TestsReconnectManager{}}
+		events := make(chan Event)
+
+		sub, err := wss.SubscribeToEvents(events, false)
+		if err != nil {
+			t.Errorf("SubscribeToEvents() error = %v", err)
+			return
+		}
+		defer sub.Unsubscribe()
+
+		event := <-events
+		mockevent := string(event)
+
+		if mockevent != "event" {
+			t.Errorf("SubscribeToEvents() got unexpected message = %v", mockevent)
+			return
+		}
+	})
+}
+
+type TestsReconnectManager struct {
+	connections int
+}
+
+func (m TestsReconnectManager) ParseResponse(data []byte) ([]Event, bool) {
+	return []Event{data}, true
+}
+
+func (m *TestsReconnectManager) GetTriggerJson() []byte {
+	count := m.connections
+	m.connections++
+	switch count {
+	case 0:
+		return []byte(`close`)
+	default:
+		return []byte(`false`)
+	}
+}
+
+func (m TestsReconnectManager) GetTestJson() []byte {
+	return nil
+}
+
+func (m TestsReconnectManager) ParseTestResponse(data []byte) error {
+	return nil
 }
 
 func TestWebsocketSubscriber_Test(t *testing.T) {
