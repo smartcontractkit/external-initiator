@@ -35,6 +35,7 @@ type WebsocketSubscription struct {
 }
 
 func (wss WebsocketSubscription) Unsubscribe() {
+	fmt.Println("Unsubscribing from WS endpoint", wss.endpoint)
 	wss.conn.closing = true
 	_ = wss.conn.connection.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 	_ = wss.conn.connection.Close()
