@@ -122,6 +122,10 @@ func (client Client) SaveSubscription(sub *Subscription) error {
 	return client.db.Create(sub).Error
 }
 
+func (client Client) DeleteSubscription(sub *Subscription) error {
+	return client.db.Delete(sub).Error
+}
+
 func (client Client) LoadEndpoint(name string) (Endpoint, error) {
 	var endpoint Endpoint
 	err := client.db.Where(Endpoint{Name: name}).First(&endpoint).Error
