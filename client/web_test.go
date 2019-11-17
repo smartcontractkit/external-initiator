@@ -22,6 +22,10 @@ func (s storeFailer) SaveSubscription(arg *store.Subscription) error {
 	return s.error
 }
 
+func (s storeFailer) DeleteJob(jobid string) error {
+	return s.error
+}
+
 func (s storeFailer) GetEndpoint(name string) (*store.Endpoint, error) {
 	return s.endpoint, s.endpointError
 }
@@ -104,8 +108,63 @@ func TestConfigController(t *testing.T) {
 		srv.ServeHTTP(w, req)
 		assert.Equal(t, test.StatusCode, w.Code)
 
+		if w.Code == http.StatusNotFound {
+			// Do not expect JSON response
+			continue
+		}
+
 		var respJSON map[string]interface{}
 		err = json.Unmarshal(w.Body.Bytes(), &respJSON)
+		assert.NoError(t, err)
+	}
+}
+
+func TestDeleteController(t *testing.T) {
+	tests := []struct {
+		Name       string
+		Jobid      string
+		App        subscriptionStorer
+		StatusCode int
+	}{
+		{
+			"Delete success",
+			"test",
+			storeFailer{nil, nil, nil},
+			http.StatusOK,
+		},
+		{
+			"Missing jobid",
+			"",
+			storeFailer{errors.New("missing jobid"), nil, nil},
+			http.StatusNotFound,
+		},
+		{
+			"Failed deleting job",
+			"test",
+			storeFailer{errors.New("record not found"), nil, nil},
+			http.StatusInternalServerError,
+		},
+	}
+	for _, test := range tests {
+		t.Log(test.Name)
+		srv := &httpService{
+			store: test.App,
+		}
+		srv.createRouter()
+
+		req := httptest.NewRequest("DELETE", "/jobs/"+test.Jobid, nil)
+
+		w := httptest.NewRecorder()
+		srv.ServeHTTP(w, req)
+		assert.Equal(t, test.StatusCode, w.Code)
+
+		if w.Code == http.StatusNotFound {
+			// Do not expect JSON response
+			continue
+		}
+
+		var respJSON map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &respJSON)
 		assert.NoError(t, err)
 	}
 }

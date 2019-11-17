@@ -13,6 +13,7 @@ import (
 
 type subscriptionStorer interface {
 	SaveSubscription(sub *store.Subscription) error
+	DeleteJob(jobid string) error
 	GetEndpoint(name string) (*store.Endpoint, error)
 }
 
@@ -51,6 +52,8 @@ func (srv *httpService) createRouter() {
 	r := gin.Default()
 	r.GET("/health", srv.ShowHealth)
 	r.POST("/jobs", srv.CreateSubscription)
+	r.DELETE("/jobs/:jobid", srv.DeleteSubscription)
+
 	srv.router = r
 }
 
@@ -85,11 +88,12 @@ func validateRequest(t *CreateSubscriptionReq, endpointType string) error {
 	return nil
 }
 
+type resp struct {
+	ID string `json:"id"`
+}
+
 func (srv *httpService) CreateSubscription(c *gin.Context) {
 	var req CreateSubscriptionReq
-	type resp struct {
-		ID string `json:"id"`
-	}
 
 	if err := c.BindJSON(&req); err != nil {
 		log.Println(err)
@@ -136,6 +140,17 @@ func (srv *httpService) CreateSubscription(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, resp{ID: sub.ReferenceId})
+}
+
+func (srv *httpService) DeleteSubscription(c *gin.Context) {
+	jobid := c.Param("jobid")
+	if err := srv.store.DeleteJob(jobid); err != nil {
+		log.Println(err)
+		c.JSON(http.StatusInternalServerError, nil)
+		return
+	}
+
+	c.JSON(http.StatusOK, resp{ID: jobid})
 }
 
 func (srv *httpService) ShowHealth(c *gin.Context) {

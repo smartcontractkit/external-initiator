@@ -63,7 +63,7 @@ func startService(
 type service struct {
 	clNode        chainlink.Node
 	store         *store.Client
-	subscriptions []*ActiveSubscription
+	subscriptions map[string]*ActiveSubscription
 }
 
 func validateEndpoint(endpoint store.Endpoint) error {
@@ -97,8 +97,9 @@ func newService(
 	}
 
 	return &service{
-		store:  dbClient,
-		clNode: clNode,
+		store:         dbClient,
+		clNode:        clNode,
+		subscriptions: make(map[string]*ActiveSubscription),
 	}
 }
 
@@ -163,6 +164,10 @@ type ActiveSubscription struct {
 }
 
 func (srv *service) subscribe(sub *store.Subscription, iSubscriber subscriber.ISubscriber) error {
+	if _, ok := srv.subscriptions[sub.Job]; ok {
+		return errors.New("already subscribed to this jobid")
+	}
+
 	events := make(chan subscriber.Event)
 
 	subscription, err := iSubscriber.SubscribeToEvents(events)
@@ -176,7 +181,7 @@ func (srv *service) subscribe(sub *store.Subscription, iSubscriber subscriber.IS
 		Events:       events,
 		Node:         srv.clNode,
 	}
-	srv.subscriptions = append(srv.subscriptions, as)
+	srv.subscriptions[sub.Job] = as
 
 	go func() {
 		for {
@@ -204,6 +209,19 @@ func (srv *service) SaveSubscription(arg *store.Subscription) error {
 	}
 
 	return srv.subscribe(arg, sub)
+}
+
+func (srv *service) DeleteJob(jobid string) error {
+	sub, ok := srv.subscriptions[jobid]
+	if !ok {
+		return errors.New("subscription not found")
+	}
+
+	sub.Interface.Unsubscribe()
+	close(sub.Events)
+	err := srv.store.DeleteSubscription(sub.Subscription)
+	delete(srv.subscriptions, jobid)
+	return err
 }
 
 func (srv *service) GetEndpoint(name string) (*store.Endpoint, error) {

@@ -32,6 +32,7 @@ type RpcSubscription struct {
 }
 
 func (rpc RpcSubscription) Unsubscribe() {
+	fmt.Println("Unsubscribing from RPC endpoint", rpc.endpoint)
 	close(rpc.done)
 }
 

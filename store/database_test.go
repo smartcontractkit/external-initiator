@@ -132,6 +132,15 @@ func TestClient_SaveSubscription(t *testing.T) {
 	assert.Equal(t, 1, len(subs))
 	assert.Equal(t, oldSub.ReferenceId, subs[0].ReferenceId)
 	assert.Equal(t, oldSub.EndpointName, subs[0].Endpoint.Name)
+
+	err = db.DeleteSubscription(&sub)
+	assert.NoError(t, err)
+
+	subs, err = db.LoadSubscriptions()
+	for _, s := range subs {
+		assert.NotEqual(t, sub.ID, s.ID)
+		assert.NotEqual(t, sub.ReferenceId, s.ReferenceId)
+	}
 }
 
 func TestClient_SaveEndpoint(t *testing.T) {

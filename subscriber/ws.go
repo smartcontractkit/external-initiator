@@ -27,7 +27,6 @@ type wsConn struct {
 
 type WebsocketSubscription struct {
 	conn      *wsConn
-	done      chan bool
 	events    chan<- Event
 	confirmed bool
 	manager   Manager
@@ -35,6 +34,7 @@ type WebsocketSubscription struct {
 }
 
 func (wss WebsocketSubscription) Unsubscribe() {
+	fmt.Println("Unsubscribing from WS endpoint", wss.endpoint)
 	wss.conn.closing = true
 	_ = wss.conn.connection.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 	_ = wss.conn.connection.Close()
