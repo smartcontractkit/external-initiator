@@ -27,7 +27,6 @@ type wsConn struct {
 
 type WebsocketSubscription struct {
 	conn      *wsConn
-	done      chan bool
 	events    chan<- Event
 	confirmed bool
 	manager   Manager
