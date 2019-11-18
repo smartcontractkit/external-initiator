@@ -140,6 +140,10 @@ func (client Client) SaveEndpoint(endpoint *Endpoint) error {
 	}).FirstOrCreate(endpoint).Error
 }
 
+func (client Client) DeleteAllEndpoints() error {
+	return client.db.Unscoped().Delete(Endpoint{}).Error
+}
+
 type Endpoint struct {
 	gorm.Model
 	Url        string `json:"url"`

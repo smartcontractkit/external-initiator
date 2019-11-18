@@ -34,6 +34,15 @@ func startService(
 		Endpoint:     *clUrl,
 	})
 
+	// If endpoints are provided as flags, we will only use those.
+	// Therefore we delete all other at startup.
+	if len(args) > 0 {
+		err = srv.store.DeleteAllEndpoints()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	for _, e := range args {
 		var endpoint store.Endpoint
 		err := json.Unmarshal([]byte(e), &endpoint)
