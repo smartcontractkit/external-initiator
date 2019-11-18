@@ -28,21 +28,24 @@ func startService(
 		log.Fatal(err)
 	}
 
-	var endpoints []store.Endpoint
+	srv := newService(dbClient, chainlink.Node{
+		AccessKey:    config.ChainlinkAccessKey,
+		AccessSecret: config.ChainlinkSecret,
+		Endpoint:     *clUrl,
+	})
+
 	for _, e := range args {
 		var endpoint store.Endpoint
 		err := json.Unmarshal([]byte(e), &endpoint)
 		if err != nil {
 			continue
 		}
-		endpoints = append(endpoints, endpoint)
+		err = srv.SaveEndpoint(&endpoint)
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
 
-	srv := newService(dbClient, chainlink.Node{
-		AccessKey:    config.ChainlinkAccessKey,
-		AccessSecret: config.ChainlinkSecret,
-		Endpoint:     *clUrl,
-	}, endpoints)
 	go func() {
 		err := srv.run()
 		if err != nil {
@@ -84,18 +87,7 @@ func validateEndpoint(endpoint store.Endpoint) error {
 func newService(
 	dbClient *store.Client,
 	clNode chainlink.Node,
-	endpoints []store.Endpoint,
 ) *service {
-	for _, e := range endpoints {
-		if err := validateEndpoint(e); err != nil {
-			fmt.Println(err)
-			continue
-		}
-		if err := dbClient.SaveEndpoint(&e); err != nil {
-			fmt.Println(err)
-		}
-	}
-
 	return &service{
 		store:         dbClient,
 		clNode:        clNode,
@@ -233,6 +225,13 @@ func (srv *service) GetEndpoint(name string) (*store.Endpoint, error) {
 		return nil, nil
 	}
 	return &endpoint, nil
+}
+
+func (srv *service) SaveEndpoint(e *store.Endpoint) error {
+	if err := validateEndpoint(*e); err != nil {
+		return err
+	}
+	return srv.store.SaveEndpoint(e)
 }
 
 func getConnectionType(rawUrl string) (subscriber.Type, error) {
