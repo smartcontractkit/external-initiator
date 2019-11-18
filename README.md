@@ -19,12 +19,9 @@ Initiate Chainlink job runs from external sources.
 
 ## Usage
 
-1. Set environment variables (supports `.env` file)
-2. Run the external initiator:
-
 ```bash
 $ ./external-initiator --help
-Monitors external blockchains and relays events to Chainlink node. ENV variables can be set by prefixing flag with EI_: EI_ACCESSKEY
+Monitors external blockchains and relays events to Chainlink node. Supplying endpoint configs as args will delete all other stored configs. ENV variables can be set by prefixing flag with EI_: EI_ACCESSKEY
 
 Usage:
   external-initiator [endpoint configs] [flags]
@@ -36,6 +33,19 @@ Flags:
       --databaseurl string   DatabaseURL configures the URL for chainlink to connect to. This must be a properly formatted URL, with a valid scheme (postgres://). (default "postgresql://postgres:password@localhost:5432/ei?sslmode=disable")
   -h, --help                 help for external-initiator
 ```
+
+### Supply Endpoint configs via HTTP
+
+You can send a POST request with an Endpoint config to `/configs`.
+These configs will be stored in the database, and be available when restarting the EI if no configs are passed as args.
+Endpoint names are unique identifiers, and any previous record with the same name will be overwritten.
+
+### Supply Endpoint configs as args
+
+**WARNING:** Supplying Endpoint configs as args will permanently delete any previously stored Endpoint configs.
+
+When running the External Initiator with Endpoint configs passed as args, the EI will delete any other configs and run only using the configs provided.
+The configs are stored the same was as with HTTP, and the configs will persist if the EI is restarted without any configs passed as args.
 
 ### Example
 
