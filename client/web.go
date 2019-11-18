@@ -15,6 +15,7 @@ type subscriptionStorer interface {
 	SaveSubscription(sub *store.Subscription) error
 	DeleteJob(jobid string) error
 	GetEndpoint(name string) (*store.Endpoint, error)
+	SaveEndpoint(endpoint *store.Endpoint) error
 }
 
 func runWebserver(
@@ -53,6 +54,7 @@ func (srv *httpService) createRouter() {
 	r.GET("/health", srv.ShowHealth)
 	r.POST("/jobs", srv.CreateSubscription)
 	r.DELETE("/jobs/:jobid", srv.DeleteSubscription)
+	r.POST("/config", srv.CreateEndpoint)
 
 	srv.router = r
 }
@@ -155,4 +157,22 @@ func (srv *httpService) DeleteSubscription(c *gin.Context) {
 
 func (srv *httpService) ShowHealth(c *gin.Context) {
 	c.JSON(200, gin.H{"chainlink": true})
+}
+
+func (srv *httpService) CreateEndpoint(c *gin.Context) {
+	var config store.Endpoint
+	err := c.BindJSON(&config)
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusBadRequest, nil)
+		return
+	}
+
+	if err := srv.store.SaveEndpoint(&config); err != nil {
+		log.Println(err)
+		c.JSON(http.StatusInternalServerError, nil)
+		return
+	}
+
+	c.JSON(http.StatusOK, resp{ID: config.Name})
 }
