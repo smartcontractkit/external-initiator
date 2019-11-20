@@ -132,16 +132,49 @@ func (client Client) LoadEndpoint(name string) (Endpoint, error) {
 	return endpoint, err
 }
 
+func (client Client) RestoreEndpoint(name string) error {
+	return client.db.Exec("UPDATE endpoints SET deleted_at = null WHERE name = ?", name).Error
+}
+
 func (client Client) SaveEndpoint(endpoint *Endpoint) error {
-	return client.db.Where(Endpoint{Name: endpoint.Name}).Assign(Endpoint{
+	err := client.db.Unscoped().Where(Endpoint{Name: endpoint.Name}).Assign(Endpoint{
 		Url:        endpoint.Url,
 		Type:       endpoint.Type,
 		RefreshInt: endpoint.RefreshInt,
 	}).FirstOrCreate(endpoint).Error
+	if err != nil {
+		return err
+	}
+
+	return client.RestoreEndpoint(endpoint.Name)
 }
 
-func (client Client) DeleteAllEndpoints() error {
-	return client.db.Unscoped().Delete(Endpoint{}).Error
+func (client Client) DeleteEndpoint(name string) error {
+	err := client.db.Where(Endpoint{Name: name}).Delete(Endpoint{}).Error
+	if err != nil {
+		return err
+	}
+
+	// When deleting an endpoint, we should also delete
+	// all subscriptions relying on this endpoint
+	return client.db.Where(Subscription{EndpointName: name}).Delete(Subscription{}).Error
+}
+
+func (client Client) DeleteAllEndpointsExcept(names []string) error {
+	var endpoints []string
+	err := client.db.Model(&Endpoint{}).Not("name", names).Pluck("name", &endpoints).Error
+	if err != nil {
+		return err
+	}
+
+	for _, name := range endpoints {
+		err = client.DeleteEndpoint(name)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 type Endpoint struct {
