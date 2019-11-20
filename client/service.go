@@ -214,15 +214,13 @@ func (srv *service) SaveSubscription(arg *store.Subscription) error {
 
 func (srv *service) DeleteJob(jobid string) error {
 	sub, ok := srv.subscriptions[jobid]
-	if !ok {
-		return errors.New("subscription not found")
+	if ok {
+		sub.Interface.Unsubscribe()
+		close(sub.Events)
+		defer delete(srv.subscriptions, jobid)
 	}
 
-	sub.Interface.Unsubscribe()
-	close(sub.Events)
-	err := srv.store.DeleteSubscription(sub.Subscription)
-	delete(srv.subscriptions, jobid)
-	return err
+	return srv.store.DeleteSubscription(sub.Subscription)
 }
 
 func (srv *service) GetEndpoint(name string) (*store.Endpoint, error) {
