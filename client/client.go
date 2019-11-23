@@ -28,17 +28,17 @@ func generateCmd() *cobra.Command {
 		Run:  func(_ *cobra.Command, args []string) { runCallback(v, args, startService) },
 	}
 
-	newcmd.Flags().String("databaseurl", "postgresql://postgres:password@localhost:5432/ei?sslmode=disable", "DatabaseURL configures the URL for chainlink to connect to. This must be a properly formatted URL, with a valid scheme (postgres://).")
+	newcmd.Flags().String("databaseurl", "postgresql://postgres:password@localhost:5432/ei?sslmode=disable", "DatabaseURL configures the URL for external initiator to connect to. This must be a properly formatted URL, with a valid scheme (postgres://).")
 	must(v.BindPFlag("databaseurl", newcmd.Flags().Lookup("databaseurl")))
 
-	newcmd.Flags().String("chainlink", "localhost:6688", "The URL of the Chainlink Core service")
-	must(v.BindPFlag("chainlink", newcmd.Flags().Lookup("chainlink")))
+	newcmd.Flags().String("chainlinkurl", "localhost:6688", "The URL of the Chainlink Core service")
+	must(v.BindPFlag("chainlinkurl", newcmd.Flags().Lookup("chainlinkurl")))
 
-	newcmd.Flags().String("claccesskey", "", "The access key to identity the node to Chainlink")
-	must(v.BindPFlag("claccesskey", newcmd.Flags().Lookup("claccesskey")))
+	newcmd.Flags().String("ic_accesskey", "", "The Chainlink access key, used for traffic flowing from this service to Chainlink")
+	must(v.BindPFlag("ic_accesskey", newcmd.Flags().Lookup("ic_accesskey")))
 
-	newcmd.Flags().String("clsecret", "", "The secret to authenticate the node to Chainlink")
-	must(v.BindPFlag("clsecret", newcmd.Flags().Lookup("clsecret")))
+	newcmd.Flags().String("ic_secret", "", "The Chainlink secret, used for traffic flowing from this service to Chainlink")
+	must(v.BindPFlag("ic_secret", newcmd.Flags().Lookup("ic_secret")))
 
 	v.SetEnvPrefix("EI")
 	v.AutomaticEnv()
@@ -47,9 +47,9 @@ func generateCmd() *cobra.Command {
 }
 
 var requiredConfig = []string{
-	"chainlink",
-	"claccesskey",
-	"clsecret",
+	"chainlinkurl",
+	"ic_accesskey",
+	"ic_secret",
 	"databaseurl",
 }
 

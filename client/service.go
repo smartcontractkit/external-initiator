@@ -23,14 +23,14 @@ func startService(
 	dbClient *store.Client,
 	args []string,
 ) {
-	clUrl, err := url.Parse(normalizeLocalhost(config.Chainlink))
+	clUrl, err := url.Parse(normalizeLocalhost(config.ChainlinkURL))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	srv := newService(dbClient, chainlink.Node{
-		AccessKey:    config.ChainlinkAccessKey,
-		AccessSecret: config.ChainlinkSecret,
+		AccessKey:    config.InitiatorToChainlinkAccessKey,
+		AccessSecret: config.InitiatorToChainlinkSecret,
 		Endpoint:     *clUrl,
 	})
 

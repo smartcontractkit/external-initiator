@@ -13,9 +13,9 @@ Initiate Chainlink job runs from external sources.
 | Key | Description | Example |
 |-----|-------------|---------|
 | `EI_DATABASEURL` | Postgres connection URL | `postgresql://user:pass@localhost:5432/ei` |
-| `EI_CHAINLINK` | URL for the CL node | `http://localhost:6688` |
-| `EI_CLACCESSKEY` | CL node access key | `0b7d4a293bff4baf8de852bfa1f1f78a` |
-| `EI_CLSECRET` | CL node access secret | `h23MjHx17UJKBf3b0MWNI2P/UPh3c3O7/j8ivKCBhvcWH3H+xso4Gehny/lgpAht` |
+| `EI_CHAINLINKURL` | The URL of the Chainlink Core service | `http://localhost:6688` |
+| `EI_IC_ACCESSKEY` | The Chainlink access key, used for traffic flowing from this service to Chainlink | `0b7d4a293bff4baf8de852bfa1f1f78a` |
+| `EI_IC_SECRET` | The Chainlink secret, used for traffic flowing from this service to Chainlink | `h23MjHx17UJKBf3b0MWNI2P/UPh3c3O7/j8ivKCBhvcWH3H+xso4Gehny/lgpAht` |
 
 ## Usage
 
@@ -27,11 +27,11 @@ Usage:
   external-initiator [endpoint configs] [flags]
 
 Flags:
-      --chainlink string     The URL of the Chainlink Core service (default "localhost:6688")
-      --claccesskey string   The access key to identity the node to Chainlink
-      --clsecret string      The secret to authenticate the node to Chainlink
-      --databaseurl string   DatabaseURL configures the URL for chainlink to connect to. This must be a properly formatted URL, with a valid scheme (postgres://). (default "postgresql://postgres:password@localhost:5432/ei?sslmode=disable")
-  -h, --help                 help for external-initiator
+      --chainlinkurl string   The URL of the Chainlink Core service (default "localhost:6688")
+      --databaseurl string    DatabaseURL configures the URL for external initiator to connect to. This must be a properly formatted URL, with a valid scheme (postgres://). (default "postgresql://postgres:password@localhost:5432/ei?sslmode=disable")
+  -h, --help                  help for external-initiator
+      --ic_accesskey string   The Chainlink access key, used for traffic flowing from this service to Chainlink
+      --ic_secret string      The Chainlink secret, used for traffic flowing from this service to Chainlink
 ```
 
 ### Supply Endpoint configs via HTTP
