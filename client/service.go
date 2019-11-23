@@ -28,21 +28,35 @@ func startService(
 		log.Fatal(err)
 	}
 
-	var endpoints []store.Endpoint
+	srv := newService(dbClient, chainlink.Node{
+		AccessKey:    config.ChainlinkAccessKey,
+		AccessSecret: config.ChainlinkSecret,
+		Endpoint:     *clUrl,
+	})
+
+	var names []string
 	for _, e := range args {
 		var endpoint store.Endpoint
 		err := json.Unmarshal([]byte(e), &endpoint)
 		if err != nil {
 			continue
 		}
-		endpoints = append(endpoints, endpoint)
+		err = srv.SaveEndpoint(&endpoint)
+		if err != nil {
+			fmt.Println(err)
+		}
+		names = append(names, endpoint.Name)
 	}
 
-	srv := newService(dbClient, chainlink.Node{
-		AccessKey:    config.ChainlinkAccessKey,
-		AccessSecret: config.ChainlinkSecret,
-		Endpoint:     *clUrl,
-	}, endpoints)
+	// Any endpoint that's not provided on startup
+	// should be deleted
+	if len(names) > 0 {
+		err = srv.store.DeleteAllEndpointsExcept(names)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+
 	go func() {
 		err := srv.run()
 		if err != nil {
@@ -84,18 +98,7 @@ func validateEndpoint(endpoint store.Endpoint) error {
 func newService(
 	dbClient *store.Client,
 	clNode chainlink.Node,
-	endpoints []store.Endpoint,
 ) *service {
-	for _, e := range endpoints {
-		if err := validateEndpoint(e); err != nil {
-			fmt.Println(err)
-			continue
-		}
-		if err := dbClient.SaveEndpoint(&e); err != nil {
-			fmt.Println(err)
-		}
-	}
-
 	return &service{
 		store:         dbClient,
 		clNode:        clNode,
@@ -213,15 +216,13 @@ func (srv *service) SaveSubscription(arg *store.Subscription) error {
 
 func (srv *service) DeleteJob(jobid string) error {
 	sub, ok := srv.subscriptions[jobid]
-	if !ok {
-		return errors.New("subscription not found")
+	if ok {
+		sub.Interface.Unsubscribe()
+		close(sub.Events)
+		defer delete(srv.subscriptions, jobid)
 	}
 
-	sub.Interface.Unsubscribe()
-	close(sub.Events)
-	err := srv.store.DeleteSubscription(sub.Subscription)
-	delete(srv.subscriptions, jobid)
-	return err
+	return srv.store.DeleteSubscription(sub.Subscription)
 }
 
 func (srv *service) GetEndpoint(name string) (*store.Endpoint, error) {
@@ -233,6 +234,13 @@ func (srv *service) GetEndpoint(name string) (*store.Endpoint, error) {
 		return nil, nil
 	}
 	return &endpoint, nil
+}
+
+func (srv *service) SaveEndpoint(e *store.Endpoint) error {
+	if err := validateEndpoint(*e); err != nil {
+		return err
+	}
+	return srv.store.SaveEndpoint(e)
 }
 
 func getConnectionType(rawUrl string) (subscriber.Type, error) {

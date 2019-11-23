@@ -24,7 +24,7 @@ func generateCmd() *cobra.Command {
 	newcmd := &cobra.Command{
 		Use:  "external-initiator [endpoint configs]",
 		Args: cobra.MinimumNArgs(0),
-		Long: "Monitors external blockchains and relays events to Chainlink node. ENV variables can be set by prefixing flag with EI_: EI_ACCESSKEY",
+		Long: "Monitors external blockchains and relays events to Chainlink node. Supplying endpoint configs as args will delete all other stored configs. ENV variables can be set by prefixing flag with EI_: EI_ACCESSKEY",
 		Run:  func(_ *cobra.Command, args []string) { runCallback(v, args, startService) },
 	}
 

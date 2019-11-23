@@ -30,6 +30,10 @@ func (s storeFailer) GetEndpoint(name string) (*store.Endpoint, error) {
 	return s.endpoint, s.endpointError
 }
 
+func (s storeFailer) SaveEndpoint(e *store.Endpoint) error {
+	return s.error
+}
+
 func generateCreateSubscriptionReq(id, endpoint string, addresses, topics []string) CreateSubscriptionReq {
 	params := struct {
 		Endpoint  string   `json:"endpoint"`
