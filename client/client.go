@@ -40,6 +40,12 @@ func generateCmd() *cobra.Command {
 	newcmd.Flags().String("ic_secret", "", "The Chainlink secret, used for traffic flowing from this service to Chainlink")
 	must(v.BindPFlag("ic_secret", newcmd.Flags().Lookup("ic_secret")))
 
+	newcmd.Flags().String("ci_accesskey", "", "The External Initiator access key, used for traffic flowing from Chainlink to this service")
+	must(v.BindPFlag("ci_accesskey", newcmd.Flags().Lookup("ci_accesskey")))
+
+	newcmd.Flags().String("ci_secret", "", "The External Initiator secret, used for traffic flowing from Chainlink to this service")
+	must(v.BindPFlag("ci_secret", newcmd.Flags().Lookup("ci_secret")))
+
 	v.SetEnvPrefix("EI")
 	v.AutomaticEnv()
 
@@ -51,6 +57,8 @@ var requiredConfig = []string{
 	"ic_accesskey",
 	"ic_secret",
 	"databaseurl",
+	"ci_accesskey",
+	"ci_secret",
 }
 
 // runner type matches the function signature of synchronizeForever

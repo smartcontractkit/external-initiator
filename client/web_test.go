@@ -198,3 +198,66 @@ func TestHealthController(t *testing.T) {
 		assert.NoError(t, err)
 	}
 }
+
+func TestRequireAuth(t *testing.T) {
+	key := "testKey"
+	secret := "testSecretAbcdæøå"
+
+	tests := []struct {
+		Name   string
+		Method string
+		Target string
+		Auth   bool
+	}{
+		{
+			"Health is open",
+			"GET",
+			"/health",
+			false,
+		},
+		{
+			"Creating jobs is protected",
+			"POST",
+			"/jobs",
+			true,
+		},
+		{
+			"Deleting jobs is protected",
+			"DELETE",
+			"/jobs/test",
+			true,
+		},
+		{
+			"Creating config is protected",
+			"POST",
+			"/config",
+			true,
+		},
+	}
+
+	srv := &httpService{
+		accessKey: key,
+		secret:    secret,
+		store:     storeFailer{error: errors.New("testing only")},
+	}
+	srv.createRouter()
+
+	for _, test := range tests {
+		req := httptest.NewRequest(test.Method, test.Target, nil)
+
+		w := httptest.NewRecorder()
+		srv.ServeHTTP(w, req)
+		if test.Auth {
+			assert.Equal(t, http.StatusUnauthorized, w.Code)
+
+			req.Header.Set(externalInitiatorAccessKeyHeader, key)
+			req.Header.Set(externalInitiatorSecretHeader, secret)
+
+			w := httptest.NewRecorder()
+			srv.ServeHTTP(w, req)
+			assert.NotEqual(t, http.StatusUnauthorized, w.Code)
+		} else {
+			assert.NotEqual(t, http.StatusUnauthorized, w.Code)
+		}
+	}
+}

@@ -11,6 +11,11 @@ import (
 	"net/http"
 )
 
+const (
+	externalInitiatorAccessKeyHeader = "X-Chainlink-EA-AccessKey"
+	externalInitiatorSecretHeader    = "X-Chainlink-EA-Secret"
+)
+
 type subscriptionStorer interface {
 	SaveSubscription(sub *store.Subscription) error
 	DeleteJob(jobid string) error
@@ -19,9 +24,10 @@ type subscriptionStorer interface {
 }
 
 func runWebserver(
+	accessKey, secret string,
 	store subscriptionStorer,
 ) {
-	srv := newHTTPService(store)
+	srv := newHTTPService(accessKey, secret, store)
 	err := srv.router.Run()
 	if err != nil {
 		fmt.Println(err)
@@ -29,17 +35,22 @@ func runWebserver(
 }
 
 type httpService struct {
-	router *gin.Engine
+	router    *gin.Engine
+	accessKey string
+	secret    string
 
 	store subscriptionStorer
 }
 
 func newHTTPService(
+	accessKey, secret string,
 	store subscriptionStorer,
 ) *httpService {
 	srv := httpService{
-		router: gin.Default(),
-		store:  store,
+		router:    gin.Default(),
+		accessKey: accessKey,
+		secret:    secret,
+		store:     store,
 	}
 	srv.createRouter()
 	return &srv
@@ -52,11 +63,28 @@ func (srv *httpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (srv *httpService) createRouter() {
 	r := gin.Default()
 	r.GET("/health", srv.ShowHealth)
-	r.POST("/jobs", srv.CreateSubscription)
-	r.DELETE("/jobs/:jobid", srv.DeleteSubscription)
-	r.POST("/config", srv.CreateEndpoint)
+
+	auth := r.Group("/")
+	auth.Use(authenticate(srv.accessKey, srv.secret))
+	{
+		auth.POST("/jobs", srv.CreateSubscription)
+		auth.DELETE("/jobs/:jobid", srv.DeleteSubscription)
+		auth.POST("/config", srv.CreateEndpoint)
+	}
 
 	srv.router = r
+}
+
+func authenticate(accessKey, secret string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		reqAccessKey := c.GetHeader(externalInitiatorAccessKeyHeader)
+		reqSecret := c.GetHeader(externalInitiatorSecretHeader)
+		if reqAccessKey == accessKey && reqSecret == secret {
+			c.Next()
+		} else {
+			c.AbortWithStatus(http.StatusUnauthorized)
+		}
+	}
 }
 
 type CreateSubscriptionReq struct {

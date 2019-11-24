@@ -14,7 +14,9 @@ type Config struct {
 	InitiatorToChainlinkSecret string
 	// DatabaseURL Configures the URL for chainlink to connect to. This must be
 	// a properly formatted URL, with a valid scheme (postgres://).
-	DatabaseURL string
+	DatabaseURL                   string
+	ChainlinkToInitiatorAccessKey string
+	ChainlinkToInitiatorSecret    string
 }
 
 // newConfigFromViper returns a Config based on the values supplied by viper.
@@ -24,5 +26,7 @@ func newConfigFromViper(v *viper.Viper) Config {
 		InitiatorToChainlinkAccessKey: v.GetString("ic_accesskey"),
 		InitiatorToChainlinkSecret:    v.GetString("ic_secret"),
 		DatabaseURL:                   v.GetString("databaseurl"),
+		ChainlinkToInitiatorAccessKey: v.GetString("ci_accesskey"),
+		ChainlinkToInitiatorSecret:    v.GetString("ci_secret"),
 	}
 }
