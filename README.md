@@ -16,10 +16,12 @@ Initiate Chainlink job runs from external sources.
 | `EI_CHAINLINKURL` | The URL of the Chainlink Core service | `http://localhost:6688` |
 | `EI_IC_ACCESSKEY` | The Chainlink access key, used for traffic flowing from this service to Chainlink | `0b7d4a293bff4baf8de852bfa1f1f78a` |
 | `EI_IC_SECRET` | The Chainlink secret, used for traffic flowing from this service to Chainlink | `h23MjHx17UJKBf3b0MWNI2P/UPh3c3O7/j8ivKCBhvcWH3H+xso4Gehny/lgpAht` |
+| `EI_CI_ACCESSKEY` | The External Initiator access key, used for traffic flowing from Chainlink to this service | `0b7d4a293bff4baf8de852bfa1f1f78a` |
+| `EI_CI_SECRET` | The External Initiator secret, used for traffic flowing from Chainlink to this service | `h23MjHx17UJKBf3b0MWNI2P/UPh3c3O7/j8ivKCBhvcWH3H+xso4Gehny/lgpAht` |
 
 ## Usage
 
-```bash
+```
 $ ./external-initiator --help
 Monitors external blockchains and relays events to Chainlink node. Supplying endpoint configs as args will delete all other stored configs. ENV variables can be set by prefixing flag with EI_: EI_ACCESSKEY
 
@@ -28,6 +30,8 @@ Usage:
 
 Flags:
       --chainlinkurl string   The URL of the Chainlink Core service (default "localhost:6688")
+      --ci_accesskey string   The External Initiator access key, used for traffic flowing from Chainlink to this service
+      --ci_secret string      The External Initiator secret, used for traffic flowing from Chainlink to this service
       --databaseurl string    DatabaseURL configures the URL for external initiator to connect to. This must be a properly formatted URL, with a valid scheme (postgres://). (default "postgresql://postgres:password@localhost:5432/ei?sslmode=disable")
   -h, --help                  help for external-initiator
       --ic_accesskey string   The Chainlink access key, used for traffic flowing from this service to Chainlink
