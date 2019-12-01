@@ -1,3 +1,5 @@
+// Package chainlink implements functions to interact
+// with a Chainlink node.
 package chainlink
 
 import (
@@ -11,12 +13,16 @@ const (
 	externalInitiatorSecretHeader    = "X-Chainlink-EA-Secret"
 )
 
+// Node encapsulates all the configuration
+// necessary to interact with a Chainlink node.
 type Node struct {
 	AccessKey    string
 	AccessSecret string
 	Endpoint     url.URL
 }
 
+// TriggerJob wil send a job run trigger for the
+// provided jobId.
 func (cl Node) TriggerJob(jobId string) error {
 	fmt.Printf("Sending a job run trigger to %s for job %s\n", cl.Endpoint.String(), jobId)
 

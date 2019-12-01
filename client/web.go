@@ -23,56 +23,61 @@ type subscriptionStorer interface {
 	SaveEndpoint(endpoint *store.Endpoint) error
 }
 
-func runWebserver(
+// Starts a new web server using the access key
+// and secret as provided on protected routes.
+func RunWebserver(
 	accessKey, secret string,
 	store subscriptionStorer,
 ) {
-	srv := newHTTPService(accessKey, secret, store)
-	err := srv.router.Run()
+	srv := NewHTTPService(accessKey, secret, store)
+	err := srv.Router.Run()
 	if err != nil {
 		fmt.Println(err)
 	}
 }
 
-type httpService struct {
-	router    *gin.Engine
-	accessKey string
-	secret    string
-
-	store subscriptionStorer
+// HttpService encapsulates router, EI service
+// and access credentials.
+type HttpService struct {
+	Router    *gin.Engine
+	AccessKey string
+	Secret    string
+	Store     subscriptionStorer
 }
 
-func newHTTPService(
+// NewHTTPService creates a new HttpService instance
+// with the default router.
+func NewHTTPService(
 	accessKey, secret string,
 	store subscriptionStorer,
-) *httpService {
-	srv := httpService{
-		router:    gin.Default(),
-		accessKey: accessKey,
-		secret:    secret,
-		store:     store,
+) *HttpService {
+	srv := HttpService{
+		Router:    gin.Default(),
+		AccessKey: accessKey,
+		Secret:    secret,
+		Store:     store,
 	}
 	srv.createRouter()
 	return &srv
 }
 
-func (srv *httpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	srv.router.ServeHTTP(w, r)
+func (srv *HttpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	srv.Router.ServeHTTP(w, r)
 }
 
-func (srv *httpService) createRouter() {
+func (srv *HttpService) createRouter() {
 	r := gin.Default()
 	r.GET("/health", srv.ShowHealth)
 
 	auth := r.Group("/")
-	auth.Use(authenticate(srv.accessKey, srv.secret))
+	auth.Use(authenticate(srv.AccessKey, srv.Secret))
 	{
 		auth.POST("/jobs", srv.CreateSubscription)
 		auth.DELETE("/jobs/:jobid", srv.DeleteSubscription)
 		auth.POST("/config", srv.CreateEndpoint)
 	}
 
-	srv.router = r
+	srv.Router = r
 }
 
 func authenticate(accessKey, secret string) gin.HandlerFunc {
@@ -87,6 +92,8 @@ func authenticate(accessKey, secret string) gin.HandlerFunc {
 	}
 }
 
+// CreateSubscriptionReq holds the payload expected for job POSTs
+// from the Chainlink node.
 type CreateSubscriptionReq struct {
 	JobID  string `json:"jobId"`
 	Type   string `json:"type"`
@@ -122,7 +129,9 @@ type resp struct {
 	ID string `json:"id"`
 }
 
-func (srv *httpService) CreateSubscription(c *gin.Context) {
+// CreateSubscription expects a CreateSubscriptionReq payload,
+// validates the request and subscribes to the job.
+func (srv *HttpService) CreateSubscription(c *gin.Context) {
 	var req CreateSubscriptionReq
 
 	if err := c.BindJSON(&req); err != nil {
@@ -131,7 +140,7 @@ func (srv *httpService) CreateSubscription(c *gin.Context) {
 		return
 	}
 
-	endpoint, err := srv.store.GetEndpoint(req.Params.Endpoint)
+	endpoint, err := srv.Store.GetEndpoint(req.Params.Endpoint)
 	if err != nil {
 		log.Println(err)
 		c.JSON(http.StatusInternalServerError, nil)
@@ -163,7 +172,7 @@ func (srv *httpService) CreateSubscription(c *gin.Context) {
 		}
 	}
 
-	if err := srv.store.SaveSubscription(sub); err != nil {
+	if err := srv.Store.SaveSubscription(sub); err != nil {
 		log.Println(err)
 		c.JSON(http.StatusInternalServerError, nil)
 		return
@@ -172,9 +181,11 @@ func (srv *httpService) CreateSubscription(c *gin.Context) {
 	c.JSON(http.StatusCreated, resp{ID: sub.ReferenceId})
 }
 
-func (srv *httpService) DeleteSubscription(c *gin.Context) {
+// DeleteSubscription deletes any job with the jobid
+// provided as parameter in the request.
+func (srv *HttpService) DeleteSubscription(c *gin.Context) {
 	jobid := c.Param("jobid")
-	if err := srv.store.DeleteJob(jobid); err != nil {
+	if err := srv.Store.DeleteJob(jobid); err != nil {
 		log.Println(err)
 		c.JSON(http.StatusInternalServerError, nil)
 		return
@@ -183,11 +194,15 @@ func (srv *httpService) DeleteSubscription(c *gin.Context) {
 	c.JSON(http.StatusOK, resp{ID: jobid})
 }
 
-func (srv *httpService) ShowHealth(c *gin.Context) {
+// ShowHealth returns the following when online:
+//  {"chainlink": true}
+func (srv *HttpService) ShowHealth(c *gin.Context) {
 	c.JSON(200, gin.H{"chainlink": true})
 }
 
-func (srv *httpService) CreateEndpoint(c *gin.Context) {
+// CreateEndpoint saves the endpoint configuration provided
+// as payload.
+func (srv *HttpService) CreateEndpoint(c *gin.Context) {
 	var config store.Endpoint
 	err := c.BindJSON(&config)
 	if err != nil {
@@ -196,7 +211,7 @@ func (srv *httpService) CreateEndpoint(c *gin.Context) {
 		return
 	}
 
-	if err := srv.store.SaveEndpoint(&config); err != nil {
+	if err := srv.Store.SaveEndpoint(&config); err != nil {
 		log.Println(err)
 		c.JSON(http.StatusInternalServerError, nil)
 		return
