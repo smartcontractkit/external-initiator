@@ -61,6 +61,8 @@ func NewHTTPService(
 	return &srv
 }
 
+// ServeHTTP calls ServeHTTP on the underlying router,
+// which conforms to the http.Handler interface.
 func (srv *HttpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	srv.Router.ServeHTTP(w, r)
 }
