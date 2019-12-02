@@ -23,7 +23,7 @@ type subscriptionStorer interface {
 	SaveEndpoint(endpoint *store.Endpoint) error
 }
 
-// Starts a new web server using the access key
+// RunWebserver starts a new web server using the access key
 // and secret as provided on protected routes.
 func RunWebserver(
 	accessKey, secret string,

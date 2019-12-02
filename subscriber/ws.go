@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// RpcSubscriber holds the configuration for
+// WebsocketSubscriber holds the configuration for
 // a not-yet-active WS subscription.
 type WebsocketSubscriber struct {
 	Endpoint string
