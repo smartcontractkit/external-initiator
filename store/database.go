@@ -1,3 +1,4 @@
+// Package store encapsulates all database interaction.
 package store
 
 import (
@@ -53,10 +54,13 @@ func (arr SQLStringArray) Value() (driver.Value, error) {
 	return buf.String(), nil
 }
 
+// Client holds a connection to the database.
 type Client struct {
 	db *gorm.DB
 }
 
+// ConnectToDB attempts to connect to the database URI provided,
+// and returns a new Client instance if successful.
 func ConnectToDb(uri string) (*Client, error) {
 	db, err := gorm.Open(sqlDialect, uri)
 	if err != nil {
@@ -71,10 +75,14 @@ func ConnectToDb(uri string) (*Client, error) {
 	return store, nil
 }
 
+// Close will close the connection to the database.
 func (client Client) Close() error {
 	return client.db.Close()
 }
 
+// LoadSubscriptions will find all subscriptions in the database,
+// along with their associated endpoint and blockchain configuration,
+// and return them in a slice.
 func (client Client) LoadSubscriptions() ([]Subscription, error) {
 	var sqlSubs []*Subscription
 	if err := client.db.Find(&sqlSubs).Error; err != nil {
@@ -111,6 +119,8 @@ func (client Client) LoadSubscriptions() ([]Subscription, error) {
 	return subs, nil
 }
 
+// SaveSubscription will validate that the Endpoint exists,
+// then store the Subscription in the database.
 func (client Client) SaveSubscription(sub *Subscription) error {
 	if len(sub.EndpointName) == 0 {
 		sub.EndpointName = sub.Endpoint.Name
@@ -122,20 +132,27 @@ func (client Client) SaveSubscription(sub *Subscription) error {
 	return client.db.Create(sub).Error
 }
 
+// DeleteSubscription will soft-delete the subscription provided.
 func (client Client) DeleteSubscription(sub *Subscription) error {
 	return client.db.Delete(sub).Error
 }
 
+// LoadEndpoint will return the endpoint in the database with
+// the name provided.
 func (client Client) LoadEndpoint(name string) (Endpoint, error) {
 	var endpoint Endpoint
 	err := client.db.Where(Endpoint{Name: name}).First(&endpoint).Error
 	return endpoint, err
 }
 
+// RestoreEndpoint will restore any soft-deleted endpoint with
+// the name provided.
 func (client Client) RestoreEndpoint(name string) error {
 	return client.db.Exec("UPDATE endpoints SET deleted_at = null WHERE name = ?", name).Error
 }
 
+// SaveEndpoint will store the endpoint in the database
+// and overwrite any previous record with the same name.
 func (client Client) SaveEndpoint(endpoint *Endpoint) error {
 	err := client.db.Unscoped().Where(Endpoint{Name: endpoint.Name}).Assign(Endpoint{
 		Url:        endpoint.Url,
@@ -149,6 +166,9 @@ func (client Client) SaveEndpoint(endpoint *Endpoint) error {
 	return client.RestoreEndpoint(endpoint.Name)
 }
 
+// DeleteEndpoint will soft-delete any endpoint record
+// with the name provided, as well as any Subscriptions
+// using this endpoint.
 func (client Client) DeleteEndpoint(name string) error {
 	err := client.db.Where(Endpoint{Name: name}).Delete(Endpoint{}).Error
 	if err != nil {
@@ -160,6 +180,8 @@ func (client Client) DeleteEndpoint(name string) error {
 	return client.db.Where(Subscription{EndpointName: name}).Delete(Subscription{}).Error
 }
 
+// DeleteAllEndpointsExcept will call DeleteEndpoint on all
+// endpoints not provided.
 func (client Client) DeleteAllEndpointsExcept(names []string) error {
 	var endpoints []string
 	err := client.db.Model(&Endpoint{}).Not("name", names).Pluck("name", &endpoints).Error

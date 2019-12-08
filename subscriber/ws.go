@@ -6,11 +6,14 @@ import (
 	"time"
 )
 
+// WebsocketSubscriber holds the configuration for
+// a not-yet-active WS subscription.
 type WebsocketSubscriber struct {
 	Endpoint string
 	Manager  Manager
 }
 
+// Test sends a opens a WS connection to the endpoint.
 func (wss WebsocketSubscriber) Test() error {
 	c, _, err := websocket.DefaultDialer.Dial(wss.Endpoint, nil)
 	if err != nil {

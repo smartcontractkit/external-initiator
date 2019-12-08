@@ -12,11 +12,15 @@ import (
 
 const ETH = "ethereum"
 
+// The EthManager implements the subscriber.Manager interface and allows
+// for interacting with ETH nodes over RPC or WS.
 type EthManager struct {
 	fq *filterQuery
 	p  subscriber.Type
 }
 
+// CreateEthManager creates a new instance of EthManager with the provided
+// connection type and store.EthSubscription config.
 func CreateEthManager(p subscriber.Type, config store.EthSubscription) EthManager {
 	var addresses []common.Address
 	for _, a := range config.Addresses {
@@ -42,6 +46,14 @@ func CreateEthManager(p subscriber.Type, config store.EthSubscription) EthManage
 	}
 }
 
+// GetTriggerJson generates a JSON payload to the ETH node
+// using the config in EthManager.
+//
+// If EthManager is using WebSocket:
+// Creates a new "eth_subscribe" subscription.
+//
+// If EthManager is using RPC:
+// Sends a "eth_getLogs" request.
 func (e EthManager) GetTriggerJson() []byte {
 	if e.p == subscriber.RPC && e.fq.FromBlock == "" {
 		e.fq.FromBlock = "latest"
@@ -79,6 +91,14 @@ func (e EthManager) GetTriggerJson() []byte {
 	return bytes
 }
 
+// GetTestJson generates a JSON payload to test
+// the connection to the ETH node.
+//
+// If EthManager is using WebSocket:
+// Returns nil.
+//
+// If EthManager is using RPC:
+// Sends a request to get the latest block number.
 func (e EthManager) GetTestJson() []byte {
 	if e.p == subscriber.RPC {
 		msg := jsonrpcMessage{
@@ -98,6 +118,16 @@ func (e EthManager) GetTestJson() []byte {
 	return nil
 }
 
+// ParseTestResponse parses the response from the
+// ETH node after sending GetTestJson(), and returns
+// the error from parsing, if any.
+//
+// If EthManager is using WebSocket:
+// Returns nil.
+//
+// If EthManager is using RPC:
+// Attempts to parse the block number in the response.
+// If successful, stores the block number in EthManager.
 func (e EthManager) ParseTestResponse(data []byte) error {
 	if e.p == subscriber.RPC {
 		var msg jsonrpcMessage
@@ -130,6 +160,13 @@ type ethLogResponse struct {
 	Topics           []string `json:"topics"`
 }
 
+// ParseResponse parses the response from the
+// ETH node, and returns a slice of subscriber.Events
+// and if the parsing was successful.
+//
+// If EthManager is using RPC:
+// If there are new events, update EthManager with
+// the latest block number it sees.
 func (e EthManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	var msg jsonrpcMessage
 	if err := json.Unmarshal(data, &msg); err != nil {

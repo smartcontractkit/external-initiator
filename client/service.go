@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-// startService runs the service in the background and gracefully stops when a
+// startService runs the Service in the background and gracefully stops when a
 // SIGINT is received.
 func startService(
 	config Config,
@@ -28,7 +28,7 @@ func startService(
 		log.Fatal(err)
 	}
 
-	srv := newService(dbClient, chainlink.Node{
+	srv := NewService(dbClient, chainlink.Node{
 		AccessKey:    config.InitiatorToChainlinkAccessKey,
 		AccessSecret: config.InitiatorToChainlinkSecret,
 		Endpoint:     *clUrl,
@@ -58,26 +58,28 @@ func startService(
 	}
 
 	go func() {
-		err := srv.run()
+		err := srv.Run()
 		if err != nil {
 			log.Fatal(err)
 		}
 	}()
 
-	go runWebserver(config.ChainlinkToInitiatorAccessKey, config.ChainlinkToInitiatorSecret, srv)
+	go RunWebserver(config.ChainlinkToInitiatorAccessKey, config.ChainlinkToInitiatorSecret, srv)
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt)
 	<-sig
 	fmt.Println("Shutting down...")
-	srv.close()
+	srv.Close()
 	os.Exit(0)
 }
 
-type service struct {
+// Service holds the main process for running
+// the external initiator.
+type Service struct {
 	clNode        chainlink.Node
 	store         *store.Client
-	subscriptions map[string]*ActiveSubscription
+	subscriptions map[string]*activeSubscription
 }
 
 func validateEndpoint(endpoint store.Endpoint) error {
@@ -95,18 +97,21 @@ func validateEndpoint(endpoint store.Endpoint) error {
 	return nil
 }
 
-func newService(
+// NewService returns a new instance of Service, using
+// the provided database client and Chainlink node config.
+func NewService(
 	dbClient *store.Client,
 	clNode chainlink.Node,
-) *service {
-	return &service{
+) *Service {
+	return &Service{
 		store:         dbClient,
 		clNode:        clNode,
-		subscriptions: make(map[string]*ActiveSubscription),
+		subscriptions: make(map[string]*activeSubscription),
 	}
 }
 
-func (srv *service) run() error {
+// Run loads subscriptions, validates and subscribes to them.
+func (srv *Service) Run() error {
 	subs, err := srv.store.LoadSubscriptions()
 	if err != nil {
 		return err
@@ -128,7 +133,7 @@ func (srv *service) run() error {
 	return nil
 }
 
-func (srv *service) getAndTestSubscription(sub *store.Subscription) (subscriber.ISubscriber, error) {
+func (srv *Service) getAndTestSubscription(sub *store.Subscription) (subscriber.ISubscriber, error) {
 	endpoint, err := srv.store.LoadEndpoint(sub.EndpointName)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed loading endpoint")
@@ -147,7 +152,9 @@ func (srv *service) getAndTestSubscription(sub *store.Subscription) (subscriber.
 	return iSubscriber, nil
 }
 
-func (srv *service) close() {
+// Close shuts down any open subscriptions and closes
+// the database client.
+func (srv *Service) Close() {
 	for _, sub := range srv.subscriptions {
 		sub.Interface.Unsubscribe()
 		close(sub.Events)
@@ -159,14 +166,14 @@ func (srv *service) close() {
 	fmt.Println("All connections closed. Bye!")
 }
 
-type ActiveSubscription struct {
+type activeSubscription struct {
 	Subscription *store.Subscription
 	Interface    subscriber.ISubscription
 	Events       chan subscriber.Event
 	Node         chainlink.Node
 }
 
-func (srv *service) subscribe(sub *store.Subscription, iSubscriber subscriber.ISubscriber) error {
+func (srv *Service) subscribe(sub *store.Subscription, iSubscriber subscriber.ISubscriber) error {
 	if _, ok := srv.subscriptions[sub.Job]; ok {
 		return errors.New("already subscribed to this jobid")
 	}
@@ -178,7 +185,7 @@ func (srv *service) subscribe(sub *store.Subscription, iSubscriber subscriber.IS
 		log.Fatal(err)
 	}
 
-	as := &ActiveSubscription{
+	as := &activeSubscription{
 		Subscription: sub,
 		Interface:    subscription,
 		Events:       events,
@@ -201,7 +208,9 @@ func (srv *service) subscribe(sub *store.Subscription, iSubscriber subscriber.IS
 	return nil
 }
 
-func (srv *service) SaveSubscription(arg *store.Subscription) error {
+// SaveSubscription tests, stores and subscribes to the store.Subscription
+// provided.
+func (srv *Service) SaveSubscription(arg *store.Subscription) error {
 	sub, err := srv.getAndTestSubscription(arg)
 	if err != nil {
 		return err
@@ -214,7 +223,9 @@ func (srv *service) SaveSubscription(arg *store.Subscription) error {
 	return srv.subscribe(arg, sub)
 }
 
-func (srv *service) DeleteJob(jobid string) error {
+// DeleteJob unsubscribes (if applicable) and deletes
+// the subscription associated with the jobId provided.
+func (srv *Service) DeleteJob(jobid string) error {
 	sub, ok := srv.subscriptions[jobid]
 	if ok {
 		sub.Interface.Unsubscribe()
@@ -225,7 +236,9 @@ func (srv *service) DeleteJob(jobid string) error {
 	return srv.store.DeleteSubscription(sub.Subscription)
 }
 
-func (srv *service) GetEndpoint(name string) (*store.Endpoint, error) {
+// GetEndpoint returns an instance of store.Endpoint that
+// matches the endpoint name provided.
+func (srv *Service) GetEndpoint(name string) (*store.Endpoint, error) {
 	endpoint, err := srv.store.LoadEndpoint(name)
 	if err != nil {
 		return nil, err
@@ -236,7 +249,8 @@ func (srv *service) GetEndpoint(name string) (*store.Endpoint, error) {
 	return &endpoint, nil
 }
 
-func (srv *service) SaveEndpoint(e *store.Endpoint) error {
+// SaveEndpoint validates and stores the store.Endpoint provided.
+func (srv *Service) SaveEndpoint(e *store.Endpoint) error {
 	if err := validateEndpoint(*e); err != nil {
 		return err
 	}

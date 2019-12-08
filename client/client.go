@@ -1,3 +1,5 @@
+// Package client provides the core functionality
+// to Run an External Initiator.
 package client
 
 import (
@@ -12,7 +14,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-// main enters into the cobra command as shown and implemented below.
+// Run enters into the cobra command to start the external initiator.
 func Run() {
 	if err := generateCmd().Execute(); err != nil {
 		fmt.Println(err)
@@ -31,19 +33,19 @@ func generateCmd() *cobra.Command {
 	newcmd.Flags().String("databaseurl", "postgresql://postgres:password@localhost:5432/ei?sslmode=disable", "DatabaseURL configures the URL for external initiator to connect to. This must be a properly formatted URL, with a valid scheme (postgres://).")
 	must(v.BindPFlag("databaseurl", newcmd.Flags().Lookup("databaseurl")))
 
-	newcmd.Flags().String("chainlinkurl", "localhost:6688", "The URL of the Chainlink Core service")
+	newcmd.Flags().String("chainlinkurl", "localhost:6688", "The URL of the Chainlink Core Service")
 	must(v.BindPFlag("chainlinkurl", newcmd.Flags().Lookup("chainlinkurl")))
 
-	newcmd.Flags().String("ic_accesskey", "", "The Chainlink access key, used for traffic flowing from this service to Chainlink")
+	newcmd.Flags().String("ic_accesskey", "", "The Chainlink access key, used for traffic flowing from this Service to Chainlink")
 	must(v.BindPFlag("ic_accesskey", newcmd.Flags().Lookup("ic_accesskey")))
 
-	newcmd.Flags().String("ic_secret", "", "The Chainlink secret, used for traffic flowing from this service to Chainlink")
+	newcmd.Flags().String("ic_secret", "", "The Chainlink secret, used for traffic flowing from this Service to Chainlink")
 	must(v.BindPFlag("ic_secret", newcmd.Flags().Lookup("ic_secret")))
 
-	newcmd.Flags().String("ci_accesskey", "", "The External Initiator access key, used for traffic flowing from Chainlink to this service")
+	newcmd.Flags().String("ci_accesskey", "", "The External Initiator access key, used for traffic flowing from Chainlink to this Service")
 	must(v.BindPFlag("ci_accesskey", newcmd.Flags().Lookup("ci_accesskey")))
 
-	newcmd.Flags().String("ci_secret", "", "The External Initiator secret, used for traffic flowing from Chainlink to this service")
+	newcmd.Flags().String("ci_secret", "", "The External Initiator secret, used for traffic flowing from Chainlink to this Service")
 	must(v.BindPFlag("ci_secret", newcmd.Flags().Lookup("ci_secret")))
 
 	v.SetEnvPrefix("EI")

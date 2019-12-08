@@ -9,12 +9,17 @@ import (
 	"time"
 )
 
+// RpcSubscriber holds the configuration for
+// a not-yet-active RPC subscription.
 type RpcSubscriber struct {
 	Endpoint string
 	Interval time.Duration
 	Manager  Manager
 }
 
+// Test sends a POST request using GetTestJson()
+// as payload, and returns the error from
+// calling ParseTestResponse() on the response.
 func (rpc RpcSubscriber) Test() error {
 	resp, err := sendPostRequest(rpc.Endpoint, rpc.Manager.GetTestJson())
 	if err != nil {
@@ -24,6 +29,7 @@ func (rpc RpcSubscriber) Test() error {
 	return rpc.Manager.ParseTestResponse(resp)
 }
 
+// RpcSubscription holds an active RPC subscription.
 type RpcSubscription struct {
 	endpoint string
 	done     chan struct{}

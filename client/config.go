@@ -6,7 +6,7 @@ import (
 
 // Config contains the startup configuration parameters.
 type Config struct {
-	// The URL of the ChainlinkURL Core service
+	// The URL of the ChainlinkURL Core Service
 	ChainlinkURL string
 	// InitiatorToChainlinkAccessKey is the access key to identity the node to ChainlinkURL
 	InitiatorToChainlinkAccessKey string
@@ -14,9 +14,11 @@ type Config struct {
 	InitiatorToChainlinkSecret string
 	// DatabaseURL Configures the URL for chainlink to connect to. This must be
 	// a properly formatted URL, with a valid scheme (postgres://).
-	DatabaseURL                   string
+	DatabaseURL string
+	// The External Initiator access key, used for traffic flowing from Chainlink to this Service
 	ChainlinkToInitiatorAccessKey string
-	ChainlinkToInitiatorSecret    string
+	// The External Initiator secret, used for traffic flowing from Chainlink to this Service
+	ChainlinkToInitiatorSecret string
 }
 
 // newConfigFromViper returns a Config based on the values supplied by viper.

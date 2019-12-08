@@ -101,8 +101,8 @@ func TestConfigController(t *testing.T) {
 		body, err := json.Marshal(test.Payload)
 		require.NoError(t, err)
 
-		srv := &httpService{
-			store: test.App,
+		srv := &HttpService{
+			Store: test.App,
 		}
 		srv.createRouter()
 
@@ -151,8 +151,8 @@ func TestDeleteController(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Log(test.Name)
-		srv := &httpService{
-			store: test.App,
+		srv := &HttpService{
+			Store: test.App,
 		}
 		srv.createRouter()
 
@@ -184,7 +184,7 @@ func TestHealthController(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		srv := &httpService{}
+		srv := &HttpService{}
 		srv.createRouter()
 
 		req := httptest.NewRequest("GET", "/health", nil)
@@ -235,10 +235,10 @@ func TestRequireAuth(t *testing.T) {
 		},
 	}
 
-	srv := &httpService{
-		accessKey: key,
-		secret:    secret,
-		store:     storeFailer{error: errors.New("testing only")},
+	srv := &HttpService{
+		AccessKey: key,
+		Secret:    secret,
+		Store:     storeFailer{error: errors.New("testing only")},
 	}
 	srv.createRouter()
 
