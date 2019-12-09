@@ -10,7 +10,6 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/external-initiator/store/migrations"
-	"log"
 )
 
 const sqlDialect = "postgres"
@@ -80,6 +79,30 @@ func (client Client) Close() error {
 	return client.db.Close()
 }
 
+func (client Client) prepareSubscription(rawSub *Subscription) (*Subscription, error) {
+	endpoint, err := client.LoadEndpoint(rawSub.EndpointName)
+	if err != nil {
+		return nil, err
+	}
+
+	sub := Subscription{
+		Model:        rawSub.Model,
+		ReferenceId:  rawSub.ReferenceId,
+		Job:          rawSub.Job,
+		EndpointName: rawSub.EndpointName,
+		Endpoint:     endpoint,
+	}
+
+	switch endpoint.Type {
+	case "ethereum":
+		if err := client.db.Model(&sub).Related(&sub.Ethereum).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	return &sub, nil
+}
+
 // LoadSubscriptions will find all subscriptions in the database,
 // along with their associated endpoint and blockchain configuration,
 // and return them in a slice.
@@ -91,32 +114,25 @@ func (client Client) LoadSubscriptions() ([]Subscription, error) {
 
 	var subs []Subscription
 	for _, sqlSub := range sqlSubs {
-		endpoint, err := client.LoadEndpoint(sqlSub.EndpointName)
+		sub, err := client.prepareSubscription(sqlSub)
 		if err != nil {
-			log.Println(err)
+			fmt.Println(err)
 			continue
 		}
 
-		sub := Subscription{
-			Model:        sqlSub.Model,
-			ReferenceId:  sqlSub.ReferenceId,
-			Job:          sqlSub.Job,
-			EndpointName: sqlSub.EndpointName,
-			Endpoint:     endpoint,
-		}
-
-		switch endpoint.Type {
-		case "ethereum":
-			if err := client.db.Model(&sub).Related(&sub.Ethereum).Error; err != nil {
-				log.Println(err)
-				continue
-			}
-		}
-
-		subs = append(subs, sub)
+		subs = append(subs, *sub)
 	}
 
 	return subs, nil
+}
+
+func (client Client) LoadSubscription(jobid string) (*Subscription, error) {
+	var sub Subscription
+	if err := client.db.Where("job = ?", jobid).First(&sub).Error; err != nil {
+		return nil, err
+	}
+
+	return client.prepareSubscription(&sub)
 }
 
 // SaveSubscription will validate that the Endpoint exists,

@@ -201,6 +201,12 @@ func (e EthManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 		}
 
 		for _, evt := range rawEvents {
+			event, err := json.Marshal(evt)
+			if err != nil {
+				continue
+			}
+			events = append(events, event)
+
 			// Check if we can update the "fromBlock" in the query,
 			// so we only get new events from blocks we haven't queried yet
 			curBlkn, err := hexutil.DecodeBig(evt.BlockNumber)
@@ -211,7 +217,7 @@ func (e EthManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 			curBlkn.Add(curBlkn, big.NewInt(1))
 
 			fromBlkn, err := hexutil.DecodeBig(e.fq.FromBlock)
-			if err != nil {
+			if err != nil && !(e.fq.FromBlock == "latest" || e.fq.FromBlock == "") {
 				continue
 			}
 
@@ -220,12 +226,6 @@ func (e EthManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 			if e.fq.FromBlock == "latest" || e.fq.FromBlock == "" || curBlkn.Cmp(fromBlkn) > 0 {
 				e.fq.FromBlock = hexutil.EncodeBig(curBlkn)
 			}
-
-			event, err := json.Marshal(evt)
-			if err != nil {
-				continue
-			}
-			events = append(events, event)
 		}
 	}
 

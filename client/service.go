@@ -16,6 +16,17 @@ import (
 	"time"
 )
 
+type storeInterface interface {
+	DeleteAllEndpointsExcept(names []string) error
+	LoadSubscriptions() ([]store.Subscription, error)
+	LoadSubscription(jobid string) (*store.Subscription, error)
+	LoadEndpoint(name string) (store.Endpoint, error)
+	Close() error
+	SaveSubscription(arg *store.Subscription) error
+	DeleteSubscription(subscription *store.Subscription) error
+	SaveEndpoint(e *store.Endpoint) error
+}
+
 // startService runs the Service in the background and gracefully stops when a
 // SIGINT is received.
 func startService(
@@ -78,7 +89,7 @@ func startService(
 // the external initiator.
 type Service struct {
 	clNode        chainlink.Node
-	store         *store.Client
+	store         storeInterface
 	subscriptions map[string]*activeSubscription
 }
 
@@ -94,13 +105,17 @@ func validateEndpoint(endpoint store.Endpoint) error {
 		return errors.New("Missing endpoint name")
 	}
 
+	if _, err := url.Parse(endpoint.Url); err != nil {
+		return errors.New("Invalid endpoint URL")
+	}
+
 	return nil
 }
 
 // NewService returns a new instance of Service, using
 // the provided database client and Chainlink node config.
 func NewService(
-	dbClient *store.Client,
+	dbClient storeInterface,
 	clNode chainlink.Node,
 ) *Service {
 	return &Service{
@@ -152,17 +167,26 @@ func (srv *Service) getAndTestSubscription(sub *store.Subscription) (subscriber.
 	return iSubscriber, nil
 }
 
+func closeSubscription(sub *activeSubscription) {
+	if sub.Interface != nil {
+		sub.Interface.Unsubscribe()
+	}
+	if sub.Events != nil {
+		close(sub.Events)
+	}
+}
+
 // Close shuts down any open subscriptions and closes
 // the database client.
 func (srv *Service) Close() {
 	for _, sub := range srv.subscriptions {
-		sub.Interface.Unsubscribe()
-		close(sub.Events)
+		closeSubscription(sub)
 	}
-	err := srv.store.Close()
-	if err != nil {
+
+	if err := srv.store.Close(); err != nil {
 		fmt.Println(err)
 	}
+
 	fmt.Println("All connections closed. Bye!")
 }
 
@@ -226,14 +250,21 @@ func (srv *Service) SaveSubscription(arg *store.Subscription) error {
 // DeleteJob unsubscribes (if applicable) and deletes
 // the subscription associated with the jobId provided.
 func (srv *Service) DeleteJob(jobid string) error {
-	sub, ok := srv.subscriptions[jobid]
+	var sub *store.Subscription
+	activeSub, ok := srv.subscriptions[jobid]
 	if ok {
-		sub.Interface.Unsubscribe()
-		close(sub.Events)
+		closeSubscription(activeSub)
 		defer delete(srv.subscriptions, jobid)
+		sub = activeSub.Subscription
+	} else {
+		dbSub, err := srv.store.LoadSubscription(jobid)
+		if err != nil {
+			return err
+		}
+		sub = dbSub
 	}
 
-	return srv.store.DeleteSubscription(sub.Subscription)
+	return srv.store.DeleteSubscription(sub)
 }
 
 // GetEndpoint returns an instance of store.Endpoint that
@@ -244,7 +275,7 @@ func (srv *Service) GetEndpoint(name string) (*store.Endpoint, error) {
 		return nil, err
 	}
 	if endpoint.Name != name {
-		return nil, nil
+		return nil, errors.New("endpoint name mismatch")
 	}
 	return &endpoint, nil
 }

@@ -219,5 +219,5 @@ func (srv *HttpService) CreateEndpoint(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, resp{ID: config.Name})
+	c.JSON(http.StatusCreated, resp{ID: config.Name})
 }
