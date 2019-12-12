@@ -280,11 +280,11 @@ func Test_normalizeLocalhost(t *testing.T) {
 	}
 }
 
-func Test_service_DeleteJob(t *testing.T) {
+func Test_Service_DeleteJob(t *testing.T) {
 	type fields struct {
 		clNode        chainlink.Node
 		store         storeInterface
-		subscriptions map[string]*ActiveSubscription
+		subscriptions map[string]*activeSubscription
 	}
 	type args struct {
 		jobid string
@@ -299,7 +299,7 @@ func Test_service_DeleteJob(t *testing.T) {
 			"deletes sample job",
 			fields{
 				store: storeClientFailer{},
-				subscriptions: map[string]*ActiveSubscription{
+				subscriptions: map[string]*activeSubscription{
 					"testJob": {
 						Interface: mockSubscription{},
 						Events:    make(chan subscriber.Event),
@@ -313,7 +313,7 @@ func Test_service_DeleteJob(t *testing.T) {
 			"deletes sample job even if not properly subscribed",
 			fields{
 				store: storeClientFailer{},
-				subscriptions: map[string]*ActiveSubscription{
+				subscriptions: map[string]*activeSubscription{
 					"testJob": {},
 				},
 			},
@@ -324,7 +324,7 @@ func Test_service_DeleteJob(t *testing.T) {
 			"deletes sample job even if not subscribed at all",
 			fields{
 				store:         storeClientFailer{},
-				subscriptions: map[string]*ActiveSubscription{},
+				subscriptions: map[string]*activeSubscription{},
 			},
 			args{"testJob"},
 			false,
@@ -333,7 +333,7 @@ func Test_service_DeleteJob(t *testing.T) {
 			"fails on non-existent job",
 			fields{
 				store:         storeClientFailer{error: errors.New("record not found")},
-				subscriptions: map[string]*ActiveSubscription{},
+				subscriptions: map[string]*activeSubscription{},
 			},
 			args{"testJob"},
 			true,
@@ -341,7 +341,7 @@ func Test_service_DeleteJob(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			srv := &service{
+			srv := &Service{
 				clNode:        tt.fields.clNode,
 				store:         tt.fields.store,
 				subscriptions: tt.fields.subscriptions,
@@ -353,11 +353,11 @@ func Test_service_DeleteJob(t *testing.T) {
 	}
 }
 
-func Test_service_GetEndpoint(t *testing.T) {
+func Test_Service_GetEndpoint(t *testing.T) {
 	type fields struct {
 		clNode        chainlink.Node
 		store         storeInterface
-		subscriptions map[string]*ActiveSubscription
+		subscriptions map[string]*activeSubscription
 	}
 	type args struct {
 		name string
@@ -401,7 +401,7 @@ func Test_service_GetEndpoint(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			srv := &service{
+			srv := &Service{
 				clNode:        tt.fields.clNode,
 				store:         tt.fields.store,
 				subscriptions: tt.fields.subscriptions,
@@ -418,11 +418,11 @@ func Test_service_GetEndpoint(t *testing.T) {
 	}
 }
 
-func Test_service_SaveEndpoint(t *testing.T) {
+func Test_Service_SaveEndpoint(t *testing.T) {
 	type fields struct {
 		clNode        chainlink.Node
 		store         storeInterface
-		subscriptions map[string]*ActiveSubscription
+		subscriptions map[string]*activeSubscription
 	}
 	type args struct {
 		e *store.Endpoint
@@ -460,7 +460,7 @@ func Test_service_SaveEndpoint(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			srv := &service{
+			srv := &Service{
 				clNode:        tt.fields.clNode,
 				store:         tt.fields.store,
 				subscriptions: tt.fields.subscriptions,

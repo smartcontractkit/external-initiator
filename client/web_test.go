@@ -298,8 +298,8 @@ func Test_httpService_CreateEndpoint(t *testing.T) {
 		body, err := json.Marshal(test.Payload)
 		require.NoError(t, err)
 
-		srv := &httpService{
-			store: test.App,
+		srv := &HttpService{
+			Store: test.App,
 		}
 		srv.createRouter()
 
