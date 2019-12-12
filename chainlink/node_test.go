@@ -69,6 +69,11 @@ func TestNode_TriggerJob(t *testing.T) {
 		log.Fatal(err)
 	}
 
+	fakeU, err := url.Parse("http://fakeurl:6688/")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	tests := []struct {
 		name    string
 		fields  fields
@@ -122,6 +127,12 @@ func TestNode_TriggerJob(t *testing.T) {
 			},
 			args{jobId: jobId},
 			false,
+		},
+		{
+			"cannot reach endpoint",
+			fields{Endpoint: *fakeU},
+			args{jobId: jobId},
+			true,
 		},
 	}
 	for _, tt := range tests {

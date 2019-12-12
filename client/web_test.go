@@ -18,19 +18,19 @@ type storeFailer struct {
 	endpointError error
 }
 
-func (s storeFailer) SaveSubscription(arg *store.Subscription) error {
+func (s storeFailer) SaveSubscription(*store.Subscription) error {
 	return s.error
 }
 
-func (s storeFailer) DeleteJob(jobid string) error {
+func (s storeFailer) DeleteJob(string) error {
 	return s.error
 }
 
-func (s storeFailer) GetEndpoint(name string) (*store.Endpoint, error) {
+func (s storeFailer) GetEndpoint(string) (*store.Endpoint, error) {
 	return s.endpoint, s.endpointError
 }
 
-func (s storeFailer) SaveEndpoint(e *store.Endpoint) error {
+func (s storeFailer) SaveEndpoint(*store.Endpoint) error {
 	return s.error
 }
 
@@ -259,5 +259,63 @@ func TestRequireAuth(t *testing.T) {
 		} else {
 			assert.NotEqual(t, http.StatusUnauthorized, w.Code)
 		}
+	}
+}
+
+func Test_httpService_CreateEndpoint(t *testing.T) {
+	tests := []struct {
+		Name       string
+		Payload    interface{}
+		App        subscriptionStorer
+		StatusCode int
+	}{
+		{
+			"Create success",
+			store.Endpoint{
+				Url:  "http://localhost/",
+				Name: "test",
+			},
+			storeFailer{},
+			http.StatusCreated,
+		},
+		{
+			"Missing fields",
+			store.Endpoint{
+				Url: "http://localhost/",
+			},
+			storeFailer{error: errors.New("missing name")},
+			http.StatusInternalServerError,
+		},
+		{
+			"Decode failed",
+			"bad json format",
+			storeFailer{},
+			http.StatusBadRequest,
+		},
+	}
+	for _, test := range tests {
+		t.Log(test.Name)
+		body, err := json.Marshal(test.Payload)
+		require.NoError(t, err)
+
+		srv := &HttpService{
+			Store: test.App,
+		}
+		srv.createRouter()
+
+		req := httptest.NewRequest("POST", "/config", bytes.NewBuffer(body))
+
+		w := httptest.NewRecorder()
+		srv.ServeHTTP(w, req)
+		assert.Equal(t, test.StatusCode, w.Code)
+
+		if w.Code == http.StatusNotFound {
+			// Do not expect JSON response
+			continue
+		}
+
+		var respJSON map[string]interface{}
+		err = json.Unmarshal(w.Body.Bytes(), &respJSON)
+		assert.NoError(t, err)
 	}
 }

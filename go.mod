@@ -14,6 +14,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jinzhu/gorm v1.9.11
 	github.com/kr/pretty v0.1.0 // indirect
+	github.com/magiconair/properties v1.8.0
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/spf13/cast v1.3.0 // indirect
