@@ -10,7 +10,7 @@ import (
 // a not-yet-active WS subscription.
 type WebsocketSubscriber struct {
 	Endpoint string
-	Manager  Manager
+	Manager  JsonManager
 }
 
 // Test sends a opens a WS connection to the endpoint.
@@ -32,7 +32,7 @@ type WebsocketSubscription struct {
 	conn      *wsConn
 	events    chan<- Event
 	confirmed bool
-	manager   Manager
+	manager   JsonManager
 	endpoint  string
 }
 

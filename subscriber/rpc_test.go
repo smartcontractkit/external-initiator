@@ -63,7 +63,7 @@ func TestSendPostRequest(t *testing.T) {
 func TestRpcSubscriber_Test(t *testing.T) {
 	type fields struct {
 		Endpoint string
-		Manager  Manager
+		Manager  JsonManager
 	}
 	tests := []struct {
 		name    string

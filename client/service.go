@@ -288,8 +288,15 @@ func (srv *Service) SaveEndpoint(e *store.Endpoint) error {
 	return srv.store.SaveEndpoint(e)
 }
 
-func getConnectionType(rawUrl string) (subscriber.Type, error) {
-	u, err := url.Parse(rawUrl)
+func getConnectionType(endpoint store.Endpoint) (subscriber.Type, error) {
+	switch endpoint.Type {
+	// TODO: Add blockchain implementations
+	// that encapsulate entire connection
+	// case "example", "example2":
+	// 	return subscriber.Client
+	}
+
+	u, err := url.Parse(endpoint.Url)
 	if err != nil {
 		return 0, err
 	}
@@ -303,7 +310,7 @@ func getConnectionType(rawUrl string) (subscriber.Type, error) {
 	return 0, errors.New("unknown connection scheme")
 }
 
-func getManager(sub store.Subscription, p subscriber.Type) (subscriber.Manager, error) {
+func getJsonManager(sub store.Subscription, p subscriber.Type) (subscriber.JsonManager, error) {
 	switch sub.Endpoint.Type {
 	case blockchain.ETH:
 		return blockchain.CreateEthManager(p, sub.Ethereum), nil
@@ -312,13 +319,28 @@ func getManager(sub store.Subscription, p subscriber.Type) (subscriber.Manager, 
 	return nil, errors.New("unknown blockchain type")
 }
 
+func getClientSubscriber(sub store.Subscription) (subscriber.ISubscriber, error) {
+	switch sub.Endpoint.Type {
+	// TODO: Add blockchain implementations
+	// that encapsulate entire connection
+	// case "example":
+	// 	return blockchain.CreateExampleClient(sub)
+	}
+
+	return nil, errors.New("unknown blockchain type for Client subscription")
+}
+
 func getSubscriber(sub store.Subscription) (subscriber.ISubscriber, error) {
-	connType, err := getConnectionType(sub.Endpoint.Url)
+	connType, err := getConnectionType(sub.Endpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	manager, err := getManager(sub, connType)
+	if connType == subscriber.Client {
+		return getClientSubscriber(sub)
+	}
+
+	manager, err := getJsonManager(sub, connType)
 	if err != nil {
 		return nil, err
 	}

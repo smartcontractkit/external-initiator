@@ -111,7 +111,7 @@ func Test_getConnectionType(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getConnectionType(tt.args.rawUrl)
+			got, err := getConnectionType(store.Endpoint{Url: tt.args.rawUrl})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getConnectionType() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -131,7 +131,7 @@ func Test_getManager(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    subscriber.Manager
+		want    subscriber.JsonManager
 		wantErr bool
 	}{
 		{
@@ -159,13 +159,13 @@ func Test_getManager(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getManager(tt.args.sub, tt.args.p)
+			got, err := getJsonManager(tt.args.sub, tt.args.p)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("getManager() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("getJsonManager() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("getManager() got = %v, want %v", got, tt.want)
+				t.Errorf("getJsonManager() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
