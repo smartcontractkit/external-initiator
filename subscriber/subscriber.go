@@ -27,7 +27,7 @@ type Event []byte
 // Manager holds the interface for generating blockchain
 // specific payloads and parsing the response for the
 // appropriate blockchain.
-type Manager interface {
+type JsonManager interface {
 	// Get JSON payload to send when opening a new subscription
 	GetTriggerJson() []byte
 	// Parse the response returned after sending GetTriggerJson()

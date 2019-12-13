@@ -12,7 +12,7 @@ import (
 
 const ETH = "ethereum"
 
-// The EthManager implements the subscriber.Manager interface and allows
+// The EthManager implements the subscriber.JsonManager interface and allows
 // for interacting with ETH nodes over RPC or WS.
 type EthManager struct {
 	fq *filterQuery

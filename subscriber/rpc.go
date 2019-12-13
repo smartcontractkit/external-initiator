@@ -14,7 +14,7 @@ import (
 type RpcSubscriber struct {
 	Endpoint string
 	Interval time.Duration
-	Manager  Manager
+	Manager  JsonManager
 }
 
 // Test sends a POST request using GetTestJson()
@@ -34,7 +34,7 @@ type RpcSubscription struct {
 	endpoint string
 	done     chan struct{}
 	events   chan<- Event
-	manager  Manager
+	manager  JsonManager
 }
 
 func (rpc RpcSubscription) Unsubscribe() {

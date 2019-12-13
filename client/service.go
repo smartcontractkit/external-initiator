@@ -303,7 +303,7 @@ func getConnectionType(rawUrl string) (subscriber.Type, error) {
 	return 0, errors.New("unknown connection scheme")
 }
 
-func getManager(sub store.Subscription, p subscriber.Type) (subscriber.Manager, error) {
+func getJsonManager(sub store.Subscription, p subscriber.Type) (subscriber.JsonManager, error) {
 	switch sub.Endpoint.Type {
 	case blockchain.ETH:
 		return blockchain.CreateEthManager(p, sub.Ethereum), nil
