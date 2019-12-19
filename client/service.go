@@ -95,7 +95,7 @@ type Service struct {
 
 func validateEndpoint(endpoint store.Endpoint) error {
 	switch endpoint.Type {
-	case blockchain.ETH:
+	case blockchain.ETH, blockchain.XTZ:
 		// Do nothing, valid blockchain
 	default:
 		return errors.New("Missing or invalid endpoint blockchain")
@@ -290,24 +290,24 @@ func (srv *Service) SaveEndpoint(e *store.Endpoint) error {
 
 func getConnectionType(endpoint store.Endpoint) (subscriber.Type, error) {
 	switch endpoint.Type {
-	// TODO: Add blockchain implementations
-	// that encapsulate entire connection
-	// case "example", "example2":
-	// 	return subscriber.Client
+	// Add blockchain implementations that encapsulate entire connection here
+	case blockchain.XTZ:
+		return subscriber.Client, nil
+	default:
+		u, err := url.Parse(endpoint.Url)
+		if err != nil {
+			return 0, err
+		}
+
+		if strings.HasPrefix(u.Scheme, "ws") {
+			return subscriber.WS, nil
+		} else if strings.HasPrefix(u.Scheme, "http") {
+			return subscriber.RPC, nil
+		}
+
+		return 0, errors.New("unknown connection scheme")
 	}
 
-	u, err := url.Parse(endpoint.Url)
-	if err != nil {
-		return 0, err
-	}
-
-	if strings.HasPrefix(u.Scheme, "ws") {
-		return subscriber.WS, nil
-	} else if strings.HasPrefix(u.Scheme, "http") {
-		return subscriber.RPC, nil
-	}
-
-	return 0, errors.New("unknown connection scheme")
 }
 
 func getJsonManager(sub store.Subscription, p subscriber.Type) (subscriber.JsonManager, error) {
@@ -321,13 +321,12 @@ func getJsonManager(sub store.Subscription, p subscriber.Type) (subscriber.JsonM
 
 func getClientSubscriber(sub store.Subscription) (subscriber.ISubscriber, error) {
 	switch sub.Endpoint.Type {
-	// TODO: Add blockchain implementations
-	// that encapsulate entire connection
-	// case "example":
-	// 	return blockchain.CreateExampleClient(sub)
+	case blockchain.XTZ:
+		return blockchain.CreateTezosSubscriber(sub), nil
+	default:
+		return nil, errors.New("unknown blockchain type for Client subscription")
 	}
 
-	return nil, errors.New("unknown blockchain type for Client subscription")
 }
 
 func getSubscriber(sub store.Subscription) (subscriber.ISubscriber, error) {

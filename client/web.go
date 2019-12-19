@@ -116,6 +116,10 @@ func validateRequest(t *CreateSubscriptionReq, endpointType string) error {
 		validations = append(validations,
 			len(t.Params.Addresses)+len(t.Params.Topics),
 		)
+	case blockchain.XTZ:
+		validations = append(validations,
+			len(t.Params.Addresses),
+		)
 	}
 
 	for _, v := range validations {
@@ -171,6 +175,10 @@ func (srv *HttpService) CreateSubscription(c *gin.Context) {
 		sub.Ethereum = store.EthSubscription{
 			Addresses: req.Params.Addresses,
 			Topics:    req.Params.Topics,
+		}
+	case blockchain.XTZ:
+		sub.Tezos = store.TezosSubscription{
+			Addresses: req.Params.Addresses,
 		}
 	}
 
