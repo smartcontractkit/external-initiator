@@ -220,10 +220,9 @@ func extractEventsFromBlock(data []byte, addresses []string) ([]subscriber.Event
 		 Note that this list only contains user-initiated calls.
 		 SC-initiated calls are buried deep inside the call to that SC, as a callback (return value of that SC).
 		 You can find this under metadata->internal_operation_results
-		 TODO: Extract SC-initiated calls here
 		*/
 		for _, content := range t.Contents {
-			if isDestinationInAddresses(content.Destination, addresses) {
+			if hasDestinationInAddresses(content, addresses) {
 				event, err := t.toEvent()
 				if err != nil {
 					return nil, err
@@ -235,10 +234,17 @@ func extractEventsFromBlock(data []byte, addresses []string) ([]subscriber.Event
 	return events, nil
 }
 
-func isDestinationInAddresses(dest string, addresses []string) bool {
+func hasDestinationInAddresses(content XtzTransactionContent, addresses []string) bool {
 	for _, address := range addresses {
-		if address == dest {
+		if address == content.Destination {
 			return true
+		}
+		if content.Metadata.InternalOperationResults != nil {
+			for _, internalOperationResult := range *content.Metadata.InternalOperationResults {
+				if address == internalOperationResult.Destination {
+					return true
+				}
+			}
 		}
 	}
 	return false
@@ -287,14 +293,30 @@ type XtzTransaction struct {
 }
 
 type XtzTransactionContent struct {
-	Kind         string      `json:"kind"`
-	Source       string      `json:"source"`
-	Fee          string      `json:"fee"`
-	Counter      string      `json:"counter"`
-	GasLimit     string      `json:"gas_limit"`
-	StorageLimit string      `json:"storage_limit"`
-	Amount       string      `json:"amount"`
-	Destination  string      `json:"destination"`
-	Parameters   interface{} `json:"parameters"`
-	Metadata     interface{} `json:"metadata"`
+	Kind         string                        `json:"kind"`
+	Source       string                        `json:"source"`
+	Fee          string                        `json:"fee"`
+	Counter      string                        `json:"counter"`
+	GasLimit     string                        `json:"gas_limit"`
+	StorageLimit string                        `json:"storage_limit"`
+	Amount       string                        `json:"amount"`
+	Destination  string                        `json:"destination"`
+	Parameters   interface{}                   `json:"parameters"`
+	Metadata     XtzTransactionContentMetadata `json:"metadata"`
+}
+
+type XtzTransactionContentMetadata struct {
+	BalanceUpdates           []interface{}                 `json:"balance_updates"`
+	OperationResult          interface{}                   `json:"operation_result"`
+	InternalOperationResults *[]XtzInternalOperationResult `json:"internal_operation_results"`
+}
+
+type XtzInternalOperationResult struct {
+	Kind        string      `json:"kind"`
+	Source      string      `json:"source"`
+	Nonce       int         `json:"nonce"`
+	Amount      string      `json:"amount"`
+	Destination string      `json:"destination"`
+	Parameters  interface{} `json:"parameters"`
+	Result      interface{} `json:"result"`
 }
