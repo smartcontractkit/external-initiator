@@ -525,7 +525,7 @@
                     "counter": "155064",
                     "gas_limit": "13467",
                     "storage_limit": "30",
-                    "amount": "1000000",
+                    "amount": "42",
                     "destination": "KT1Address",
                     "parameters": {
                         "entrypoint": "default",

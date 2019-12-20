@@ -5,6 +5,7 @@ import (
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 	"io/ioutil"
 	"os"
 	"path"
@@ -68,14 +69,22 @@ func Test_extractBlockIDFromHeaderJSON(t *testing.T) {
 func Test_extractEventsFromBlock(t *testing.T) {
 	addresses := []string{"KT1Address", "KT2Address"}
 	wd, _ := os.Getwd()
-	ap := path.Join(wd, "testdata/tezos_test_block_operations.json")
-	sampleBlockOpsFile, err := os.Open(ap)
+	ui := path.Join(wd, "testdata/tezos_test_block_operations_user_initiated.json")
+	userInitiatedSampleFile, err := os.Open(ui)
 	if err != nil {
 		require.NoError(t, err)
 	}
-	defer sampleBlockOpsFile.Close()
+	defer userInitiatedSampleFile.Close()
 
-	sampleBlockOpsJSON, err := ioutil.ReadAll(sampleBlockOpsFile)
+	sci := path.Join(wd, "testdata/tezos_test_block_operations_sc_initiated.json")
+	scInitiatedSampleFile, err := os.Open(sci)
+	if err != nil {
+		require.NoError(t, err)
+	}
+	defer scInitiatedSampleFile.Close()
+
+	userInitiatedSampleJSON, err := ioutil.ReadAll(userInitiatedSampleFile)
+	scInitiatedSampleJSON, err := ioutil.ReadAll(scInitiatedSampleFile)
 
 	t.Run("returns error if json is invalid",
 		func(t *testing.T) {
@@ -95,7 +104,7 @@ func Test_extractEventsFromBlock(t *testing.T) {
 		})
 	t.Run("returns no events if the address doesn't match",
 		func(t *testing.T) {
-			json := sampleBlockOpsJSON
+			json := userInitiatedSampleJSON
 
 			events, err := extractEventsFromBlock(json, []string{"notAnAddress"})
 			assert.Nil(t, err)
@@ -103,21 +112,32 @@ func Test_extractEventsFromBlock(t *testing.T) {
 		})
 	t.Run("extracts user-initiated calls to matching addresses",
 		func(t *testing.T) {
-			json := sampleBlockOpsJSON
+			json := userInitiatedSampleJSON
 
 			events, err := extractEventsFromBlock(json, addresses)
 			assert.Nil(t, err)
 			assert.Len(t, events, 1)
+			assert.IsType(t, []subscriber.Event{}, events)
 
-			event := events[0]
-			assert.IsType(t, subscriber.Event{}, event)
+			expectedAmount := "42"
+			actualAmount := gjson.GetBytes(events[0], "contents.0.amount").Str
 
+			assert.Equal(t, expectedAmount, actualAmount)
 		})
-	// TODO: Pending implementation of SC-initiated calls
-	// t.Run("extracts SC-initiated calls to matching addresses",
-	// func(t *testing.T) {
+	t.Run("extracts SC-initiated calls to matching addresses",
+		func(t *testing.T) {
+			json := scInitiatedSampleJSON
 
-	// })
+			events, err := extractEventsFromBlock(json, addresses)
+			assert.Nil(t, err)
+			assert.Len(t, events, 1)
+			assert.IsType(t, []subscriber.Event{}, events)
+
+			expectedAmount := "1000000"
+			actualAmount := gjson.GetBytes(events[0], "contents.0.amount").Str
+
+			assert.Equal(t, expectedAmount, actualAmount)
+		})
 }
 
 func Test_toEvent(t *testing.T) {
