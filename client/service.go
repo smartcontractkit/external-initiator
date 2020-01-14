@@ -95,7 +95,7 @@ type Service struct {
 
 func validateEndpoint(endpoint store.Endpoint) error {
 	switch endpoint.Type {
-	case blockchain.ETH, blockchain.XTZ:
+	case blockchain.ETH, blockchain.XTZ, blockchain.Substrate:
 		// Do nothing, valid blockchain
 	default:
 		return errors.New("Missing or invalid endpoint blockchain")
@@ -314,6 +314,8 @@ func getJsonManager(sub store.Subscription, p subscriber.Type) (subscriber.JsonM
 	switch sub.Endpoint.Type {
 	case blockchain.ETH:
 		return blockchain.CreateEthManager(p, sub.Ethereum), nil
+	case blockchain.Substrate:
+		return blockchain.CreateSubstrateManager(sub.Substrate), nil
 	}
 
 	return nil, errors.New("unknown blockchain type")

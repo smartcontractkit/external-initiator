@@ -100,9 +100,10 @@ type CreateSubscriptionReq struct {
 	JobID  string `json:"jobId"`
 	Type   string `json:"type"`
 	Params struct {
-		Endpoint  string   `json:"endpoint"`
-		Addresses []string `json:"addresses"`
-		Topics    []string `json:"eventTopics"`
+		Endpoint   string   `json:"endpoint"`
+		Addresses  []string `json:"addresses"`
+		Topics     []string `json:"eventTopics"`
+		AccountIDs []string `json:"accountIds"`
 	} `json:"params"`
 }
 
@@ -119,6 +120,10 @@ func validateRequest(t *CreateSubscriptionReq, endpointType string) error {
 	case blockchain.XTZ:
 		validations = append(validations,
 			len(t.Params.Addresses),
+		)
+	case blockchain.Substrate:
+		validations = append(validations,
+			len(t.Params.AccountIDs),
 		)
 	}
 
@@ -179,6 +184,10 @@ func (srv *HttpService) CreateSubscription(c *gin.Context) {
 	case blockchain.XTZ:
 		sub.Tezos = store.TezosSubscription{
 			Addresses: req.Params.Addresses,
+		}
+	case blockchain.Substrate:
+		sub.Substrate = store.SubstrateSubscription{
+			AccountIds: req.Params.AccountIDs,
 		}
 	}
 
