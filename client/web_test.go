@@ -34,15 +34,17 @@ func (s storeFailer) SaveEndpoint(*store.Endpoint) error {
 	return s.error
 }
 
-func generateCreateSubscriptionReq(id, endpoint string, addresses, topics []string) CreateSubscriptionReq {
+func generateCreateSubscriptionReq(id, endpoint string, addresses, topics, accountIds []string) CreateSubscriptionReq {
 	params := struct {
-		Endpoint  string   `json:"endpoint"`
-		Addresses []string `json:"addresses"`
-		Topics    []string `json:"eventTopics"`
+		Endpoint   string   `json:"endpoint"`
+		Addresses  []string `json:"addresses"`
+		Topics     []string `json:"eventTopics"`
+		AccountIDs []string `json:"accountIds"`
 	}{
-		Endpoint:  endpoint,
-		Addresses: addresses,
-		Topics:    topics,
+		Endpoint:   endpoint,
+		Addresses:  addresses,
+		Topics:     topics,
+		AccountIDs: accountIds,
 	}
 
 	return CreateSubscriptionReq{
@@ -61,13 +63,13 @@ func TestConfigController(t *testing.T) {
 	}{
 		{
 			"Create success",
-			generateCreateSubscriptionReq("id", "eth-mainnet", []string{"0x123"}, []string{"0x123"}),
+			generateCreateSubscriptionReq("id", "eth-mainnet", []string{"0x123"}, []string{"0x123"}, []string{"0x123"}),
 			storeFailer{nil, &store.Endpoint{Name: "eth-mainnet", Type: "ethereum"}, nil},
 			http.StatusCreated,
 		},
 		{
 			"Missing fields",
-			generateCreateSubscriptionReq("id", "", []string{}, []string{}),
+			generateCreateSubscriptionReq("id", "", []string{}, []string{}, []string{}),
 			storeFailer{nil, &store.Endpoint{Name: "eth-mainnet", Type: "ethereum"}, nil},
 			http.StatusBadRequest,
 		},
@@ -79,19 +81,19 @@ func TestConfigController(t *testing.T) {
 		},
 		{
 			"Save failed",
-			generateCreateSubscriptionReq("id", "eth-mainnet", []string{"0x123"}, []string{"0x123"}),
+			generateCreateSubscriptionReq("id", "eth-mainnet", []string{"0x123"}, []string{"0x123"}, []string{"0x123"}),
 			storeFailer{errors.New("failed save"), &store.Endpoint{Name: "eth-mainnet", Type: "ethereum"}, nil},
 			http.StatusInternalServerError,
 		},
 		{
 			"Endpoint does not exist",
-			generateCreateSubscriptionReq("id", "doesnt-exist", []string{"0x123"}, []string{"0x123"}),
+			generateCreateSubscriptionReq("id", "doesnt-exist", []string{"0x123"}, []string{"0x123"}, []string{"0x123"}),
 			storeFailer{errors.New("Failed loading endpoint"), nil, nil},
 			http.StatusBadRequest,
 		},
 		{
 			"Failed fetching Endpoint",
-			generateCreateSubscriptionReq("id", "eth-mainnet", []string{"0x123"}, []string{"0x123"}),
+			generateCreateSubscriptionReq("id", "eth-mainnet", []string{"0x123"}, []string{"0x123"}, []string{"0x123"}),
 			storeFailer{nil, nil, errors.New("failed SQL query")},
 			http.StatusInternalServerError,
 		},

@@ -5,6 +5,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration0"
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1576509489"
+	"github.com/smartcontractkit/external-initiator/store/migrations/migration1576783801"
 	"gopkg.in/gormigrate.v1"
 )
 
@@ -23,6 +24,11 @@ func Migrate(db *gorm.DB) error {
 			ID:       "1576509489",
 			Migrate:  migration1576509489.Migrate,
 			Rollback: migration1576509489.Rollback,
+		},
+		{
+			ID:       "1576783801",
+			Migrate:  migration1576783801.Migrate,
+			Rollback: migration1576783801.Rollback,
 		},
 	}
 

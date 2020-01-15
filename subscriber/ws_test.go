@@ -137,6 +137,7 @@ func TestWebsocketSubscriber_Test(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			wss := WebsocketSubscriber{
 				Endpoint: tt.fields.Endpoint,
+				Manager:  TestsMockManager{},
 			}
 			if err := wss.Test(); (err != nil) != tt.wantErr {
 				t.Errorf("Test() error = %v, wantErr %v", err, tt.wantErr)

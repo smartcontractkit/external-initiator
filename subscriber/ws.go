@@ -1,6 +1,7 @@
 package subscriber
 
 import (
+	"errors"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"time"
@@ -19,8 +20,41 @@ func (wss WebsocketSubscriber) Test() error {
 	if err != nil {
 		return err
 	}
-	c.Close()
-	return nil
+	defer c.Close()
+
+	testPayload := wss.Manager.GetTestJson()
+	if testPayload == nil {
+		return nil
+	}
+
+	resp := make(chan []byte)
+
+	go func() {
+		_, body, err := c.ReadMessage()
+		if err != nil {
+			close(resp)
+		}
+		resp <- body
+	}()
+
+	err = c.WriteMessage(websocket.BinaryMessage, testPayload)
+	if err != nil {
+		return err
+	}
+
+	// Set timeout for response to 5 seconds
+	t := time.NewTimer(5 * time.Second)
+	defer t.Stop()
+
+	select {
+	case <-t.C:
+		return errors.New("timeout from test payload")
+	case body, ok := <-resp:
+		if !ok {
+			return errors.New("failed reading test response from WS endpoint")
+		}
+		return wss.Manager.ParseTestResponse(body)
+	}
 }
 
 type wsConn struct {
