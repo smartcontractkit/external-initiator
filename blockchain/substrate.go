@@ -72,6 +72,11 @@ func (sm *SubstrateManager) GetTriggerJson() []byte {
 	return data
 }
 
+type KeyValue struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
 // EventChainlinkOracleRequest is the event structure we expect
 // to be emitted from the Chainlink pallet
 type EventChainlinkOracleRequest struct {
@@ -80,6 +85,7 @@ type EventChainlinkOracleRequest struct {
 	RequestIdentifier types.U64
 	AccountID         types.AccountID
 	DataVersion       types.U64
+	Bytes             []types.Bytes
 	Topics            []types.Hash
 }
 
@@ -125,7 +131,9 @@ func (sm *SubstrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool
 		err = types.EventRecordsRaw(change.StorageData).DecodeEventRecords(sm.meta, &events)
 		if err != nil {
 			fmt.Println("Failed parsing EventRecords:", err)
-			continue
+			// Do not stop after this error because it could still work
+			// TODO: investigate this error: "unable to decode Phase for event #2: EOF"
+			// continue
 		}
 
 		for _, request := range events.Chainlink_OracleRequest {
@@ -140,7 +148,8 @@ func (sm *SubstrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool
 				continue
 			}
 
-			event, err := json.Marshal(request)
+			requestParams := convertByteArraysToKV(request.Bytes)
+			event, err := json.Marshal(requestParams)
 			if err != nil {
 				fmt.Println(err)
 				continue
@@ -183,4 +192,26 @@ func (sm *SubstrateManager) ParseTestResponse(data []byte) error {
 
 	sm.meta = &metadata
 	return nil
+}
+
+func convertByteArraysToKV(data []types.Bytes) []KeyValue {
+	var result []KeyValue
+	var keyValue KeyValue
+
+	for i := 0; i < len(data); i++ {
+		val := string(data[i])
+		if i%2 == 0 {
+			if val == "" {
+				i++
+				continue
+			}
+			keyValue.Key = val
+		} else {
+			keyValue.Value = val
+			result = append(result, keyValue)
+			keyValue = KeyValue{}
+		}
+	}
+
+	return result
 }
