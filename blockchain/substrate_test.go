@@ -96,3 +96,59 @@ func TestSubstrateManager_GetTriggerJson(t *testing.T) {
 		})
 	}
 }
+
+func Test_convertByteArraysToKV(t *testing.T) {
+	tests := []struct {
+		name string
+		args []types.Bytes
+		want []KeyValue
+	}{
+		{
+			"converts standard keys,values",
+			[]types.Bytes{
+				[]byte("test"),
+				[]byte("val"),
+				[]byte("test2"),
+				[]byte("val2"),
+			},
+			[]KeyValue{
+				{
+					Key:   "test",
+					Value: "val",
+				},
+				{
+					Key:   "test2",
+					Value: "val2",
+				},
+			},
+		},
+		{
+			"skips empty keys",
+			[]types.Bytes{
+				[]byte("test"),
+				[]byte("val"),
+				[]byte(""),
+				[]byte("val2"),
+				[]byte("test3"),
+				[]byte("val3"),
+			},
+			[]KeyValue{
+				{
+					Key:   "test",
+					Value: "val",
+				},
+				{
+					Key:   "test3",
+					Value: "val3",
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := convertByteArraysToKV(tt.args); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("convertByteArraysToKV() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
