@@ -219,11 +219,11 @@ func (srv *Service) subscribe(sub *store.Subscription, iSubscriber subscriber.IS
 
 	go func() {
 		for {
-			_, ok := <-as.Events
+			event, ok := <-as.Events
 			if !ok {
 				return
 			}
-			if err := as.Node.TriggerJob(as.Subscription.Job); err != nil {
+			if err := as.Node.TriggerJob(as.Subscription.Job, event); err != nil {
 				fmt.Println(err)
 			}
 		}

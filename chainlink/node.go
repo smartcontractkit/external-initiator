@@ -3,6 +3,7 @@
 package chainlink
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -23,13 +24,13 @@ type Node struct {
 
 // TriggerJob wil send a job run trigger for the
 // provided jobId.
-func (cl Node) TriggerJob(jobId string) error {
+func (cl Node) TriggerJob(jobId string, data []byte) error {
 	fmt.Printf("Sending a job run trigger to %s for job %s\n", cl.Endpoint.String(), jobId)
 
 	u := cl.Endpoint
 	u.Path = fmt.Sprintf("/v2/specs/%s/runs", jobId)
 
-	request, err := http.NewRequest(http.MethodPost, u.String(), nil)
+	request, err := http.NewRequest(http.MethodPost, u.String(), bytes.NewReader(data))
 	if err != nil {
 		return err
 	}
