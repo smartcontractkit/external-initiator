@@ -119,7 +119,7 @@ func TestNode_TriggerJob(t *testing.T) {
 			true,
 		},
 		{
-			"does a successfuly POST request",
+			"does a successful POST request",
 			fields{
 				AccessKey:    accessKey,
 				AccessSecret: accessSecret,
