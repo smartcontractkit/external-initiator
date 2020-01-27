@@ -2,30 +2,29 @@ package chainlink
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"reflect"
 	"testing"
 )
 
 var (
-	clMockUrl    = ""
-	accessKey    = "abc"
-	accessSecret = "def"
-	jobId        = "123"
+	clMockUrl     = ""
+	accessKey     = "abc"
+	accessSecret  = "def"
+	jobId         = "123"
+	jobIdWPayload = "123payload"
+	testPayload   = []byte(`{"somekey":"somevalue"}`)
 )
 
 func TestMain(m *testing.M) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
-
-		if r.URL.Path != fmt.Sprintf("/v2/specs/%s/runs", jobId) {
-			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
@@ -41,6 +40,22 @@ func TestMain(m *testing.M) {
 
 		if r.Header.Get(externalInitiatorSecretHeader) != accessSecret {
 			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+
+		if r.URL.Path == fmt.Sprintf("/v2/specs/%s/runs", jobIdWPayload) {
+			body, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			if !reflect.DeepEqual(body, testPayload) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+		} else if r.URL.Path != fmt.Sprintf("/v2/specs/%s/runs", jobId) {
+			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
@@ -61,7 +76,8 @@ func TestNode_TriggerJob(t *testing.T) {
 		Endpoint     url.URL
 	}
 	type args struct {
-		jobId string
+		jobId   string
+		payload []byte
 	}
 
 	u, err := url.Parse(clMockUrl)
@@ -119,7 +135,7 @@ func TestNode_TriggerJob(t *testing.T) {
 			true,
 		},
 		{
-			"does a successfuly POST request",
+			"does a successful POST request",
 			fields{
 				AccessKey:    accessKey,
 				AccessSecret: accessSecret,
@@ -134,6 +150,16 @@ func TestNode_TriggerJob(t *testing.T) {
 			args{jobId: jobId},
 			true,
 		},
+		{
+			"does a successful POST request with payload",
+			fields{
+				AccessKey:    accessKey,
+				AccessSecret: accessSecret,
+				Endpoint:     *u,
+			},
+			args{jobId: jobIdWPayload, payload: testPayload},
+			false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -142,7 +168,7 @@ func TestNode_TriggerJob(t *testing.T) {
 				AccessSecret: tt.fields.AccessSecret,
 				Endpoint:     tt.fields.Endpoint,
 			}
-			if err := cl.TriggerJob(tt.args.jobId); (err != nil) != tt.wantErr {
+			if err := cl.TriggerJob(tt.args.jobId, tt.args.payload); (err != nil) != tt.wantErr {
 				t.Errorf("TriggerJob() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

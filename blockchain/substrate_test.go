@@ -101,7 +101,7 @@ func Test_convertByteArraysToKV(t *testing.T) {
 	tests := []struct {
 		name string
 		args []types.Bytes
-		want []KeyValue
+		want map[string]string
 	}{
 		{
 			"converts standard keys,values",
@@ -111,15 +111,9 @@ func Test_convertByteArraysToKV(t *testing.T) {
 				[]byte("test2"),
 				[]byte("val2"),
 			},
-			[]KeyValue{
-				{
-					Key:   "test",
-					Value: "val",
-				},
-				{
-					Key:   "test2",
-					Value: "val2",
-				},
+			map[string]string{
+				"test":  "val",
+				"test2": "val2",
 			},
 		},
 		{
@@ -132,15 +126,9 @@ func Test_convertByteArraysToKV(t *testing.T) {
 				[]byte("test3"),
 				[]byte("val3"),
 			},
-			[]KeyValue{
-				{
-					Key:   "test",
-					Value: "val",
-				},
-				{
-					Key:   "test3",
-					Value: "val3",
-				},
+			map[string]string{
+				"test":  "val",
+				"test3": "val3",
 			},
 		},
 	}
