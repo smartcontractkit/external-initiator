@@ -72,11 +72,6 @@ func (sm *SubstrateManager) GetTriggerJson() []byte {
 	return data
 }
 
-type KeyValue struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-}
-
 // EventChainlinkOracleRequest is the event structure we expect
 // to be emitted from the Chainlink pallet
 type EventChainlinkOracleRequest struct {
@@ -194,9 +189,9 @@ func (sm *SubstrateManager) ParseTestResponse(data []byte) error {
 	return nil
 }
 
-func convertByteArraysToKV(data []types.Bytes) []KeyValue {
-	var result []KeyValue
-	var keyValue KeyValue
+func convertByteArraysToKV(data []types.Bytes) map[string]string {
+	result := make(map[string]string)
+	var key string
 
 	for i := 0; i < len(data); i++ {
 		val := string(data[i])
@@ -205,11 +200,9 @@ func convertByteArraysToKV(data []types.Bytes) []KeyValue {
 				i++
 				continue
 			}
-			keyValue.Key = val
+			key = val
 		} else {
-			keyValue.Value = val
-			result = append(result, keyValue)
-			keyValue = KeyValue{}
+			result[key] = val
 		}
 	}
 
