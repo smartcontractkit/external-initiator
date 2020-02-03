@@ -3,6 +3,7 @@ package blockchain
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/centrifuge/go-substrate-rpc-client/scale"
 	"github.com/centrifuge/go-substrate-rpc-client/types"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
@@ -72,6 +73,44 @@ func (sm *SubstrateManager) GetTriggerJson() []byte {
 	return data
 }
 
+// SubstrateRequestParams allows for decoding a scale hex string into
+// a byte array, which is then encoded back to a scale encoded byte array,
+// to be decoded into a string array. This solves issues where decoding
+// directly into a string array would read past the end of the array.
+type SubstrateRequestParams []string
+
+func (a *SubstrateRequestParams) Decode(decoder scale.Decoder) error {
+	// Decode hex string into a byte array.
+	// This allows us to stop reading where the
+	// intended byte array stops.
+	var bz types.Bytes
+	err := decoder.Decode(&bz)
+	if err != nil {
+		return err
+	}
+
+	// Encode byte array into a scale encoded byte array
+	encoded, err := types.EncodeToBytes(bz)
+	if err != nil {
+		return err
+	}
+
+	// Decode byte array into a string array
+	var strings []string
+	err = types.DecodeFromBytes(encoded, &strings)
+	if err != nil {
+		return err
+	}
+
+	*a = strings
+
+	return nil
+}
+
+func (a SubstrateRequestParams) Encode(_ scale.Encoder) error {
+	return nil
+}
+
 // EventChainlinkOracleRequest is the event structure we expect
 // to be emitted from the Chainlink pallet
 type EventChainlinkOracleRequest struct {
@@ -80,7 +119,8 @@ type EventChainlinkOracleRequest struct {
 	RequestIdentifier types.U64
 	AccountID         types.AccountID
 	DataVersion       types.U64
-	Bytes             []types.Bytes
+	Bytes             SubstrateRequestParams
+	Callback          types.Text
 	Topics            []types.Hash
 }
 
@@ -126,9 +166,7 @@ func (sm *SubstrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool
 		err = types.EventRecordsRaw(change.StorageData).DecodeEventRecords(sm.meta, &events)
 		if err != nil {
 			fmt.Println("Failed parsing EventRecords:", err)
-			// Do not stop after this error because it could still work
-			// TODO: investigate this error: "unable to decode Phase for event #2: EOF"
-			// continue
+			continue
 		}
 
 		for _, request := range events.Chainlink_OracleRequest {
@@ -143,7 +181,8 @@ func (sm *SubstrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool
 				continue
 			}
 
-			requestParams := convertByteArraysToKV(request.Bytes)
+			requestParams := convertStringArrayToKV(request.Bytes)
+			requestParams["function"] = string(request.Callback)
 			event, err := json.Marshal(requestParams)
 			if err != nil {
 				fmt.Println(err)
@@ -189,20 +228,20 @@ func (sm *SubstrateManager) ParseTestResponse(data []byte) error {
 	return nil
 }
 
-func convertByteArraysToKV(data []types.Bytes) map[string]string {
+func convertStringArrayToKV(data []string) map[string]string {
 	result := make(map[string]string)
 	var key string
 
-	for i := 0; i < len(data); i++ {
-		val := string(data[i])
+	for i, val := range data {
+		if len(val) == 0 {
+			continue
+		}
+
 		if i%2 == 0 {
-			if val == "" {
-				i++
-				continue
-			}
 			key = val
-		} else {
+		} else if len(key) != 0 {
 			result[key] = val
+			key = ""
 		}
 	}
 

@@ -97,20 +97,15 @@ func TestSubstrateManager_GetTriggerJson(t *testing.T) {
 	}
 }
 
-func Test_convertByteArraysToKV(t *testing.T) {
+func Test_convertStringArrayToKV(t *testing.T) {
 	tests := []struct {
 		name string
-		args []types.Bytes
+		args []string
 		want map[string]string
 	}{
 		{
 			"converts standard keys,values",
-			[]types.Bytes{
-				[]byte("test"),
-				[]byte("val"),
-				[]byte("test2"),
-				[]byte("val2"),
-			},
+			[]string{"test", "val", "test2", "val2"},
 			map[string]string{
 				"test":  "val",
 				"test2": "val2",
@@ -118,24 +113,26 @@ func Test_convertByteArraysToKV(t *testing.T) {
 		},
 		{
 			"skips empty keys",
-			[]types.Bytes{
-				[]byte("test"),
-				[]byte("val"),
-				[]byte(""),
-				[]byte("val2"),
-				[]byte("test3"),
-				[]byte("val3"),
-			},
+			[]string{"test", "val", "", "val2", "test3", "val3"},
 			map[string]string{
 				"test":  "val",
 				"test3": "val3",
 			},
 		},
+		{
+			"skips empty values",
+			[]string{"test", "val", "key2", "", "test3", "val3", "", "", "test5", "val5"},
+			map[string]string{
+				"test":  "val",
+				"test3": "val3",
+				"test5": "val5",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := convertByteArraysToKV(tt.args); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("convertByteArraysToKV() = %v, want %v", got, tt.want)
+			if got := convertStringArrayToKV(tt.args); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("convertStringArrayToKV() = %v, want %v", got, tt.want)
 			}
 		})
 	}
