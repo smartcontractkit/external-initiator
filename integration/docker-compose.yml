@@ -17,7 +17,7 @@ services:
     env_file:
       - ./chainlink.env
     environment:
-      - DATABASE_URL=postgresql://postgres:password@integration_postgres_1:5432/chainlink?sslmode=disable
+      - DATABASE_URL=postgresql://chainlink@integration_postgres_1:5432/chainlink?sslmode=disable
       - ETH_URL=ws://integration_devnet_1:8546/
     volumes:
       - 'cl:/chainlink'
@@ -26,8 +26,6 @@ services:
     restart: on-failure
     environment:
       - POSTGRES_MULTIPLE_DATABASES=chainlink,ei
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=password
     volumes:
       - './docker-init-scripts/postgres:/docker-entrypoint-initdb.d'
       - 'pg:/var/lib/postgresql/data'
@@ -52,7 +50,7 @@ services:
     env_file:
       - ./external_initiator.env
     environment:
-      - EI_DATABASEURL=postgresql://postgres:password@integration_postgres_1:5432/ei?sslmode=disable
+      - EI_DATABASEURL=postgresql://ei@integration_postgres_1:5432/ei?sslmode=disable
       - EI_CHAINLINKURL=http://integration_chainlink_1:6688/
     command: '{\"name\":\"eth-devnet\",\"type\":\"ethereum\",\"url\":\"ws://integration_devnet_1:8546/\"}'
 volumes:
