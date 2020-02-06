@@ -1,0 +1,68 @@
+version: "3.6"
+services:
+  chainlink:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: on-failure
+    ports:
+      - "6688:6688"
+    depends_on:
+      - postgres
+      - devnet
+    secrets:
+      - node_password
+      - apicredentials
+      - keystore
+    env_file:
+      - ./chainlink.env
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@integration_postgres_1:5432/chainlink?sslmode=disable
+      - ETH_URL=ws://integration_devnet_1:8546/
+    volumes:
+      - 'cl:/chainlink'
+  postgres:
+    image: postgres
+    restart: on-failure
+    environment:
+      - POSTGRES_MULTIPLE_DATABASES=chainlink,ei
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - './docker-init-scripts/postgres:/docker-entrypoint-initdb.d'
+      - 'pg:/var/lib/postgresql/data'
+    ports:
+      - "5432:5432"
+  devnet:
+    image: smartcontract/devnet
+    restart: on-failure
+    ports:
+      - "8545:8545"
+      - "8546:8546"
+    volumes:
+      - 'devnet:/devnet'
+  external-initiator:
+    build:
+      context: ../.
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    env_file:
+      - ./external_initiator.env
+    environment:
+      - EI_DATABASEURL=postgresql://postgres:password@integration_postgres_1:5432/ei?sslmode=disable
+      - EI_CHAINLINKURL=http://integration_chainlink_1:6688/
+    command: '{\"name\":\"eth-devnet\",\"type\":\"ethereum\",\"url\":\"ws://integration_devnet_1:8546/\"}'
+volumes:
+  pg:
+  cl:
+  devnet:
+secrets:
+  node_password:
+    file: ./secrets/password.txt
+  apicredentials:
+    file: ./secrets/apicredentials
+  keystore:
+    file: ./secrets/0x9CA9d2D5E04012C9Ed24C0e513C9bfAa4A2dD77f.json
