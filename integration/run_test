@@ -1,0 +1,29 @@
+#!/bin/bash
+
+source ./integration/common
+
+run_test() {
+  mkdir -p "$LOG_PATH"
+
+  title "Initiating a fresh test"
+
+  # Remove old volumes so we can run a fresh test
+  reset_volumes
+
+  start_docker
+
+  deploy_contracts
+
+  add_ei
+
+  # Run EI after access credentials has been generated
+  run_ei
+
+  ./integration/test_eth_event
+
+  stop_docker
+
+  title "Done running tests"
+}
+
+run_test
