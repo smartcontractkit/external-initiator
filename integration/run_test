@@ -19,7 +19,7 @@ run_test() {
   # Run EI after access credentials has been generated
   run_ei
 
-  source ./integration/test_eth_event
+  ./integration/test_eth_event
 
   stop_docker
 
