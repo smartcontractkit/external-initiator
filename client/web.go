@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/external-initiator/blockchain"
 	"github.com/smartcontractkit/external-initiator/store"
@@ -18,7 +17,6 @@ const (
 )
 
 type subscriptionStorer interface {
-	LoadSubscription(jobid string) (*store.Subscription, error)
 	SaveSubscription(sub *store.Subscription) error
 	DeleteJob(jobid string) error
 	GetEndpoint(name string) (*store.Endpoint, error)
@@ -191,13 +189,6 @@ func (srv *HttpService) CreateSubscription(c *gin.Context) {
 		sub.Substrate = store.SubstrateSubscription{
 			AccountIds: req.Params.AccountIDs,
 		}
-	}
-
-	existingSub, err := srv.Store.LoadSubscription(sub.Job)
-	if existingSub != nil && !gorm.IsRecordNotFoundError(err) {
-		log.Printf("tried adding an existing jobid: %s\n", sub.Job)
-		c.JSON(http.StatusConflict, nil)
-		return
 	}
 
 	if err := srv.Store.SaveSubscription(sub); err != nil {

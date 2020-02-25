@@ -232,11 +232,6 @@ func (srv *Service) subscribe(sub *store.Subscription, iSubscriber subscriber.IS
 	return nil
 }
 
-// LoadSubscription loads the subscription with the given jobid.
-func (srv *Service) LoadSubscription(jobid string) (*store.Subscription, error) {
-	return srv.store.LoadSubscription(jobid)
-}
-
 // SaveSubscription tests, stores and subscribes to the store.Subscription
 // provided.
 func (srv *Service) SaveSubscription(arg *store.Subscription) error {
