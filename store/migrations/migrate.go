@@ -6,7 +6,7 @@ import (
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration0"
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1576509489"
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1576783801"
-	"github.com/smartcontractkit/external-initiator/store/migrations/migration1582671288"
+	"github.com/smartcontractkit/external-initiator/store/migrations/migration1582671289"
 	"gopkg.in/gormigrate.v1"
 )
 
