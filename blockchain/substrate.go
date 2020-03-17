@@ -114,19 +114,42 @@ func (a SubstrateRequestParams) Encode(_ scale.Encoder) error {
 // EventChainlinkOracleRequest is the event structure we expect
 // to be emitted from the Chainlink pallet
 type EventChainlinkOracleRequest struct {
+	Phase              types.Phase
+	OracleAccountID    types.AccountID
+	SpecIndex          types.U32
+	RequestIdentifier  types.U64
+	RequesterAccountID types.AccountID
+	DataVersion        types.U64
+	Bytes              SubstrateRequestParams
+	Callback           types.Text
+	Payment            types.U32
+	Topics             []types.Hash
+}
+
+type EventChainlinkOperatorRegistered struct {
+	Phase     types.Phase
+	AccountID types.AccountID
+	Topics    []types.Hash
+}
+
+type EventChainlinkOperatorUnregistered struct {
+	Phase     types.Phase
+	AccountID types.AccountID
+	Topics    []types.Hash
+}
+
+type EventChainlinkKillRequest struct {
 	Phase             types.Phase
-	SpecIndex         types.U32
 	RequestIdentifier types.U64
-	AccountID         types.AccountID
-	DataVersion       types.U64
-	Bytes             SubstrateRequestParams
-	Callback          types.Text
 	Topics            []types.Hash
 }
 
 type EventRecords struct {
 	types.EventRecords
-	Chainlink_OracleRequest []EventChainlinkOracleRequest //nolint:stylecheck,golint
+	Chainlink_OracleRequest        []EventChainlinkOracleRequest        //nolint:stylecheck,golint
+	Chainlink_OperatorRegistered   []EventChainlinkOperatorRegistered   //nolint:stylecheck,golint
+	Chainlink_OperatorUnregistered []EventChainlinkOperatorUnregistered //nolint:stylecheck,golint
+	Chainlink_KillRequest          []EventChainlinkKillRequest          //nolint:stylecheck,golint
 }
 
 type substrateSubscribeResponse struct {
@@ -172,7 +195,7 @@ func (sm *SubstrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool
 		for _, request := range events.Chainlink_OracleRequest {
 			found := false
 			for _, address := range sm.filter.Address {
-				if request.AccountID == address.AsAccountID {
+				if request.OracleAccountID == address.AsAccountID {
 					found = true
 					break
 				}
@@ -183,6 +206,8 @@ func (sm *SubstrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool
 
 			requestParams := convertStringArrayToKV(request.Bytes)
 			requestParams["function"] = string(request.Callback)
+			requestParams["request_id"] = fmt.Sprint(request.RequestIdentifier)
+			requestParams["payment"] = fmt.Sprint(request.Payment)
 			event, err := json.Marshal(requestParams)
 			if err != nil {
 				fmt.Println(err)
