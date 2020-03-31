@@ -8,7 +8,6 @@ import (
 	"github.com/smartcontractkit/external-initiator/integration/mock-client/blockchain"
 	"log"
 	"net/http"
-	"time"
 )
 
 // RunWebserver starts a new web server using the access key
@@ -122,11 +121,6 @@ func (srv *HttpService) HandleWs(c *gin.Context) {
 				log.Println("write:", err)
 				break
 			}
-
-			// Do a quick pause for the CL
-			// node to catch up. This avoids a 404
-			// when sending the job run trigger
-			time.Sleep(1 * time.Second)
 		}
 	}
 }
