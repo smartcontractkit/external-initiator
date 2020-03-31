@@ -29,8 +29,6 @@ services:
     volumes:
       - './docker-init-scripts/postgres:/docker-entrypoint-initdb.d'
       - 'pg:/var/lib/postgresql/data'
-    ports:
-      - "5432:5432"
   mock:
     build:
       context: ./mock-client
