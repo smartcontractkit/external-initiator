@@ -42,30 +42,38 @@ func (rpc RpcSubscription) Unsubscribe() {
 	close(rpc.done)
 }
 
+func (rpc RpcSubscription) poll() {
+	fmt.Printf("Polling %s\n", rpc.endpoint)
+
+	resp, err := sendPostRequest(rpc.endpoint, rpc.manager.GetTriggerJson())
+	if err != nil {
+		fmt.Printf("Failed polling %s: %v\n", rpc.endpoint, err)
+		return
+	}
+
+	events, ok := rpc.manager.ParseResponse(resp)
+	if !ok {
+		return
+	}
+
+	for _, event := range events {
+		rpc.events <- event
+	}
+}
+
 func (rpc RpcSubscription) readMessages(interval time.Duration) {
 	timer := time.NewTicker(interval)
 	defer timer.Stop()
+
+	// Poll before waiting for ticker
+	rpc.poll()
 
 	for {
 		select {
 		case <-rpc.done:
 			return
 		case <-timer.C:
-			fmt.Printf("Polling %s\n", rpc.endpoint)
-			resp, err := sendPostRequest(rpc.endpoint, rpc.manager.GetTriggerJson())
-			if err != nil {
-				fmt.Printf("Failed polling %s: %v\n", rpc.endpoint, err)
-				continue
-			}
-
-			events, ok := rpc.manager.ParseResponse(resp)
-			if !ok {
-				continue
-			}
-
-			for _, event := range events {
-				rpc.events <- event
-			}
+			rpc.poll()
 		}
 	}
 }

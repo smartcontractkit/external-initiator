@@ -31,8 +31,8 @@ async function addExternalInitiator({
     const externalInitiatorsUrl = url.resolve(chainlinkUrl, '/v2/external_initiators');
     const externalInitiator = await request.post(externalInitiatorsUrl, {
         json: {
-            name: 'test-ei',
-            url: url.resolve(initiatorUrl, '/jobs')
+            name: "mock-client",
+            url: url.resolve(initiatorUrl, "/jobs")
         }
     }).catch((e: any) => {
         console.error(e);

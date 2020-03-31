@@ -56,3 +56,32 @@ The configs are stored the same was as with HTTP, and the configs will persist i
 ```bash
 $ ./external-initiator "{\"name\":\"eth-mainnet\",\"type\":\"ethereum\",\"url\":\"ws://localhost:8546/\"}" --chainlink "http://localhost:6688/"
 ```
+
+## Integration testing
+
+The External Initiator has an integrated mock blockchain client that can be used to test blockchain implementations.
+
+### Setup
+
+Build Docker images and install dependencies by running the setup script:
+
+```bash
+./integration/setup
+```
+
+### Usage
+
+Simply run the automated integration tests script:
+
+```bash
+./integration/run_test
+```
+
+### Stopping
+
+All containers should automatically be stopped. If the integration tests script exits early, containers may not have
+been stopped. You can manually stop them by running the stop script:
+
+```bash
+./integration/stop_docker
+```

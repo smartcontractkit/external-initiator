@@ -1,12 +1,5 @@
-import {ethers} from 'ethers'
 import chalk from 'chalk'
 import 'source-map-support/register'
-
-/**
- * Devnet miner address
- * FIXME: duplicated
- */
-export const DEVNET_ADDRESS = '0x9CA9d2D5E04012C9Ed24C0e513C9bfAa4A2dD77f';
 
 /**
  * Default credentials for testing node
@@ -16,13 +9,6 @@ export const credentials = {
     email: 'notreal@fakeemail.ch',
     password: 'twochains'
 };
-
-export function createProvider(): ethers.providers.JsonRpcProvider {
-    const port = process.env.ETH_HTTP_PORT || `8545`;
-    const providerURL = process.env.ETH_HTTP_URL || `http://localhost:${port}`;
-
-    return new ethers.providers.JsonRpcProvider(providerURL)
-}
 
 /**
  * Registers a global promise handler that will exit the currently
@@ -34,28 +20,6 @@ export function registerPromiseHandler() {
         console.error(chalk.red('Exiting due to promise rejection'));
         process.exit(1)
     })
-}
-
-interface DeployFactory {
-    new(signer?: ethers.Signer): ethers.ContractFactory
-}
-
-interface DeployContractArgs<T extends DeployFactory> {
-    Factory: T
-    name: string
-    signer: ethers.Signer
-}
-
-export async function deployContract<T extends DeployFactory>(
-    {Factory, name, signer}: DeployContractArgs<T>,
-    ...deployArgs: Parameters<InstanceType<T>['deploy']>
-): Promise<ReturnType<InstanceType<T>['deploy']>> {
-    const contractFactory = new Factory(signer);
-    const contract = await contractFactory.deploy(...deployArgs);
-    await contract.deployed();
-    console.log(`Deployed ${name} at: ${contract.address}`);
-
-    return contract as any
 }
 
 /**

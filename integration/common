@@ -63,7 +63,7 @@ run_ei() {
 
 add_ei() {
   title "Adding External Initiator to Chainlink node..."
-  pushd integration-scripts >/dev/null || exit
+  pushd integration/scripts >/dev/null || exit
 
   local log=$LOG_PATH/add_ei.log
   yarn add-ei | tee "$log"
@@ -79,26 +79,11 @@ add_ei() {
   title "Done adding EI."
 }
 
-deploy_contracts() {
-  title "Migrating core contracts..."
-  pushd integration-scripts >/dev/null || exit
-
-  # run migrations
-  local log=$LOG_PATH/deploy.log
-  yarn deploy-contracts | tee "$log"
-  EVENT_ADDRESS=$(grep <"$log" 'Deployed Event at:' | awk '{print$4}')
-  export EVENT_ADDRESS
-
-  echo "Event contract address: $EVENT_ADDRESS"
-  popd >/dev/null || exit
-  title "Migration complete."
-}
-
 start_docker() {
   title "Starting Docker containers"
 
   pushd integration >/dev/null || exit
-  docker-compose up -d chainlink postgres devnet
+  docker-compose up -d chainlink postgres mock
   popd >/dev/null || exit
 
   export CHAINLINK_URL="http://localhost:6688/"
@@ -134,7 +119,6 @@ reset_volumes() {
 
   docker volume rm integration_cl
   docker volume rm integration_pg
-  docker volume rm integration_devnet
 
   title "Done removing Docker volumes"
 }
