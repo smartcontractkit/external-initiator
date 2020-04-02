@@ -97,38 +97,18 @@ func authenticate(accessKey, secret string) gin.HandlerFunc {
 // CreateSubscriptionReq holds the payload expected for job POSTs
 // from the Chainlink node.
 type CreateSubscriptionReq struct {
-	JobID  string `json:"jobId"`
-	Type   string `json:"type"`
-	Params struct {
-		Endpoint   string   `json:"endpoint"`
-		Addresses  []string `json:"addresses"`
-		Topics     []string `json:"eventTopics"`
-		AccountIDs []string `json:"accountIds"`
-	} `json:"params"`
+	JobID  string            `json:"jobId"`
+	Type   string            `json:"type"`
+	Params blockchain.Params `json:"params"`
 }
 
 func validateRequest(t *CreateSubscriptionReq, endpointType string) error {
-	validations := []int{
+	validations := append([]int{
 		len(t.JobID),
-	}
-
-	switch endpointType {
-	case blockchain.ETH:
-		validations = append(validations,
-			len(t.Params.Addresses)+len(t.Params.Topics),
-		)
-	case blockchain.XTZ:
-		validations = append(validations,
-			len(t.Params.Addresses),
-		)
-	case blockchain.Substrate:
-		validations = append(validations,
-			len(t.Params.AccountIDs),
-		)
-	}
+	}, blockchain.GetValidations(endpointType, t.Params)...)
 
 	for _, v := range validations {
-		if v == 0 {
+		if v < 1 {
 			return errors.New("missing required field(s)")
 		}
 	}
@@ -173,23 +153,10 @@ func (srv *HttpService) CreateSubscription(c *gin.Context) {
 		ReferenceId:  uuid.New().String(),
 		Job:          req.JobID,
 		EndpointName: req.Params.Endpoint,
+		Endpoint:     *endpoint,
 	}
 
-	switch endpoint.Type {
-	case blockchain.ETH:
-		sub.Ethereum = store.EthSubscription{
-			Addresses: req.Params.Addresses,
-			Topics:    req.Params.Topics,
-		}
-	case blockchain.XTZ:
-		sub.Tezos = store.TezosSubscription{
-			Addresses: req.Params.Addresses,
-		}
-	case blockchain.Substrate:
-		sub.Substrate = store.SubstrateSubscription{
-			AccountIds: req.Params.AccountIDs,
-		}
-	}
+	blockchain.CreateSubscription(sub, req.Params)
 
 	if err := srv.Store.SaveSubscription(sub); err != nil {
 		log.Println(err)

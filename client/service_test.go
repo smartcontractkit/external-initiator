@@ -6,6 +6,7 @@ import (
 	"github.com/smartcontractkit/external-initiator/chainlink"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
+	"github.com/stretchr/testify/require"
 	"reflect"
 	"testing"
 	"time"
@@ -56,122 +57,24 @@ type mockSubscription struct {
 
 func (s mockSubscription) Unsubscribe() {}
 
-func Test_getConnectionType(t *testing.T) {
-	type args struct {
-		rawUrl string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    subscriber.Type
-		wantErr bool
-	}{
-		{
-			"fails on invalid type",
-			args{rawUrl: "invalid://localhost/"},
-			0,
-			true,
-		},
-		{
-			"fails on invalid URL",
-			args{"http://a b.com/"},
-			0,
-			true,
-		},
-		{
-			"returns WS on ws://",
-			args{"ws://localhost/"},
-			subscriber.WS,
-			false,
-		},
-		{
-			"returns WS on secure wss://",
-			args{"wss://localhost/"},
-			subscriber.WS,
-			false,
-		},
-		{
-			"returns RPC on http://",
-			args{"http://localhost/"},
-			subscriber.RPC,
-			false,
-		},
-		{
-			"returns RPC on secure https://",
-			args{"https://localhost/"},
-			subscriber.RPC,
-			false,
-		},
-		{
-			"returns error on unknown protocol",
-			args{"postgres://localhost/"},
-			0,
-			true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := getConnectionType(store.Endpoint{Url: tt.args.rawUrl})
-			if (err != nil) != tt.wantErr {
-				t.Errorf("getConnectionType() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("getConnectionType() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_getManager(t *testing.T) {
-	type args struct {
-		sub store.Subscription
-		p   subscriber.Type
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    subscriber.JsonManager
-		wantErr bool
-	}{
-		{
-			"creates ETH manager",
-			args{
-				sub: store.Subscription{
-					Endpoint: store.Endpoint{
-						Type: blockchain.ETH,
-					},
-				},
-				p: subscriber.RPC,
-			},
-			blockchain.CreateEthManager(subscriber.RPC, store.EthSubscription{}),
-			false,
-		},
-		{
-			"fails on invalid subscription",
-			args{
-				sub: store.Subscription{},
-				p:   0,
-			},
-			nil,
-			true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := getJsonManager(tt.args.sub, tt.args.p)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("getJsonManager() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("getJsonManager() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func Test_getSubscriber(t *testing.T) {
+	ethWsManager, err := blockchain.CreateJsonManager(subscriber.WS, store.Subscription{
+		Endpoint: store.Endpoint{
+			Url:  "ws://localhost",
+			Type: blockchain.ETH,
+		},
+	})
+	require.NoError(t, err)
+
+	ethRpcManager, err := blockchain.CreateJsonManager(subscriber.RPC, store.Subscription{
+		Endpoint: store.Endpoint{
+			Url:  "http://localhost",
+			Type: blockchain.ETH,
+		},
+		Ethereum: store.EthSubscription{},
+	})
+	require.NoError(t, err)
+
 	type args struct {
 		sub store.Subscription
 	}
@@ -211,7 +114,7 @@ func Test_getSubscriber(t *testing.T) {
 			}},
 			subscriber.WebsocketSubscriber{
 				Endpoint: "ws://localhost",
-				Manager:  blockchain.CreateEthManager(subscriber.WS, store.EthSubscription{}),
+				Manager:  ethWsManager,
 			},
 			false,
 		},
@@ -227,7 +130,7 @@ func Test_getSubscriber(t *testing.T) {
 			subscriber.RpcSubscriber{
 				Endpoint: "http://localhost",
 				Interval: time.Duration(42) * time.Second,
-				Manager:  blockchain.CreateEthManager(subscriber.RPC, store.EthSubscription{}),
+				Manager:  ethRpcManager,
 			},
 			false,
 		},
