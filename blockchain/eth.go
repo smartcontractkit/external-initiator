@@ -7,6 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
+	"log"
 	"math/big"
 )
 
@@ -170,6 +171,7 @@ type ethLogResponse struct {
 func (e EthManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	var msg jsonrpcMessage
 	if err := json.Unmarshal(data, &msg); err != nil {
+		log.Println("failed parsing msg:", msg)
 		return nil, false
 	}
 
@@ -179,16 +181,19 @@ func (e EthManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	case subscriber.WS:
 		var res ethSubscribeResponse
 		if err := json.Unmarshal(msg.Params, &res); err != nil {
+			log.Println("unmarshal:", err)
 			return nil, false
 		}
 
 		var evt ethLogResponse
 		if err := json.Unmarshal(res.Result, &evt); err != nil {
+			log.Println("unmarshal:", err)
 			return nil, false
 		}
 
 		event, err := json.Marshal(evt)
 		if err != nil {
+			log.Println("marshal:", err)
 			return nil, false
 		}
 

@@ -12,14 +12,13 @@ run_test() {
 
   start_docker
 
-  deploy_contracts
-
   add_ei
 
   # Run EI after access credentials has been generated
   run_ei
 
-  ./integration/test_eth_event
+  ./integration/test_ei_event "eth-mock-http"
+  ./integration/test_ei_event "eth-mock-ws"
 
   stop_docker
 

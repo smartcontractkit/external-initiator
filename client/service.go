@@ -218,6 +218,10 @@ func (srv *Service) subscribe(sub *store.Subscription, iSubscriber subscriber.IS
 	srv.subscriptions[sub.Job] = as
 
 	go func() {
+		// Add a second of delay to let services (Chainlink core)
+		// sync up before sending the first job run trigger.
+		time.Sleep(1 * time.Second)
+
 		for {
 			event, ok := <-as.Events
 			if !ok {

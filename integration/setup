@@ -12,7 +12,7 @@ run_setup() {
   touch external_initiator.env
   popd >/dev/null || exit
 
-  pushd integration-scripts >/dev/null || exit
+  pushd integration/scripts >/dev/null || exit
   local log=$LOG_PATH/integration_setup.log
   yarn install
   yarn setup | tee "$log"
