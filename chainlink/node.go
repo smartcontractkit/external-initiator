@@ -5,6 +5,7 @@ package chainlink
 import (
 	"bytes"
 	"fmt"
+	"github.com/smartcontractkit/chainlink/core/logger"
 	"net/http"
 	"net/url"
 )
@@ -25,7 +26,7 @@ type Node struct {
 // TriggerJob wil send a job run trigger for the
 // provided jobId.
 func (cl Node) TriggerJob(jobId string, data []byte) error {
-	fmt.Printf("Sending a job run trigger to %s for job %s\n", cl.Endpoint.String(), jobId)
+	logger.Infof("Sending a job run trigger to %s for job %s\n", cl.Endpoint.String(), jobId)
 
 	u := cl.Endpoint
 	u.Path = fmt.Sprintf("/v2/specs/%s/runs", jobId)

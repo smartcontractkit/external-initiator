@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/centrifuge/go-substrate-rpc-client/scale"
 	"github.com/centrifuge/go-substrate-rpc-client/types"
+	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 )
@@ -34,7 +35,7 @@ func createSubstrateManager(t subscriber.Type, conf store.Subscription) (*Substr
 	for _, id := range conf.Substrate.AccountIds {
 		address, err := types.NewAddressFromHexAccountID(id)
 		if err != nil {
-			fmt.Println(err)
+			logger.Error(err)
 			continue
 		}
 		addresses = append(addresses, address)
@@ -56,7 +57,7 @@ func (sm *SubstrateManager) GetTriggerJson() []byte {
 	if len(sm.key) == 0 {
 		key, err := types.CreateStorageKey(sm.meta, "System", "Events", nil, nil)
 		if err != nil {
-			fmt.Println(err)
+			logger.Error(err)
 			return nil
 		}
 		sm.key = key
@@ -71,7 +72,7 @@ func (sm *SubstrateManager) GetTriggerJson() []byte {
 	keys := [][]string{{sm.key.Hex()}}
 	params, err := json.Marshal(keys)
 	if err != nil {
-		fmt.Println(err)
+		logger.Error(err)
 		return nil
 	}
 	msg.Params = params
@@ -168,21 +169,21 @@ func (sm *SubstrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool
 	var msg jsonrpcMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
-		fmt.Println("Failed parsing JSON-RPC message:", err)
+		logger.Error("Failed parsing JSON-RPC message:", err)
 		return nil, false
 	}
 
 	var subRes substrateSubscribeResponse
 	err = json.Unmarshal(msg.Params, &subRes)
 	if err != nil {
-		fmt.Println("Failed parsing substrateSubscribeResponse:", err)
+		logger.Error("Failed parsing substrateSubscribeResponse:", err)
 		return nil, false
 	}
 
 	var changes types.StorageChangeSet
 	err = json.Unmarshal(subRes.Result, &changes)
 	if err != nil {
-		fmt.Println("Failed parsing StorageChangeSet:", err)
+		logger.Error("Failed parsing StorageChangeSet:", err)
 		return nil, false
 	}
 
@@ -195,7 +196,7 @@ func (sm *SubstrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool
 		events := EventRecords{}
 		err = types.EventRecordsRaw(change.StorageData).DecodeEventRecords(sm.meta, &events)
 		if err != nil {
-			fmt.Println("Failed parsing EventRecords:", err)
+			logger.Error("Failed parsing EventRecords:", err)
 			continue
 		}
 
@@ -224,7 +225,7 @@ func (sm *SubstrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool
 			requestParams["payment"] = fmt.Sprint(request.Payment)
 			event, err := json.Marshal(requestParams)
 			if err != nil {
-				fmt.Println(err)
+				logger.Error(err)
 				continue
 			}
 			subEvents = append(subEvents, event)

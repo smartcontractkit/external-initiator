@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/tidwall/gjson"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -42,7 +42,7 @@ type TezosSubscription struct {
 }
 
 func (tz TezosSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ ...interface{}) (subscriber.ISubscription, error) {
-	log.Printf("Using Tezos RPC endpoint: %s\nListening for events on addresses: %v\n", tz.Endpoint, tz.Addresses)
+	logger.Infof("Using Tezos RPC endpoint: %s\nListening for events on addresses: %v\n", tz.Endpoint, tz.Addresses)
 
 	tzs := TezosSubscription{
 		endpoint:  tz.Endpoint,
@@ -78,11 +78,11 @@ func (tzs TezosSubscription) readMessagesWithRetry() {
 func (tzs TezosSubscription) readMessages() {
 	resp, err := monitor(tzs.endpoint)
 	if err != nil {
-		log.Println(err)
+		logger.Error(err)
 		return
 	}
 	defer resp.Body.Close()
-	log.Printf("Connected to RPC endpoint at %s, waiting for heads...\n", tzs.endpoint)
+	logger.Infof("Connected to RPC endpoint at %s, waiting for heads...\n", tzs.endpoint)
 
 	reader := bufio.NewReader(resp.Body)
 
@@ -98,24 +98,24 @@ func (tzs TezosSubscription) readMessages() {
 
 			blockID, err := extractBlockIDFromHeaderJSON(line)
 			if err != nil {
-				log.Println(err)
+				logger.Error(err)
 				return
 			}
 
-			log.Printf("Got new Tezos head: %s\n", blockID)
+			logger.Infof("Got new Tezos head: %s\n", blockID)
 			blockJSON, err := tzs.getBlock(blockID)
 			if err != nil {
-				log.Println(err)
+				logger.Error(err)
 				return
 			}
 
 			events, err := extractEventsFromBlock(blockJSON, tzs.addresses)
 			if err != nil {
-				log.Println(err)
+				logger.Error(err)
 				return
 			}
 
-			log.Printf("%v events matching addresses %v\n", len(events), tzs.addresses)
+			logger.Infof("%v events matching addresses %v\n", len(events), tzs.addresses)
 
 			for _, event := range events {
 				tzs.events <- event
@@ -148,11 +148,11 @@ func (tzs TezosSubscription) readLines(lines chan []byte, reader *bufio.Reader) 
 			return
 		}
 		if err == io.EOF {
-			log.Printf("Lost connection to Tezos RPC node, retrying in %v...\n", monitorRetryInterval)
+			logger.Warnf("Lost connection to Tezos RPC node, retrying in %v...\n", monitorRetryInterval)
 			return
 		}
 		if err != nil {
-			log.Println(err)
+			logger.Error(err)
 			return
 		}
 		lines <- line
@@ -175,7 +175,7 @@ func (tzs TezosSubscription) getBlock(blockID string) ([]byte, error) {
 }
 
 func (tzs TezosSubscription) Unsubscribe() {
-	log.Println("Unsubscribing from Tezos endpoint", tzs.endpoint)
+	logger.Info("Unsubscribing from Tezos endpoint", tzs.endpoint)
 	tzs.isDone = true
 	if tzs.monitorResp != nil {
 		tzs.monitorResp.Body.Close()

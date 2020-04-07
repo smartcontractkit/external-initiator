@@ -2,7 +2,7 @@ package blockchain
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/smartcontractkit/external-initiator/store"
@@ -265,7 +265,7 @@ func (q filterQuery) toMapInterface() (interface{}, error) {
 	if q.BlockHash != nil {
 		arg["blockHash"] = *q.BlockHash
 		if q.FromBlock != "" || q.ToBlock != "" {
-			return nil, fmt.Errorf("cannot specify both BlockHash and FromBlock/ToBlock")
+			return nil, errors.New("cannot specify both BlockHash and FromBlock/ToBlock")
 		}
 	} else {
 		if q.FromBlock == "" {
