@@ -23,7 +23,7 @@ func TestCreateTezosSubscriber(t *testing.T) {
 					Addresses: []string{"foobar", "baz"},
 				},
 			}
-			tezosSubscriber := CreateTezosSubscriber(sub)
+			tezosSubscriber := createTezosSubscriber(sub)
 			assert.Equal(t, "http://example.com/api", tezosSubscriber.Endpoint)
 			assert.Equal(t, []string{"foobar", "baz"}, tezosSubscriber.Addresses)
 		})
@@ -34,7 +34,7 @@ func TestCreateTezosSubscriber(t *testing.T) {
 					Url: "https://example.com/api/",
 				},
 			}
-			tezosSubscriber := CreateTezosSubscriber(sub)
+			tezosSubscriber := createTezosSubscriber(sub)
 			assert.Equal(t, "https://example.com/api", tezosSubscriber.Endpoint)
 		})
 }

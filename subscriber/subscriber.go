@@ -15,6 +15,11 @@ const (
 	// Client are connections encapsulated in its
 	// entirety by the blockchain implementation.
 	Client
+	// Unknown is just a placeholder for when
+	// it cannot be determined how connections
+	// should be made. When this is returned,
+	// it should be considered an error.
+	Unknown
 )
 
 // SubConfig holds the configuration required to connect

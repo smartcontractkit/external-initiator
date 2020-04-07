@@ -94,10 +94,8 @@ type Service struct {
 }
 
 func validateEndpoint(endpoint store.Endpoint) error {
-	switch endpoint.Type {
-	case blockchain.ETH, blockchain.XTZ, blockchain.Substrate:
-		// Do nothing, valid blockchain
-	default:
+	validBlockchain := blockchain.ValidBlockchain(endpoint.Type)
+	if !validBlockchain {
 		return errors.New("Missing or invalid endpoint blockchain")
 	}
 
@@ -292,60 +290,17 @@ func (srv *Service) SaveEndpoint(e *store.Endpoint) error {
 	return srv.store.SaveEndpoint(e)
 }
 
-func getConnectionType(endpoint store.Endpoint) (subscriber.Type, error) {
-	switch endpoint.Type {
-	// Add blockchain implementations that encapsulate entire connection here
-	case blockchain.XTZ:
-		return subscriber.Client, nil
-	default:
-		u, err := url.Parse(endpoint.Url)
-		if err != nil {
-			return 0, err
-		}
-
-		if strings.HasPrefix(u.Scheme, "ws") {
-			return subscriber.WS, nil
-		} else if strings.HasPrefix(u.Scheme, "http") {
-			return subscriber.RPC, nil
-		}
-
-		return 0, errors.New("unknown connection scheme")
-	}
-
-}
-
-func getJsonManager(sub store.Subscription, p subscriber.Type) (subscriber.JsonManager, error) {
-	switch sub.Endpoint.Type {
-	case blockchain.ETH:
-		return blockchain.CreateEthManager(p, sub.Ethereum), nil
-	case blockchain.Substrate:
-		return blockchain.CreateSubstrateManager(sub.Substrate), nil
-	}
-
-	return nil, errors.New("unknown blockchain type")
-}
-
-func getClientSubscriber(sub store.Subscription) (subscriber.ISubscriber, error) {
-	switch sub.Endpoint.Type {
-	case blockchain.XTZ:
-		return blockchain.CreateTezosSubscriber(sub), nil
-	default:
-		return nil, errors.New("unknown blockchain type for Client subscription")
-	}
-
-}
-
 func getSubscriber(sub store.Subscription) (subscriber.ISubscriber, error) {
-	connType, err := getConnectionType(sub.Endpoint)
+	connType, err := blockchain.GetConnectionType(sub.Endpoint)
 	if err != nil {
 		return nil, err
 	}
 
 	if connType == subscriber.Client {
-		return getClientSubscriber(sub)
+		return blockchain.CreateClientManager(sub)
 	}
 
-	manager, err := getJsonManager(sub, connType)
+	manager, err := blockchain.CreateJsonManager(connType, sub)
 	if err != nil {
 		return nil, err
 	}

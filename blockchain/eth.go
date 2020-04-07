@@ -20,17 +20,17 @@ type EthManager struct {
 	p  subscriber.Type
 }
 
-// CreateEthManager creates a new instance of EthManager with the provided
+// createEthManager creates a new instance of EthManager with the provided
 // connection type and store.EthSubscription config.
-func CreateEthManager(p subscriber.Type, config store.EthSubscription) EthManager {
+func createEthManager(p subscriber.Type, config store.Subscription) EthManager {
 	var addresses []common.Address
-	for _, a := range config.Addresses {
+	for _, a := range config.Ethereum.Addresses {
 		addresses = append(addresses, common.HexToAddress(a))
 	}
 
 	var topics [][]common.Hash
 	var t []common.Hash
-	for _, value := range config.Topics {
+	for _, value := range config.Ethereum.Topics {
 		if len(value) < 1 {
 			continue
 		}

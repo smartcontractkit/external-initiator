@@ -21,7 +21,7 @@ const (
 	monitorRetryInterval = 5 * time.Second
 )
 
-func CreateTezosSubscriber(sub store.Subscription) TezosSubscriber {
+func createTezosSubscriber(sub store.Subscription) TezosSubscriber {
 	return TezosSubscriber{
 		Endpoint:  strings.TrimSuffix(sub.Endpoint.Url, "/"),
 		Addresses: sub.Tezos.Addresses,

@@ -23,9 +23,9 @@ type SubstrateManager struct {
 	key    types.StorageKey
 }
 
-func CreateSubstrateManager(conf store.SubstrateSubscription) *SubstrateManager {
+func createSubstrateManager(conf store.Subscription) *SubstrateManager {
 	var addresses []types.Address
-	for _, id := range conf.AccountIds {
+	for _, id := range conf.Substrate.AccountIds {
 		address, err := types.NewAddressFromHexAccountID(id)
 		if err != nil {
 			fmt.Println(err)
