@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/centrifuge/go-substrate-rpc-client/scale"
 	"github.com/centrifuge/go-substrate-rpc-client/types"
@@ -23,7 +24,11 @@ type SubstrateManager struct {
 	key    types.StorageKey
 }
 
-func createSubstrateManager(conf store.Subscription) *SubstrateManager {
+func createSubstrateManager(t subscriber.Type, conf store.Subscription) (*SubstrateManager, error) {
+	if t != subscriber.WS {
+		return nil, errors.New("only WS connections are allowed for Substrate")
+	}
+
 	var addresses []types.Address
 	for _, id := range conf.Substrate.AccountIds {
 		address, err := types.NewAddressFromHexAccountID(id)
@@ -38,7 +43,7 @@ func createSubstrateManager(conf store.Subscription) *SubstrateManager {
 		filter: substrateFilter{
 			Address: addresses,
 		},
-	}
+	}, nil
 }
 
 func (sm *SubstrateManager) GetTriggerJson() []byte {

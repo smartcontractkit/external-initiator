@@ -30,7 +30,7 @@ func CreateJsonManager(t subscriber.Type, sub store.Subscription) (subscriber.Js
 	case ETH:
 		return createEthManager(t, sub), nil
 	case Substrate:
-		return createSubstrateManager(sub), nil
+		return createSubstrateManager(t, sub)
 	}
 
 	return nil, errors.New("unknown blockchain type for JSON manager")
