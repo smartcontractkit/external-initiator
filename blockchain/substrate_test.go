@@ -3,6 +3,8 @@ package blockchain
 import (
 	"github.com/centrifuge/go-substrate-rpc-client/types"
 	"github.com/smartcontractkit/external-initiator/store"
+	"github.com/smartcontractkit/external-initiator/subscriber"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"reflect"
 	"testing"
@@ -20,31 +22,61 @@ func TestCreateSubstrateManager(t *testing.T) {
 	addr2, err := types.NewAddressFromHexAccountID(substrateTestAddr2)
 	require.NoError(t, err)
 
+	type args struct {
+		t   subscriber.Type
+		sub store.SubstrateSubscription
+	}
+
 	tests := []struct {
-		name string
-		args store.SubstrateSubscription
-		want []types.Address
+		name    string
+		args    args
+		want    []types.Address
+		wantErr bool
 	}{
 		{
 			"adds valid addresses",
-			store.SubstrateSubscription{
-				AccountIds: []string{substrateTestAddr1, substrateTestAddr2},
+			args{
+				subscriber.WS,
+				store.SubstrateSubscription{
+					AccountIds: []string{substrateTestAddr1, substrateTestAddr2},
+				},
 			},
 			[]types.Address{addr1, addr2},
+			false,
 		},
 		{
 			"disregards invalid addresses",
-			store.SubstrateSubscription{
-				AccountIds: []string{"not a valid address", substrateTestAddr2},
+			args{
+				subscriber.WS,
+				store.SubstrateSubscription{
+					AccountIds: []string{"not a valid address", substrateTestAddr2},
+				},
 			},
 			[]types.Address{addr2},
+			false,
+		},
+		{
+			"fails on invalid connection type",
+			args{
+				subscriber.RPC,
+				store.SubstrateSubscription{
+					AccountIds: []string{substrateTestAddr1, substrateTestAddr2},
+				},
+			},
+			nil,
+			true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := createSubstrateManager(store.Subscription{Substrate: tt.args}); !reflect.DeepEqual(got.filter.Address, tt.want) {
-				t.Errorf("CreateSubstrateManager() = %v, want %v", got, tt.want)
+			got, err := createSubstrateManager(tt.args.t, store.Subscription{Substrate: tt.args.sub})
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
 			}
+
+			require.NotNil(t, got)
+			assert.Equal(t, got.filter.Address, tt.want)
 		})
 	}
 }
