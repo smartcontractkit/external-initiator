@@ -15,6 +15,7 @@ import (
 const Substrate = "substrate"
 
 type substrateFilter struct {
+	JobID   types.Text
 	Address []types.Address
 }
 
@@ -41,6 +42,7 @@ func createSubstrateManager(t subscriber.Type, conf store.Subscription) (*Substr
 
 	return &SubstrateManager{
 		filter: substrateFilter{
+			JobID:   types.NewText(conf.Job),
 			Address: addresses,
 		},
 	}, nil
@@ -121,7 +123,7 @@ func (a SubstrateRequestParams) Encode(_ scale.Encoder) error {
 type EventChainlinkOracleRequest struct {
 	Phase              types.Phase
 	OracleAccountID    types.AccountID
-	SpecIndex          types.U32
+	SpecIndex          types.Text
 	RequestIdentifier  types.U64
 	RequesterAccountID types.AccountID
 	DataVersion        types.U64
@@ -198,6 +200,13 @@ func (sm *SubstrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool
 		}
 
 		for _, request := range events.Chainlink_OracleRequest {
+			// Check if our jobid matches
+			if request.SpecIndex != sm.filter.JobID {
+				continue
+			}
+
+			// Check if request is being sent from correct
+			// oracle address
 			found := false
 			for _, address := range sm.filter.Address {
 				if request.OracleAccountID == address.AsAccountID {
