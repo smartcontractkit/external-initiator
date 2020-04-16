@@ -10,8 +10,10 @@ event_test() {
   expected_job_count=$(expr "$(docker exec integration_chainlink_1 chainlink -j jobs list | jq length)" + 1)
   local log=$LOG_PATH/send_event_transaction.log
 
+  local subscribed_address=`cat integration/secrets/subscribed_address.txt`
+
   pushd integration/scripts >/dev/null || exit
-  yarn create-job "$1" "0x2aD9B7b9386c2f45223dDFc4A4d81C2957bAE19A" | tee "$log"
+  yarn create-job "$1" "$subscribed_address" | tee "$log"
   popd >/dev/null || exit
 
   jid=$(grep <"$log" "Deployed Job" | awk '{print$4}')
