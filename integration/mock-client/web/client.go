@@ -44,15 +44,41 @@ func (srv *HttpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (srv *HttpService) createRouter() {
 	r := gin.Default()
-	r.POST("/:platform", srv.HandleHttp)
+	r.GET("/xtz/monitor/heads/:chain_id", srv.HandleXtzMonitor)
+	r.GET("/xtz/chains/main/blocks/:block_id/operations", srv.HandleXtzOperations)
+	r.POST("/:platform", srv.HandleRpc)
 	r.GET("/ws/:platform", srv.HandleWs)
 
 	srv.Router = r
 }
 
+func (srv *HttpService) HandleXtzMonitor(c *gin.Context) {
+	resp, err := blockchain.HandleXtzMonitorRequest(c.Param("chain_id"))
+
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusBadRequest, resp)
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func (srv *HttpService) HandleXtzOperations(c *gin.Context) {
+	resp, err := blockchain.HandleXtzOperationsRequest(c.Param("block_id"))
+
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusBadRequest, resp)
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
 // CreateSubscription expects a CreateSubscriptionReq payload,
 // validates the request and subscribes to the job.
-func (srv *HttpService) HandleHttp(c *gin.Context) {
+func (srv *HttpService) HandleRpc(c *gin.Context) {
 	var req blockchain.JsonrpcMessage
 	if err := c.BindJSON(&req); err != nil {
 		log.Println(err)
