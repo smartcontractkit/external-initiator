@@ -1,10 +1,7 @@
 package blockchain
 
 import (
-	"io/ioutil"
-	"log"
 	"os"
-	"strings"
 )
 
 type XtzMonitorResponse struct {
@@ -74,18 +71,7 @@ func HandleXtzMonitorRequest(chainId string) (XtzMonitorResponse, error) {
 }
 
 func HandleXtzOperationsRequest(blockId string) ([][]XtzTransaction, error) {
-	addressFile, err := os.Open("/run/secrets/subscribed_address")
-	if err != nil {
-		log.Println("Couldn't open subscription address file: ", err)
-		return nil, err
-	}
-	defer addressFile.Close()
-
-	subscriptionAddress, err := ioutil.ReadAll(addressFile)
-	if err != nil {
-		log.Println("Couldn't read subscription address from file: ", err)
-		return nil, err
-	}
+	subscriptionAddress := os.Getenv("SUBSCRIBED_ADDRESS")
 
 	transactionContents := []XtzTransactionContent{
 		{
@@ -96,7 +82,7 @@ func HandleXtzOperationsRequest(blockId string) ([][]XtzTransaction, error) {
 			GasLimit:     "6666",
 			StorageLimit: "42",
 			Amount:       "66666",
-			Destination:  strings.TrimSpace(string(subscriptionAddress)),
+			Destination:  subscriptionAddress,
 			Parameters:   nil,
 			Metadata: XtzTransactionContentMetadata{
 				BalanceUpdates:           nil,

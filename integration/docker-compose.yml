@@ -36,8 +36,8 @@ services:
     restart: on-failure
     ports:
       - "8081:8080"
-    secrets:
-      - subscribed_address
+    environment:
+      - "SUBSCRIBED_ADDRESS=${SUBSCRIBED_ADDRESS}"
   external-initiator:
     build:
       context: ../.
@@ -66,5 +66,3 @@ secrets:
     file: ./secrets/apicredentials
   keystore:
     file: ./secrets/0x9CA9d2D5E04012C9Ed24C0e513C9bfAa4A2dD77f.json
-  subscribed_address:
-    file: ./secrets/subscribed_address.txt

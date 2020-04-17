@@ -3,6 +3,9 @@
 LOG_PATH=$GOPATH/src/github.com/smartcontractkit/external-initiator/integration/tmp/logs
 mkdir -p "$LOG_PATH"
 
+SUBSCRIBED_ADDRESS="0x2aD9B7b9386c2f45223dDFc4A4d81C2957bAE19A"
+export SUBSCRIBED_ADDRESS
+
 assert() {
   sleepCount=0
   while [ "$sleepCount" -le "30" ] && output=$(eval "$2"); do
