@@ -1,10 +1,14 @@
 package blockchain
 
 import (
+	"log"
+	"net/http"
 	"os"
+
+	"github.com/gin-gonic/gin"
 )
 
-type XtzMonitorResponse struct {
+type xtzMonitorResponse struct {
 	Hash           string   `json:"hash"`
 	Level          int      `json:"level"`
 	Proto          int      `json:"proto"`
@@ -17,15 +21,15 @@ type XtzMonitorResponse struct {
 	ProtocolData   string   `json:"protocol_data"`
 }
 
-type XtzTransaction struct {
+type xtzTransaction struct {
 	Protocol string                  `json:"protocol"`
 	ChainID  string                  `json:"chain_id"`
 	Hash     string                  `json:"hash"`
 	Branch   string                  `json:"branch"`
-	Contents []XtzTransactionContent `json:"contents"`
+	Contents []xtzTransactionContent `json:"contents"`
 }
 
-type XtzTransactionContent struct {
+type xtzTransactionContent struct {
 	Kind         string                        `json:"kind"`
 	Source       string                        `json:"source"`
 	Fee          string                        `json:"fee"`
@@ -35,16 +39,16 @@ type XtzTransactionContent struct {
 	Amount       string                        `json:"amount"`
 	Destination  string                        `json:"destination"`
 	Parameters   interface{}                   `json:"parameters"`
-	Metadata     XtzTransactionContentMetadata `json:"metadata"`
+	Metadata     xtzTransactionContentMetadata `json:"metadata"`
 }
 
-type XtzTransactionContentMetadata struct {
+type xtzTransactionContentMetadata struct {
 	BalanceUpdates           []interface{}                 `json:"balance_updates"`
 	OperationResult          interface{}                   `json:"operation_result"`
-	InternalOperationResults *[]XtzInternalOperationResult `json:"internal_operation_results"`
+	InternalOperationResults *[]xtzInternalOperationResult `json:"internal_operation_results"`
 }
 
-type XtzInternalOperationResult struct {
+type xtzInternalOperationResult struct {
 	Kind        string      `json:"kind"`
 	Source      string      `json:"source"`
 	Nonce       int         `json:"nonce"`
@@ -54,11 +58,37 @@ type XtzInternalOperationResult struct {
 	Result      interface{} `json:"result"`
 }
 
-type XtzNullValue struct {
+func setXtzRoutes(router *gin.Engine) {
+	router.GET("/http/xtz/monitor/heads/:chain_id", handleXtzMonitorRequest)
+	router.GET("/http/xtz/chains/main/blocks/:block_id/operations", handleXtzOperationsRequest)
 }
 
-func HandleXtzMonitorRequest(chainId string) (XtzMonitorResponse, error) {
-	return XtzMonitorResponse{
+func handleXtzMonitorRequest(c *gin.Context) {
+	resp, err := getXtzMonitorResponse(c.Param("chain_id"))
+
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusBadRequest, resp)
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func handleXtzOperationsRequest(c *gin.Context) {
+	resp, err := getXtzOperationsResponse(c.Param("block_id"))
+
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusBadRequest, resp)
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func getXtzMonitorResponse(chainId string) (xtzMonitorResponse, error) {
+	return xtzMonitorResponse{
 		Hash:           "8BADF00D8BADF00D8BADF00D8BADF00D8BADF00D8BADF00D8BADF00D",
 		Level:          0,
 		Proto:          0,
@@ -70,10 +100,10 @@ func HandleXtzMonitorRequest(chainId string) (XtzMonitorResponse, error) {
 	}, nil
 }
 
-func HandleXtzOperationsRequest(blockId string) ([][]XtzTransaction, error) {
+func getXtzOperationsResponse(blockId string) ([][]xtzTransaction, error) {
 	subscriptionAddress := os.Getenv("SUBSCRIBED_ADDRESS")
 
-	transactionContents := []XtzTransactionContent{
+	transactionContents := []xtzTransactionContent{
 		{
 			Kind:         "transaction",
 			Source:       "BaDc0Ff3BaDc0Ff3BaDc0Ff3BaDc0Ff3BaDc0Ff3BaDc0Ff3BaDc0Ff3",
@@ -83,15 +113,10 @@ func HandleXtzOperationsRequest(blockId string) ([][]XtzTransaction, error) {
 			StorageLimit: "42",
 			Amount:       "66666",
 			Destination:  subscriptionAddress,
-			Parameters:   nil,
-			Metadata: XtzTransactionContentMetadata{
-				BalanceUpdates:           nil,
-				OperationResult:          nil,
-				InternalOperationResults: &[]XtzInternalOperationResult{},
-			},
+			Metadata:     xtzTransactionContentMetadata{},
 		},
 	}
-	transactions := [][]XtzTransaction{
+	transactions := [][]xtzTransaction{
 		{},
 		{},
 		{},
