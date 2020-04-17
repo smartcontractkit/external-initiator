@@ -1,0 +1,15 @@
+{
+  "path": "/xtz/monitor/heads/main",
+  "method": "get",
+  "code": 200,
+  "body": {
+		"hash":           "8BADF00D8BADF00D8BADF00D8BADF00D8BADF00D8BADF00D8BADF00D",
+		"level":          0,
+		"proto":          0,
+		"predecessor":    "BaDc0Ff3BaDc0Ff3BaDc0Ff3BaDc0Ff3BaDc0Ff3BaDc0Ff3BaDc0Ff3",
+		"validationPass": 0,
+		"operationsHash": "00000000000000000000000000000000000000000000000000000000",
+		"context":        "00000000000000000000000000000000000000000000000000000000",
+		"protocolData":   ""
+	}
+}

@@ -38,6 +38,8 @@ services:
       - "8081:8080"
     environment:
       - "SUBSCRIBED_ADDRESS=${SUBSCRIBED_ADDRESS}"
+        # TODO: is there a better way to do this?
+      - "MOCK_RESPONSES_DIR=/go/src/github.com/smartcontractkit/external-initiator/integration/mock-client/mock-responses"
   external-initiator:
     build:
       context: ../.

@@ -44,7 +44,12 @@ func (srv *HttpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (srv *HttpService) createRouter() {
 	r := gin.Default()
-	blockchain.SetHttpRoutes(r)
+
+	err := blockchain.SetHttpRoutesFromJSON(r.Group("/http"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	r.GET("/ws/:platform", srv.HandleWs)
 	r.POST("/rpc/:platform", srv.HandleRpc)
 
