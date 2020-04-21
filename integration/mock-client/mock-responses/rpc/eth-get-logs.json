@@ -1,0 +1,28 @@
+{
+  "path": "/eth",
+  "method": "post",
+  "rpc_request" : {
+    "method" : "eth_getLogs",
+    "params" : [
+      {
+        "address": ["0x2ad9b7b9386c2f45223ddfc4a4d81c2957bae19a"],
+        "fromBlock":"0x0",
+        "toBlock":"latest",
+        "topics":[null]
+      }
+    ]
+  },
+  "code": 200,
+  "result":[
+    {
+      "logIndex":"0x0",
+      "blockNumber":"0x1",
+      "blockHash":"0x0",
+      "transactionHash":"0x0",
+      "transactionIndex":"0x0",
+      "address":"0x2ad9b7b9386c2f45223ddfc4a4d81c2957bae19a",
+      "data":"0x0",
+      "topics":[null]
+    }
+  ]
+}

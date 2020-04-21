@@ -50,8 +50,12 @@ func (srv *HttpService) createRouter() {
 		log.Fatal(err)
 	}
 
+	err = blockchain.SetRpcRoutesFromJSON(r.Group("/rpc"))
+	if err != nil {
+
+	}
+
 	r.GET("/ws/:platform", srv.HandleWs)
-	r.POST("/rpc/:platform", srv.HandleRpc)
 
 	srv.Router = r
 }

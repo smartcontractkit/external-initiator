@@ -1,0 +1,10 @@
+{
+  "path": "/eth",
+  "method": "post",
+  "rpc_request" : {
+    "method" : "eth_blockNumber",
+    "params" : []
+  },
+  "code": 200,
+  "result": "0x0"
+}
