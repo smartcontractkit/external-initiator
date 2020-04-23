@@ -93,7 +93,7 @@ func TestSubstrateManager_GetTestJson(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sm := &SubstrateManager{}
+			sm := &substrateManager{}
 			if got := sm.GetTestJson(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetTestJson() = %s, want %s", got, tt.want)
 			}
@@ -118,7 +118,7 @@ func TestSubstrateManager_GetTriggerJson(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sm := &SubstrateManager{
+			sm := &substrateManager{
 				filter: tt.filter,
 				meta:   &metadata,
 			}

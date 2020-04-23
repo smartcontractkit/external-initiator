@@ -21,19 +21,19 @@ const (
 	monitorRetryInterval = 5 * time.Second
 )
 
-func createTezosSubscriber(sub store.Subscription) TezosSubscriber {
-	return TezosSubscriber{
+func createTezosSubscriber(sub store.Subscription) tezosSubscriber {
+	return tezosSubscriber{
 		Endpoint:  strings.TrimSuffix(sub.Endpoint.Url, "/"),
 		Addresses: sub.Tezos.Addresses,
 	}
 }
 
-type TezosSubscriber struct {
+type tezosSubscriber struct {
 	Endpoint  string
 	Addresses []string
 }
 
-type TezosSubscription struct {
+type tezosSubscription struct {
 	endpoint    string
 	events      chan<- subscriber.Event
 	addresses   []string
@@ -41,10 +41,10 @@ type TezosSubscription struct {
 	isDone      bool
 }
 
-func (tz TezosSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ ...interface{}) (subscriber.ISubscription, error) {
+func (tz tezosSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ ...interface{}) (subscriber.ISubscription, error) {
 	logger.Infof("Using Tezos RPC endpoint: %s\nListening for events on addresses: %v\n", tz.Endpoint, tz.Addresses)
 
-	tzs := TezosSubscription{
+	tzs := tezosSubscription{
 		endpoint:  tz.Endpoint,
 		events:    channel,
 		addresses: tz.Addresses,
@@ -55,7 +55,7 @@ func (tz TezosSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ .
 	return tzs, nil
 }
 
-func (tz TezosSubscriber) Test() error {
+func (tz tezosSubscriber) Test() error {
 	resp, err := monitor(tz.Endpoint)
 	if err != nil {
 		return err
@@ -64,7 +64,7 @@ func (tz TezosSubscriber) Test() error {
 	return nil
 }
 
-func (tzs TezosSubscription) readMessagesWithRetry() {
+func (tzs tezosSubscription) readMessagesWithRetry() {
 	for {
 		tzs.readMessages()
 		if !tzs.isDone {
@@ -75,7 +75,7 @@ func (tzs TezosSubscription) readMessagesWithRetry() {
 	}
 }
 
-func (tzs TezosSubscription) readMessages() {
+func (tzs tezosSubscription) readMessages() {
 	resp, err := monitor(tzs.endpoint)
 	if err != nil {
 		logger.Error(err)
@@ -140,7 +140,7 @@ func monitor(endpoint string) (*http.Response, error) {
 	return resp, nil
 }
 
-func (tzs TezosSubscription) readLines(lines chan []byte, reader *bufio.Reader) {
+func (tzs tezosSubscription) readLines(lines chan []byte, reader *bufio.Reader) {
 	defer close(lines)
 	for {
 		line, err := reader.ReadBytes('\n')
@@ -160,7 +160,7 @@ func (tzs TezosSubscription) readLines(lines chan []byte, reader *bufio.Reader) 
 	}
 }
 
-func (tzs TezosSubscription) getBlock(blockID string) ([]byte, error) {
+func (tzs tezosSubscription) getBlock(blockID string) ([]byte, error) {
 	resp, err := http.Get(fmt.Sprintf("%s/chains/main/blocks/%s/operations", tzs.endpoint, blockID))
 	if err != nil {
 		return nil, err
@@ -175,7 +175,7 @@ func (tzs TezosSubscription) getBlock(blockID string) ([]byte, error) {
 	return body, nil
 }
 
-func (tzs TezosSubscription) Unsubscribe() {
+func (tzs tezosSubscription) Unsubscribe() {
 	logger.Info("Unsubscribing from Tezos endpoint", tzs.endpoint)
 	tzs.isDone = true
 	if tzs.monitorResp != nil {
@@ -205,7 +205,7 @@ func extractEventsFromBlock(data []byte, addresses []string) ([]subscriber.Event
 	managerOps := gjson.GetBytes(data, "3")
 
 	raw := data[managerOps.Index : managerOps.Index+len(managerOps.Raw)]
-	var transactions []XtzTransaction
+	var transactions []xtzTransaction
 	err := json.Unmarshal(raw, &transactions)
 	if err != nil {
 		return nil, err
@@ -235,7 +235,7 @@ func extractEventsFromBlock(data []byte, addresses []string) ([]subscriber.Event
 	return events, nil
 }
 
-func hasDestinationInAddresses(content XtzTransactionContent, addresses []string) bool {
+func hasDestinationInAddresses(content xtzTransactionContent, addresses []string) bool {
 	for _, address := range addresses {
 		if address == content.Destination {
 			return true
@@ -252,7 +252,7 @@ func hasDestinationInAddresses(content XtzTransactionContent, addresses []string
 }
 
 func extractBlockIDFromHeaderJSON(data []byte) (string, error) {
-	var header XtzHeader
+	var header xtzHeader
 	err := json.Unmarshal(data, &header)
 	if err != nil {
 		return "", err
@@ -264,7 +264,7 @@ func extractBlockIDFromHeaderJSON(data []byte) (string, error) {
 	return header.Hash, nil
 }
 
-func (t XtzTransaction) toEvent() (subscriber.Event, error) {
+func (t xtzTransaction) toEvent() (subscriber.Event, error) {
 	event, err := json.Marshal(t)
 	if err != nil {
 		return nil, err
@@ -272,7 +272,7 @@ func (t XtzTransaction) toEvent() (subscriber.Event, error) {
 	return event, nil
 }
 
-type XtzHeader struct {
+type xtzHeader struct {
 	Hash           string   `json:"hash"`
 	Level          int      `json:"level"`
 	Proto          int      `json:"proto"`
@@ -285,15 +285,15 @@ type XtzHeader struct {
 	ProtocolData   string   `json:"protocol_data"`
 }
 
-type XtzTransaction struct {
+type xtzTransaction struct {
 	Protocol string                  `json:"protocol"`
 	ChainID  string                  `json:"chain_id"`
 	Hash     string                  `json:"hash"`
 	Branch   string                  `json:"branch"`
-	Contents []XtzTransactionContent `json:"contents"`
+	Contents []xtzTransactionContent `json:"contents"`
 }
 
-type XtzTransactionContent struct {
+type xtzTransactionContent struct {
 	Kind         string                        `json:"kind"`
 	Source       string                        `json:"source"`
 	Fee          string                        `json:"fee"`
@@ -303,16 +303,16 @@ type XtzTransactionContent struct {
 	Amount       string                        `json:"amount"`
 	Destination  string                        `json:"destination"`
 	Parameters   interface{}                   `json:"parameters"`
-	Metadata     XtzTransactionContentMetadata `json:"metadata"`
+	Metadata     xtzTransactionContentMetadata `json:"metadata"`
 }
 
-type XtzTransactionContentMetadata struct {
+type xtzTransactionContentMetadata struct {
 	BalanceUpdates           []interface{}                 `json:"balance_updates"`
 	OperationResult          interface{}                   `json:"operation_result"`
-	InternalOperationResults *[]XtzInternalOperationResult `json:"internal_operation_results"`
+	InternalOperationResults *[]xtzInternalOperationResult `json:"internal_operation_results"`
 }
 
-type XtzInternalOperationResult struct {
+type xtzInternalOperationResult struct {
 	Kind        string      `json:"kind"`
 	Source      string      `json:"source"`
 	Nonce       int         `json:"nonce"`

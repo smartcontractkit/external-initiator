@@ -7,7 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-func HandleEthRequest(conn string, msg JsonrpcMessage) ([]JsonrpcMessage, error) {
+func handleEthRequest(conn string, msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 	if conn == "ws" {
 		switch msg.Method {
 		case "eth_subscribe":

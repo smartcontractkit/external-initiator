@@ -20,13 +20,13 @@ type substrateFilter struct {
 	Address []types.Address
 }
 
-type SubstrateManager struct {
+type substrateManager struct {
 	filter substrateFilter
 	meta   *types.Metadata
 	key    types.StorageKey
 }
 
-func createSubstrateManager(t subscriber.Type, conf store.Subscription) (*SubstrateManager, error) {
+func createSubstrateManager(t subscriber.Type, conf store.Subscription) (*substrateManager, error) {
 	if t != subscriber.WS {
 		return nil, errors.New("only WS connections are allowed for Substrate")
 	}
@@ -41,7 +41,7 @@ func createSubstrateManager(t subscriber.Type, conf store.Subscription) (*Substr
 		addresses = append(addresses, address)
 	}
 
-	return &SubstrateManager{
+	return &substrateManager{
 		filter: substrateFilter{
 			JobID:   types.NewText(conf.Job),
 			Address: addresses,
@@ -49,7 +49,7 @@ func createSubstrateManager(t subscriber.Type, conf store.Subscription) (*Substr
 	}, nil
 }
 
-func (sm *SubstrateManager) GetTriggerJson() []byte {
+func (sm *substrateManager) GetTriggerJson() []byte {
 	if sm.meta == nil {
 		return nil
 	}
@@ -165,7 +165,7 @@ type substrateSubscribeResponse struct {
 	Result       json.RawMessage `json:"result"`
 }
 
-func (sm *SubstrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
+func (sm *substrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	var msg jsonrpcMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
@@ -235,7 +235,7 @@ func (sm *SubstrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool
 	return subEvents, true
 }
 
-func (sm *SubstrateManager) GetTestJson() []byte {
+func (sm *substrateManager) GetTestJson() []byte {
 	msg := jsonrpcMessage{
 		Version: "2.0",
 		ID:      json.RawMessage(`1`),
@@ -245,7 +245,7 @@ func (sm *SubstrateManager) GetTestJson() []byte {
 	return data
 }
 
-func (sm *SubstrateManager) ParseTestResponse(data []byte) error {
+func (sm *substrateManager) ParseTestResponse(data []byte) error {
 	var msg jsonrpcMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {

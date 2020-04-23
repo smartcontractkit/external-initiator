@@ -62,7 +62,7 @@ type wsConn struct {
 	closing    bool
 }
 
-type WebsocketSubscription struct {
+type websocketSubscription struct {
 	conn      *wsConn
 	events    chan<- Event
 	confirmed bool
@@ -70,19 +70,19 @@ type WebsocketSubscription struct {
 	endpoint  string
 }
 
-func (wss WebsocketSubscription) Unsubscribe() {
+func (wss websocketSubscription) Unsubscribe() {
 	logger.Info("Unsubscribing from WS endpoint", wss.endpoint)
 	wss.conn.closing = true
 	_ = wss.conn.connection.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 	_ = wss.conn.connection.Close()
 }
 
-func (wss WebsocketSubscription) forceClose() {
+func (wss websocketSubscription) forceClose() {
 	wss.conn.closing = false
 	_ = wss.conn.connection.Close()
 }
 
-func (wss WebsocketSubscription) readMessages() {
+func (wss websocketSubscription) readMessages() {
 	for {
 		_, message, err := wss.conn.connection.ReadMessage()
 		if err != nil {
@@ -112,7 +112,7 @@ func (wss WebsocketSubscription) readMessages() {
 	}
 }
 
-func (wss WebsocketSubscription) init() {
+func (wss websocketSubscription) init() {
 	go wss.readMessages()
 
 	err := wss.conn.connection.WriteMessage(websocket.TextMessage, wss.manager.GetTriggerJson())
@@ -124,7 +124,7 @@ func (wss WebsocketSubscription) init() {
 	logger.Infof("Connected to %s\n", wss.endpoint)
 }
 
-func (wss WebsocketSubscription) reconnect() {
+func (wss websocketSubscription) reconnect() {
 	logger.Warnf("Lost WS connection to %s\nRetrying in %vs\n", wss.endpoint, 3)
 	time.Sleep(3 * time.Second)
 
@@ -147,7 +147,7 @@ func (wss WebsocketSubscriber) SubscribeToEvents(channel chan<- Event, confirmat
 		return nil, err
 	}
 
-	subscription := WebsocketSubscription{
+	subscription := websocketSubscription{
 		conn:      &wsConn{connection: c},
 		events:    channel,
 		confirmed: len(confirmation) != 0, // If passed as a param, do not expect confirmation message

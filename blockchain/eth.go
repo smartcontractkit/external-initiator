@@ -13,16 +13,16 @@ import (
 
 const ETH = "ethereum"
 
-// The EthManager implements the subscriber.JsonManager interface and allows
+// The ethManager implements the subscriber.JsonManager interface and allows
 // for interacting with ETH nodes over RPC or WS.
-type EthManager struct {
+type ethManager struct {
 	fq *filterQuery
 	p  subscriber.Type
 }
 
-// createEthManager creates a new instance of EthManager with the provided
+// createEthManager creates a new instance of ethManager with the provided
 // connection type and store.EthSubscription config.
-func createEthManager(p subscriber.Type, config store.Subscription) EthManager {
+func createEthManager(p subscriber.Type, config store.Subscription) ethManager {
 	var addresses []common.Address
 	for _, a := range config.Ethereum.Addresses {
 		addresses = append(addresses, common.HexToAddress(a))
@@ -38,7 +38,7 @@ func createEthManager(p subscriber.Type, config store.Subscription) EthManager {
 	}
 	topics = append(topics, t)
 
-	return EthManager{
+	return ethManager{
 		fq: &filterQuery{
 			Addresses: addresses,
 			Topics:    topics,
@@ -48,14 +48,14 @@ func createEthManager(p subscriber.Type, config store.Subscription) EthManager {
 }
 
 // GetTriggerJson generates a JSON payload to the ETH node
-// using the config in EthManager.
+// using the config in ethManager.
 //
-// If EthManager is using WebSocket:
+// If ethManager is using WebSocket:
 // Creates a new "eth_subscribe" subscription.
 //
-// If EthManager is using RPC:
+// If ethManager is using RPC:
 // Sends a "eth_getLogs" request.
-func (e EthManager) GetTriggerJson() []byte {
+func (e ethManager) GetTriggerJson() []byte {
 	if e.p == subscriber.RPC && e.fq.FromBlock == "" {
 		e.fq.FromBlock = "latest"
 	}
@@ -95,12 +95,12 @@ func (e EthManager) GetTriggerJson() []byte {
 // GetTestJson generates a JSON payload to test
 // the connection to the ETH node.
 //
-// If EthManager is using WebSocket:
+// If ethManager is using WebSocket:
 // Returns nil.
 //
-// If EthManager is using RPC:
+// If ethManager is using RPC:
 // Sends a request to get the latest block number.
-func (e EthManager) GetTestJson() []byte {
+func (e ethManager) GetTestJson() []byte {
 	if e.p == subscriber.RPC {
 		msg := jsonrpcMessage{
 			Version: "2.0",
@@ -123,13 +123,13 @@ func (e EthManager) GetTestJson() []byte {
 // ETH node after sending GetTestJson(), and returns
 // the error from parsing, if any.
 //
-// If EthManager is using WebSocket:
+// If ethManager is using WebSocket:
 // Returns nil.
 //
-// If EthManager is using RPC:
+// If ethManager is using RPC:
 // Attempts to parse the block number in the response.
-// If successful, stores the block number in EthManager.
-func (e EthManager) ParseTestResponse(data []byte) error {
+// If successful, stores the block number in ethManager.
+func (e ethManager) ParseTestResponse(data []byte) error {
 	if e.p == subscriber.RPC {
 		var msg jsonrpcMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
@@ -165,10 +165,10 @@ type ethLogResponse struct {
 // ETH node, and returns a slice of subscriber.Events
 // and if the parsing was successful.
 //
-// If EthManager is using RPC:
-// If there are new events, update EthManager with
+// If ethManager is using RPC:
+// If there are new events, update ethManager with
 // the latest block number it sees.
-func (e EthManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
+func (e ethManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	var msg jsonrpcMessage
 	if err := json.Unmarshal(data, &msg); err != nil {
 		log.Println("failed parsing msg:", msg)
@@ -280,13 +280,4 @@ func (q filterQuery) toMapInterface() (interface{}, error) {
 		}
 	}
 	return arg, nil
-}
-
-type jsonrpcMessage struct {
-	Version string          `json:"jsonrpc"`
-	ID      json.RawMessage `json:"id,omitempty"`
-	Method  string          `json:"method,omitempty"`
-	Params  json.RawMessage `json:"params,omitempty"`
-	Error   *interface{}    `json:"error,omitempty"`
-	Result  json.RawMessage `json:"result,omitempty"`
 }
