@@ -35,7 +35,7 @@ func RunWebserver(
 	store subscriptionStorer,
 ) {
 	srv := NewHTTPService(accessKey, secret, store)
-	err := srv.Router.Run()
+	err := srv.Router.Run("0.0.0.0:8080")
 	if err != nil {
 		logger.Error(err)
 	}
@@ -275,11 +275,6 @@ func readSanitizedJSON(buf *bytes.Buffer) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	/*cleaned := map[string]interface{}{}
-	for k, v := range dst {
-		cleaned[k] = v
-	}*/
 
 	b, err := json.Marshal(dst)
 	if err != nil {
