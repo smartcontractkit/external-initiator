@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/smartcontractkit/chainlink/core/logger"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -38,7 +39,7 @@ type RpcSubscription struct {
 }
 
 func (rpc RpcSubscription) Unsubscribe() {
-	fmt.Println("Unsubscribing from RPC endpoint", rpc.endpoint)
+	logger.Info("Unsubscribing from RPC endpoint", rpc.endpoint)
 	close(rpc.done)
 }
 
@@ -101,7 +102,7 @@ func sendPostRequest(url string, body []byte) ([]byte, error) {
 }
 
 func (rpc RpcSubscriber) SubscribeToEvents(channel chan<- Event, confirmation ...interface{}) (ISubscription, error) {
-	fmt.Printf("Using RPC endpoint: %s\n", rpc.Endpoint)
+	logger.Infof("Using RPC endpoint: %s\n", rpc.Endpoint)
 
 	subscription := RpcSubscription{
 		endpoint: rpc.Endpoint,

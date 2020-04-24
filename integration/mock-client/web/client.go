@@ -1,22 +1,26 @@
 package web
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/integration/mock-client/blockchain"
-	"log"
+	"io"
+	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 // RunWebserver starts a new web server using the access key
 // and secret as provided on protected routes.
 func RunWebserver() {
 	srv := NewHTTPService()
-	err := srv.Router.Run()
+	err := srv.Router.Run("0.0.0.0:8080")
 	if err != nil {
-		fmt.Println(err)
+		logger.Error(err)
 	}
 }
 
@@ -29,9 +33,7 @@ type HttpService struct {
 // NewHTTPService creates a new HttpService instance
 // with the default router.
 func NewHTTPService() *HttpService {
-	srv := HttpService{
-		Router: gin.Default(),
-	}
+	srv := HttpService{}
 	srv.createRouter()
 	return &srv
 }
@@ -44,6 +46,8 @@ func (srv *HttpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (srv *HttpService) createRouter() {
 	r := gin.Default()
+	r.Use(gin.Recovery(), loggerFunc())
+
 	blockchain.SetHttpRoutes(r)
 	r.GET("/ws/:platform", srv.HandleWs)
 	r.POST("/rpc/:platform", srv.HandleRpc)
@@ -56,7 +60,7 @@ func (srv *HttpService) createRouter() {
 func (srv *HttpService) HandleRpc(c *gin.Context) {
 	var req blockchain.JsonrpcMessage
 	if err := c.BindJSON(&req); err != nil {
-		log.Println(err)
+		logger.Error(err)
 		c.JSON(http.StatusBadRequest, nil)
 		return
 	}
@@ -67,7 +71,7 @@ func (srv *HttpService) HandleRpc(c *gin.Context) {
 		response.ID = req.ID
 		response.Version = req.Version
 		if err != nil {
-			log.Println(err)
+			logger.Error(err)
 			var errintf interface{}
 			errintf = err.Error()
 			response.Error = &errintf
@@ -84,7 +88,7 @@ var upgrader = websocket.Upgrader{}
 func (srv *HttpService) HandleWs(c *gin.Context) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		log.Println(err)
+		logger.Error(err)
 		c.JSON(http.StatusInternalServerError, nil)
 		return
 	}
@@ -93,35 +97,106 @@ func (srv *HttpService) HandleWs(c *gin.Context) {
 	for {
 		mt, message, err := conn.ReadMessage()
 		if err != nil {
-			log.Println("read:", err)
+			logger.Error("read:", err)
 			break
 		}
 
 		var req blockchain.JsonrpcMessage
 		err = json.Unmarshal(message, &req)
 		if err != nil {
-			log.Println("unmarshal:", err)
+			logger.Error("unmarshal:", err)
 			continue
 		}
 
 		resp, err := blockchain.HandleRequest("ws", c.Param("platform"), req)
 		if err != nil {
-			log.Println("handle request:", err)
+			logger.Error("handle request:", err)
 			continue
 		}
 
 		for _, msg := range resp {
 			bz, err := json.Marshal(msg)
 			if err != nil {
-				log.Println("marshal:", err)
+				logger.Error("marshal:", err)
 				continue
 			}
 
 			err = conn.WriteMessage(mt, bz)
 			if err != nil {
-				log.Println("write:", err)
+				logger.Error("write:", err)
 				break
 			}
 		}
 	}
+}
+
+// Inspired by https://github.com/gin-gonic/gin/issues/961
+func loggerFunc() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		buf, err := ioutil.ReadAll(c.Request.Body)
+		if err != nil {
+			logger.Error("Web request log error: ", err.Error())
+			// Implicitly relies on limits.RequestSizeLimiter
+			// overriding of c.Request.Body to abort gin's Context
+			// inside ioutil.ReadAll.
+			// Functions as we would like, but horrible from an architecture
+			// and design pattern perspective.
+			if !c.IsAborted() {
+				c.AbortWithStatus(http.StatusBadRequest)
+			}
+			return
+		}
+		rdr := bytes.NewBuffer(buf)
+		c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
+
+		start := time.Now()
+		c.Next()
+		end := time.Now()
+
+		logger.Infow(fmt.Sprintf("%s %s", c.Request.Method, c.Request.URL.Path),
+			"method", c.Request.Method,
+			"status", c.Writer.Status(),
+			"path", c.Request.URL.Path,
+			"query", c.Request.URL.Query(),
+			"body", readBody(rdr),
+			"clientIP", c.ClientIP(),
+			"errors", c.Errors.String(),
+			"servedAt", end.Format("2006-01-02 15:04:05"),
+			"latency", fmt.Sprintf("%v", end.Sub(start)),
+		)
+	}
+}
+
+func readBody(reader io.Reader) string {
+	buf := new(bytes.Buffer)
+	_, err := buf.ReadFrom(reader)
+	if err != nil {
+		logger.Warn("unable to read from body for sanitization: ", err)
+		return "*FAILED TO READ BODY*"
+	}
+
+	if buf.Len() == 0 {
+		return ""
+	}
+
+	s, err := readSanitizedJSON(buf)
+	if err != nil {
+		logger.Warn("unable to sanitize json for logging: ", err)
+		return "*FAILED TO READ BODY*"
+	}
+	return s
+}
+
+func readSanitizedJSON(buf *bytes.Buffer) (string, error) {
+	var dst map[string]interface{}
+	err := json.Unmarshal(buf.Bytes(), &dst)
+	if err != nil {
+		return "", err
+	}
+
+	b, err := json.Marshal(dst)
+	if err != nil {
+		return "", err
+	}
+	return string(b), err
 }

@@ -1,14 +1,19 @@
 package client
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/blockchain"
 	"github.com/smartcontractkit/external-initiator/store"
-	"log"
+	"io"
+	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 const (
@@ -30,9 +35,9 @@ func RunWebserver(
 	store subscriptionStorer,
 ) {
 	srv := NewHTTPService(accessKey, secret, store)
-	err := srv.Router.Run()
+	err := srv.Router.Run("0.0.0.0:8080")
 	if err != nil {
-		fmt.Println(err)
+		logger.Error(err)
 	}
 }
 
@@ -52,7 +57,6 @@ func NewHTTPService(
 	store subscriptionStorer,
 ) *HttpService {
 	srv := HttpService{
-		Router:    gin.Default(),
 		AccessKey: accessKey,
 		Secret:    secret,
 		Store:     store,
@@ -68,7 +72,9 @@ func (srv *HttpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (srv *HttpService) createRouter() {
-	r := gin.Default()
+	r := gin.New()
+	r.Use(gin.Recovery())
+	r.Use(loggerFunc())
 	r.GET("/health", srv.ShowHealth)
 
 	auth := r.Group("/")
@@ -126,25 +132,25 @@ func (srv *HttpService) CreateSubscription(c *gin.Context) {
 	var req CreateSubscriptionReq
 
 	if err := c.BindJSON(&req); err != nil {
-		log.Println(err)
+		logger.Error(err)
 		c.JSON(http.StatusBadRequest, nil)
 		return
 	}
 
 	endpoint, err := srv.Store.GetEndpoint(req.Params.Endpoint)
 	if err != nil {
-		log.Println(err)
+		logger.Error(err)
 		c.JSON(http.StatusInternalServerError, nil)
 		return
 	}
 	if endpoint == nil {
-		log.Println("unknown endpoint provided")
+		logger.Error("unknown endpoint provided")
 		c.JSON(http.StatusBadRequest, nil)
 		return
 	}
 
 	if err := validateRequest(&req, endpoint.Type); err != nil {
-		log.Println(err)
+		logger.Error(err)
 		c.JSON(http.StatusBadRequest, nil)
 		return
 	}
@@ -159,7 +165,7 @@ func (srv *HttpService) CreateSubscription(c *gin.Context) {
 	blockchain.CreateSubscription(sub, req.Params)
 
 	if err := srv.Store.SaveSubscription(sub); err != nil {
-		log.Println(err)
+		logger.Error(err)
 		c.JSON(http.StatusInternalServerError, nil)
 		return
 	}
@@ -172,7 +178,7 @@ func (srv *HttpService) CreateSubscription(c *gin.Context) {
 func (srv *HttpService) DeleteSubscription(c *gin.Context) {
 	jobid := c.Param("jobid")
 	if err := srv.Store.DeleteJob(jobid); err != nil {
-		log.Println(err)
+		logger.Error(err)
 		c.JSON(http.StatusInternalServerError, nil)
 		return
 	}
@@ -192,16 +198,87 @@ func (srv *HttpService) CreateEndpoint(c *gin.Context) {
 	var config store.Endpoint
 	err := c.BindJSON(&config)
 	if err != nil {
-		log.Println(err)
+		logger.Error(err)
 		c.JSON(http.StatusBadRequest, nil)
 		return
 	}
 
 	if err := srv.Store.SaveEndpoint(&config); err != nil {
-		log.Println(err)
+		logger.Error(err)
 		c.JSON(http.StatusInternalServerError, nil)
 		return
 	}
 
 	c.JSON(http.StatusCreated, resp{ID: config.Name})
+}
+
+// Inspired by https://github.com/gin-gonic/gin/issues/961
+func loggerFunc() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		buf, err := ioutil.ReadAll(c.Request.Body)
+		if err != nil {
+			logger.Error("Web request log error: ", err.Error())
+			// Implicitly relies on limits.RequestSizeLimiter
+			// overriding of c.Request.Body to abort gin's Context
+			// inside ioutil.ReadAll.
+			// Functions as we would like, but horrible from an architecture
+			// and design pattern perspective.
+			if !c.IsAborted() {
+				c.AbortWithStatus(http.StatusBadRequest)
+			}
+			return
+		}
+		rdr := bytes.NewBuffer(buf)
+		c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
+
+		start := time.Now()
+		c.Next()
+		end := time.Now()
+
+		logger.Infow(fmt.Sprintf("%s %s", c.Request.Method, c.Request.URL.Path),
+			"method", c.Request.Method,
+			"status", c.Writer.Status(),
+			"path", c.Request.URL.Path,
+			"query", c.Request.URL.Query(),
+			"body", readBody(rdr),
+			"clientIP", c.ClientIP(),
+			"errors", c.Errors.String(),
+			"servedAt", end.Format("2006-01-02 15:04:05"),
+			"latency", fmt.Sprintf("%v", end.Sub(start)),
+		)
+	}
+}
+
+func readBody(reader io.Reader) string {
+	buf := new(bytes.Buffer)
+	_, err := buf.ReadFrom(reader)
+	if err != nil {
+		logger.Warn("unable to read from body for sanitization: ", err)
+		return "*FAILED TO READ BODY*"
+	}
+
+	if buf.Len() == 0 {
+		return ""
+	}
+
+	s, err := readSanitizedJSON(buf)
+	if err != nil {
+		logger.Warn("unable to sanitize json for logging: ", err)
+		return "*FAILED TO READ BODY*"
+	}
+	return s
+}
+
+func readSanitizedJSON(buf *bytes.Buffer) (string, error) {
+	var dst map[string]interface{}
+	err := json.Unmarshal(buf.Bytes(), &dst)
+	if err != nil {
+		return "", err
+	}
+
+	b, err := json.Marshal(dst)
+	if err != nil {
+		return "", err
+	}
+	return string(b), err
 }

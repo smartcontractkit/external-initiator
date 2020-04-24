@@ -9,6 +9,7 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pkg/errors"
+	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store/migrations"
 )
 
@@ -124,7 +125,7 @@ func (client Client) LoadSubscriptions() ([]Subscription, error) {
 	for _, sqlSub := range sqlSubs {
 		sub, err := client.prepareSubscription(sqlSub)
 		if err != nil {
-			fmt.Println(err)
+			logger.Error(err)
 			continue
 		}
 

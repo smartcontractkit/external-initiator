@@ -1,12 +1,17 @@
 package main
 
 import (
-	"fmt"
+	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/integration/mock-client/web"
+	"go.uber.org/zap/zapcore"
 )
 
+func init() {
+	logger.SetLogger(logger.CreateProductionLogger("", false, zapcore.DebugLevel, false))
+}
+
 func main() {
-	fmt.Println("Starting mock blockchain client")
+	logger.Info("Starting mock blockchain client")
 
 	web.RunWebserver()
 }

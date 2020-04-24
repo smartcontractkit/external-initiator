@@ -5,10 +5,10 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -17,7 +17,7 @@ import (
 // Run enters into the cobra command to start the external initiator.
 func Run() {
 	if err := generateCmd().Execute(); err != nil {
-		fmt.Println(err)
+		logger.Error(err)
 	}
 }
 
@@ -67,16 +67,16 @@ var requiredConfig = []string{
 type runner = func(Config, *store.Client, []string)
 
 func runCallback(v *viper.Viper, args []string, runner runner) {
-	if err := validateParams(v, args, requiredConfig); err != nil {
-		log.Warn(err.Error())
-		return
+	err := validateParams(v, args, requiredConfig)
+	if err != nil {
+		logger.Error(err)
 	}
 
 	config := newConfigFromViper(v)
 
 	db, err := store.ConnectToDb(config.DatabaseURL)
 	if err != nil {
-		fmt.Println(err)
+		logger.Error(err)
 		return
 	}
 	defer db.Close()
@@ -89,7 +89,7 @@ func validateParams(v *viper.Viper, args []string, required []string) error {
 	for _, k := range required {
 		if v.GetString(k) == "" {
 			msg := fmt.Sprintf("%s flag or EI_%s env must be set", k, strings.ToUpper(k))
-			fmt.Println(msg)
+			logger.Error(msg)
 			missing = append(missing, msg)
 		}
 	}
@@ -102,7 +102,7 @@ func validateParams(v *viper.Viper, args []string, required []string) error {
 		err := json.Unmarshal([]byte(a), &config)
 		if err != nil {
 			msg := fmt.Sprintf("Invalid endpoint configuration provided: %v", a)
-			fmt.Println(msg)
+			logger.Error(msg)
 			return errors.Wrap(err, msg)
 		}
 	}

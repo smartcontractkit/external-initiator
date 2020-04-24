@@ -2,8 +2,8 @@ package subscriber
 
 import (
 	"errors"
-	"fmt"
 	"github.com/gorilla/websocket"
+	"github.com/smartcontractkit/chainlink/core/logger"
 	"time"
 )
 
@@ -71,7 +71,7 @@ type WebsocketSubscription struct {
 }
 
 func (wss WebsocketSubscription) Unsubscribe() {
-	fmt.Println("Unsubscribing from WS endpoint", wss.endpoint)
+	logger.Info("Unsubscribing from WS endpoint", wss.endpoint)
 	wss.conn.closing = true
 	_ = wss.conn.connection.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 	_ = wss.conn.connection.Close()
@@ -121,16 +121,16 @@ func (wss WebsocketSubscription) init() {
 		return
 	}
 
-	fmt.Printf("Connected to %s\n", wss.endpoint)
+	logger.Infof("Connected to %s\n", wss.endpoint)
 }
 
 func (wss WebsocketSubscription) reconnect() {
-	fmt.Printf("Lost WS connection to %s\nRetrying in %vs\n", wss.endpoint, 3)
+	logger.Warnf("Lost WS connection to %s\nRetrying in %vs\n", wss.endpoint, 3)
 	time.Sleep(3 * time.Second)
 
 	c, _, err := websocket.DefaultDialer.Dial(wss.endpoint, nil)
 	if err != nil {
-		fmt.Println("Reconnect failed:", err)
+		logger.Error("Reconnect failed:", err)
 		wss.reconnect()
 		return
 	}
@@ -140,7 +140,7 @@ func (wss WebsocketSubscription) reconnect() {
 }
 
 func (wss WebsocketSubscriber) SubscribeToEvents(channel chan<- Event, confirmation ...interface{}) (ISubscription, error) {
-	fmt.Printf("Connecting to WS endpoint: %s\n", wss.Endpoint)
+	logger.Infof("Connecting to WS endpoint: %s\n", wss.Endpoint)
 
 	c, _, err := websocket.DefaultDialer.Dial(wss.Endpoint, nil)
 	if err != nil {
