@@ -148,6 +148,7 @@ func (tzs TezosSubscription) readLines(lines chan []byte, reader *bufio.Reader) 
 			return
 		}
 		if err == io.EOF {
+			lines <- line
 			logger.Warnf("Lost connection to Tezos RPC node, retrying in %v...\n", monitorRetryInterval)
 			return
 		}
