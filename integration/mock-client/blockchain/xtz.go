@@ -1,7 +1,7 @@
 package blockchain
 
 import (
-	"log"
+	"github.com/smartcontractkit/chainlink/core/logger"
 	"net/http"
 	"os"
 
@@ -67,7 +67,7 @@ func handleXtzMonitorRequest(c *gin.Context) {
 	resp, err := getXtzMonitorResponse(c.Param("chain_id"))
 
 	if err != nil {
-		log.Println(err)
+		logger.Error(err)
 		c.JSON(http.StatusBadRequest, resp)
 		return
 	}
@@ -79,7 +79,7 @@ func handleXtzOperationsRequest(c *gin.Context) {
 	resp, err := getXtzOperationsResponse(c.Param("block_id"))
 
 	if err != nil {
-		log.Println(err)
+		logger.Error(err)
 		c.JSON(http.StatusBadRequest, resp)
 		return
 	}
