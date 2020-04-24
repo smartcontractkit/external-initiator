@@ -19,6 +19,7 @@ run_test() {
 
   ./integration/test_ei_event "eth-mock-http"
   ./integration/test_ei_event "eth-mock-ws"
+  ./integration/test_ei_event "xtz-mock-http"
 
   stop_docker
 

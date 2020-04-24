@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	"github.com/gin-gonic/gin"
 )
 
 type JsonrpcMessage struct {
@@ -22,4 +24,8 @@ func HandleRequest(conn, platform string, msg JsonrpcMessage) ([]JsonrpcMessage,
 	default:
 		return nil, errors.New(fmt.Sprint("unexpected platform: ", platform))
 	}
+}
+
+func SetHttpRoutes(router *gin.Engine) {
+	setXtzRoutes(router)
 }

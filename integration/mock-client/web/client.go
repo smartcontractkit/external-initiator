@@ -44,15 +44,16 @@ func (srv *HttpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (srv *HttpService) createRouter() {
 	r := gin.Default()
-	r.POST("/:platform", srv.HandleHttp)
+	blockchain.SetHttpRoutes(r)
 	r.GET("/ws/:platform", srv.HandleWs)
+	r.POST("/rpc/:platform", srv.HandleRpc)
 
 	srv.Router = r
 }
 
 // CreateSubscription expects a CreateSubscriptionReq payload,
 // validates the request and subscribes to the job.
-func (srv *HttpService) HandleHttp(c *gin.Context) {
+func (srv *HttpService) HandleRpc(c *gin.Context) {
 	var req blockchain.JsonrpcMessage
 	if err := c.BindJSON(&req); err != nil {
 		log.Println(err)
@@ -60,7 +61,7 @@ func (srv *HttpService) HandleHttp(c *gin.Context) {
 		return
 	}
 
-	resp, err := blockchain.HandleRequest("http", c.Param("platform"), req)
+	resp, err := blockchain.HandleRequest("rpc", c.Param("platform"), req)
 	if len(resp) == 0 || err != nil {
 		var response blockchain.JsonrpcMessage
 		response.ID = req.ID
