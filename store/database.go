@@ -241,6 +241,7 @@ type Subscription struct {
 	Ethereum     EthSubscription
 	Tezos        TezosSubscription
 	Substrate    SubstrateSubscription
+	Ontology     OntSubscription
 }
 
 type EthSubscription struct {
@@ -260,4 +261,10 @@ type SubstrateSubscription struct {
 	gorm.Model
 	SubscriptionId uint
 	AccountIds     SQLStringArray
+}
+
+type OntSubscription struct {
+	gorm.Model
+	SubscriptionId uint
+	Addresses      SQLStringArray
 }

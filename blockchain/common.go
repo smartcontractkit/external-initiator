@@ -17,6 +17,7 @@ var blockchains = []string{
 	ETH,
 	XTZ,
 	Substrate,
+	ONT,
 }
 
 type Params struct {
@@ -45,6 +46,8 @@ func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error)
 	switch sub.Endpoint.Type {
 	case XTZ:
 		return createTezosSubscriber(sub), nil
+	case ONT:
+		return createOntSubscriber(sub)
 	}
 
 	return nil, errors.New("unknown blockchain type for Client subscription")
@@ -94,6 +97,10 @@ func GetValidations(t string, params Params) []int {
 		return []int{
 			len(params.AccountIDs),
 		}
+	case ONT:
+		return []int{
+			len(params.Addresses),
+		}
 	}
 
 	return nil
@@ -113,6 +120,10 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 	case Substrate:
 		sub.Substrate = store.SubstrateSubscription{
 			AccountIds: params.AccountIDs,
+		}
+	case ONT:
+		sub.Ontology = store.OntSubscription{
+			Addresses: params.Addresses,
 		}
 	}
 }
