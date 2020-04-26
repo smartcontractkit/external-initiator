@@ -113,7 +113,7 @@ func (ots OntSubscription) parseOntEvent(height uint32) error {
 			if !ok {
 				continue
 			}
-			name := states[0].(string)
+			name := fmt.Sprint(states[0])
 			if name == hex.EncodeToString([]byte("oracleRequest")) {
 				jobId := states[1].(string)
 				if jobId != ots.jobId {
@@ -121,12 +121,12 @@ func (ots OntSubscription) parseOntEvent(height uint32) error {
 				}
 				logger.Error("parseOntEvent, found tracked job: %s", jobId)
 
-				requestID := states[3].(string)
-				p := states[4].(string)
-				callbackAddress := states[5].(string)
-				function := states[6].(string)
-				expiration := states[7].(string)
-				data := states[9].(string)
+				requestID := fmt.Sprint(states[3])
+				p := fmt.Sprint(states[4])
+				callbackAddress := fmt.Sprint(states[5])
+				function := fmt.Sprint(states[6])
+				expiration := fmt.Sprint(states[7])
+				data := fmt.Sprint(states[9])
 				dataBytes, err := hex.DecodeString(data)
 				if err != nil {
 					logger.Error("parseOntEvent, date from hex to bytes error:", err)
