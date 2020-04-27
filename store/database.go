@@ -107,6 +107,10 @@ func (client Client) prepareSubscription(rawSub *Subscription) (*Subscription, e
 		if err := client.db.Model(&sub).Related(&sub.Substrate).Error; err != nil {
 			return nil, err
 		}
+	case "ontology":
+		if err := client.db.Model(&sub).Related(&sub.Ontology).Error; err != nil {
+			return nil, err
+		}
 	}
 
 	return &sub, nil

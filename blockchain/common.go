@@ -56,7 +56,7 @@ func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error)
 func GetConnectionType(endpoint store.Endpoint) (subscriber.Type, error) {
 	switch endpoint.Type {
 	// Add blockchain implementations that encapsulate entire connection here
-	case XTZ:
+	case XTZ, ONT:
 		return subscriber.Client, nil
 	default:
 		u, err := url.Parse(endpoint.Url)

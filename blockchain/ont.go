@@ -8,7 +8,6 @@ import (
 	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
-	"log"
 	"time"
 )
 
@@ -42,13 +41,13 @@ type OntSubscription struct {
 	isDone    bool
 }
 
-func (ot OntSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ ...interface{}) (subscriber.ISubscription, error) {
-	logger.Error("Using Ontology RPC endpoint: Listening for events on addresses: %v\n", ot.Addresses)
+func (ot *OntSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ ...interface{}) (subscriber.ISubscription, error) {
+	logger.Infof("Using Ontology RPC endpoint: Listening for events on addresses: %v\n", ot.Addresses)
 	addresses := make(map[string]bool)
 	for _, a := range ot.Addresses {
 		addresses[a] = true
 	}
-	ontSubscription := OntSubscription{
+	ontSubscription := &OntSubscription{
 		sdk:       ot.Sdk,
 		events:    channel,
 		addresses: addresses,
@@ -60,7 +59,7 @@ func (ot OntSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ ...
 	return ontSubscription, nil
 }
 
-func (ot OntSubscriber) Test() error {
+func (ot *OntSubscriber) Test() error {
 	_, err := ot.Sdk.GetCurrentBlockHeight()
 	if err != nil {
 		return err
@@ -68,7 +67,7 @@ func (ot OntSubscriber) Test() error {
 	return nil
 }
 
-func (ots OntSubscription) scanWithRetry() {
+func (ots *OntSubscription) scanWithRetry() {
 	for {
 		ots.scan()
 		if !ots.isDone {
@@ -79,7 +78,7 @@ func (ots OntSubscription) scanWithRetry() {
 	}
 }
 
-func (ots OntSubscription) scan() {
+func (ots *OntSubscription) scan() {
 	currentHeight, err := ots.sdk.GetCurrentBlockHeight()
 	if err != nil {
 		logger.Error("ont scan, get current block height error:", err)
@@ -96,9 +95,9 @@ func (ots OntSubscription) scan() {
 	ots.height = currentHeight + 1
 }
 
-func (ots OntSubscription) parseOntEvent(height uint32) error {
+func (ots *OntSubscription) parseOntEvent(height uint32) error {
 	ontEvents, err := ots.sdk.GetSmartContractEventByBlock(height)
-	log.Printf("parseOntEvent, start to parse ont block %d", height)
+	logger.Infof("parseOntEvent, start to parse ont block %d", height)
 	if err != nil {
 		return fmt.Errorf("parseOntEvent, get smartcontract event by block error:%s", err)
 	}
@@ -115,11 +114,11 @@ func (ots OntSubscription) parseOntEvent(height uint32) error {
 			}
 			name := fmt.Sprint(states[0])
 			if name == hex.EncodeToString([]byte("oracleRequest")) {
-				jobId := states[1].(string)
+				jobId := fmt.Sprint(states[1])
 				if jobId != ots.jobId {
 					continue
 				}
-				logger.Error("parseOntEvent, found tracked job: %s", jobId)
+				logger.Infof("parseOntEvent, found tracked job: %s", jobId)
 
 				requestID := fmt.Sprint(states[3])
 				p := fmt.Sprint(states[4])
@@ -167,7 +166,7 @@ func (ots OntSubscription) parseOntEvent(height uint32) error {
 	return nil
 }
 
-func (ots OntSubscription) Unsubscribe() {
-	logger.Error("Unsubscribing from Ontology endpoint")
+func (ots *OntSubscription) Unsubscribe() {
+	logger.Info("Unsubscribing from Ontology endpoint")
 	ots.isDone = true
 }
