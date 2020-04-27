@@ -30,20 +30,20 @@ func (rpc RpcSubscriber) Test() error {
 	return rpc.Manager.ParseTestResponse(resp)
 }
 
-// RpcSubscription holds an active RPC subscription.
-type RpcSubscription struct {
+// rpcSubscription holds an active RPC subscription.
+type rpcSubscription struct {
 	endpoint string
 	done     chan struct{}
 	events   chan<- Event
 	manager  JsonManager
 }
 
-func (rpc RpcSubscription) Unsubscribe() {
+func (rpc rpcSubscription) Unsubscribe() {
 	logger.Info("Unsubscribing from RPC endpoint", rpc.endpoint)
 	close(rpc.done)
 }
 
-func (rpc RpcSubscription) poll() {
+func (rpc rpcSubscription) poll() {
 	fmt.Printf("Polling %s\n", rpc.endpoint)
 
 	resp, err := sendPostRequest(rpc.endpoint, rpc.manager.GetTriggerJson())
@@ -62,7 +62,7 @@ func (rpc RpcSubscription) poll() {
 	}
 }
 
-func (rpc RpcSubscription) readMessages(interval time.Duration) {
+func (rpc rpcSubscription) readMessages(interval time.Duration) {
 	timer := time.NewTicker(interval)
 	defer timer.Stop()
 
@@ -104,7 +104,7 @@ func sendPostRequest(url string, body []byte) ([]byte, error) {
 func (rpc RpcSubscriber) SubscribeToEvents(channel chan<- Event, confirmation ...interface{}) (ISubscription, error) {
 	logger.Infof("Using RPC endpoint: %s\n", rpc.Endpoint)
 
-	subscription := RpcSubscription{
+	subscription := rpcSubscription{
 		endpoint: rpc.Endpoint,
 		done:     make(chan struct{}),
 		events:   channel,

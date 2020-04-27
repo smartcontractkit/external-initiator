@@ -13,7 +13,7 @@ import (
 )
 
 func TestCreateTezosSubscriber(t *testing.T) {
-	t.Run("creates TezosSubscriber from subscription",
+	t.Run("creates tezosSubscriber from subscription",
 		func(t *testing.T) {
 			sub := store.Subscription{
 				Endpoint: store.Endpoint{
@@ -144,12 +144,12 @@ func Test_toEvent(t *testing.T) {
 	t.Run("marshals TzTransaction to event JSON",
 		func(t *testing.T) {
 			expected := []byte(`{"protocol":"foo","chain_id":"foo","hash":"foo","branch":"foo","contents":[]}`)
-			transaction := XtzTransaction{
+			transaction := xtzTransaction{
 				Protocol: "foo",
 				ChainID:  "foo",
 				Hash:     "foo",
 				Branch:   "foo",
-				Contents: []XtzTransactionContent{},
+				Contents: []xtzTransactionContent{},
 			}
 			event, err := transaction.toEvent()
 			assert.Nil(t, err)

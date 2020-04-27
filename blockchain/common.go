@@ -3,6 +3,7 @@
 package blockchain
 
 import (
+	"encoding/json"
 	"errors"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
@@ -112,4 +113,13 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 			AccountIds: params.AccountIDs,
 		}
 	}
+}
+
+type jsonrpcMessage struct {
+	Version string          `json:"jsonrpc"`
+	ID      json.RawMessage `json:"id,omitempty"`
+	Method  string          `json:"method,omitempty"`
+	Params  json.RawMessage `json:"params,omitempty"`
+	Error   *interface{}    `json:"error,omitempty"`
+	Result  json.RawMessage `json:"result,omitempty"`
 }

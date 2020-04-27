@@ -20,7 +20,7 @@ type JsonrpcMessage struct {
 func HandleRequest(conn, platform string, msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 	switch platform {
 	case "eth":
-		return HandleEthRequest(conn, msg)
+		return handleEthRequest(conn, msg)
 	default:
 		return nil, errors.New(fmt.Sprint("unexpected platform: ", platform))
 	}

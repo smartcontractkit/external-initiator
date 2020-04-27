@@ -72,7 +72,7 @@ func TestCreateEthFilterMessage(t *testing.T) {
 
 	t.Run("has invalid filter query", func(t *testing.T) {
 		blockHash := common.HexToHash("0xabc")
-		got := EthManager{fq: &filterQuery{BlockHash: &blockHash, FromBlock: "0x1", ToBlock: "0x2"}}.GetTriggerJson()
+		got := ethManager{fq: &filterQuery{BlockHash: &blockHash, FromBlock: "0x1", ToBlock: "0x2"}}.GetTriggerJson()
 		if got != nil {
 			t.Errorf("GetTriggerJson() = %s, want nil", got)
 		}
@@ -154,7 +154,7 @@ func TestEthManager_GetTestJson(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := EthManager{
+			e := ethManager{
 				fq: tt.fields.fq,
 				p:  tt.fields.p,
 			}
@@ -211,7 +211,7 @@ func TestEthManager_ParseTestResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := EthManager{
+			e := ethManager{
 				fq: tt.fields.fq,
 				p:  tt.fields.p,
 			}
@@ -308,7 +308,7 @@ func TestEthManager_ParseResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := EthManager{
+			e := ethManager{
 				fq: tt.fields.fq,
 				p:  tt.fields.p,
 			}
