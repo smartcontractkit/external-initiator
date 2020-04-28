@@ -82,6 +82,7 @@ func (ots *OntSubscription) scan() {
 	currentHeight, err := ots.sdk.GetCurrentBlockHeight()
 	if err != nil {
 		logger.Error("ont scan, get current block height error:", err)
+		return
 	}
 	if ots.height == 0 {
 		ots.height = currentHeight
@@ -90,6 +91,7 @@ func (ots *OntSubscription) scan() {
 		err := ots.parseOntEvent(h)
 		if err != nil {
 			logger.Error("ont scan, parse ont event error:", err)
+			return
 		}
 	}
 	ots.height = currentHeight + 1
