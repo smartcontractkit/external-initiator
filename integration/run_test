@@ -1,8 +1,12 @@
 #!/bin/bash
 
+set -e
+
 source ./integration/common
 
 run_test() {
+  trap exit_handler EXIT
+
   mkdir -p "$LOG_PATH"
 
   title "Initiating a fresh test"

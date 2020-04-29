@@ -90,7 +90,7 @@ start_docker() {
   popd >/dev/null || exit
 
   export CHAINLINK_URL="http://localhost:6688/"
-  export EXTERNAL_INITIATOR_URL="http://integration_external-initiator_1:8080/"
+  export EXTERNAL_INITIATOR_URL="http://external-initiator:8080/"
 
   launch_chainlink
 
@@ -120,8 +120,8 @@ build_docker() {
 reset_volumes() {
   title "Removing Docker volumes"
 
-  docker volume rm integration_cl
-  docker volume rm integration_pg
+  docker volume rm integration_cl || :
+  docker volume rm integration_pg || :
 
   title "Done removing Docker volumes"
 }
