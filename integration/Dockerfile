@@ -1,4 +1,4 @@
-FROM smartcontract/chainlink:latest
+FROM smartcontract/chainlink:develop
 
 COPY ./docker-init-scripts/chainlink/import-keystore.sh ./
 
