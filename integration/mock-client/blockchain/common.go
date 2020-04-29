@@ -21,6 +21,8 @@ func HandleRequest(conn, platform string, msg JsonrpcMessage) ([]JsonrpcMessage,
 	switch platform {
 	case "eth":
 		return handleEthRequest(conn, msg)
+	case "ont":
+		return handleOntRequest(msg)
 	default:
 		return nil, errors.New(fmt.Sprint("unexpected platform: ", platform))
 	}
@@ -28,5 +30,4 @@ func HandleRequest(conn, platform string, msg JsonrpcMessage) ([]JsonrpcMessage,
 
 func SetHttpRoutes(router *gin.Engine) {
 	setXtzRoutes(router)
-	setOntRoutes(router)
 }

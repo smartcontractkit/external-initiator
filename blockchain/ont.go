@@ -16,23 +16,23 @@ const (
 	scanInterval = 5 * time.Second
 )
 
-func createOntSubscriber(sub store.Subscription) (*OntSubscriber, error) {
+func createOntSubscriber(sub store.Subscription) (*ontSubscriber, error) {
 	sdk := ontology_go_sdk.NewOntologySdk()
 	sdk.NewRpcClient().SetAddress(sub.Endpoint.Url)
-	return &OntSubscriber{
+	return &ontSubscriber{
 		Sdk:       sdk,
 		Addresses: sub.Ontology.Addresses,
 		JobId:     sub.Job,
 	}, nil
 }
 
-type OntSubscriber struct {
+type ontSubscriber struct {
 	Sdk       *ontology_go_sdk.OntologySdk
 	Addresses []string
 	JobId     string
 }
 
-type OntSubscription struct {
+type ontSubscription struct {
 	sdk       *ontology_go_sdk.OntologySdk
 	events    chan<- subscriber.Event
 	addresses map[string]bool
@@ -41,13 +41,13 @@ type OntSubscription struct {
 	isDone    bool
 }
 
-func (ot *OntSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ ...interface{}) (subscriber.ISubscription, error) {
+func (ot *ontSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ ...interface{}) (subscriber.ISubscription, error) {
 	logger.Infof("Using Ontology RPC endpoint: Listening for events on addresses: %v\n", ot.Addresses)
 	addresses := make(map[string]bool)
 	for _, a := range ot.Addresses {
 		addresses[a] = true
 	}
-	ontSubscription := &OntSubscription{
+	ontSubscription := &ontSubscription{
 		sdk:       ot.Sdk,
 		events:    channel,
 		addresses: addresses,
@@ -59,7 +59,7 @@ func (ot *OntSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ ..
 	return ontSubscription, nil
 }
 
-func (ot *OntSubscriber) Test() error {
+func (ot *ontSubscriber) Test() error {
 	_, err := ot.Sdk.GetCurrentBlockHeight()
 	if err != nil {
 		return err
@@ -67,7 +67,7 @@ func (ot *OntSubscriber) Test() error {
 	return nil
 }
 
-func (ots *OntSubscription) scanWithRetry() {
+func (ots *ontSubscription) scanWithRetry() {
 	for {
 		ots.scan()
 		if !ots.isDone {
@@ -78,7 +78,7 @@ func (ots *OntSubscription) scanWithRetry() {
 	}
 }
 
-func (ots *OntSubscription) scan() {
+func (ots *ontSubscription) scan() {
 	currentHeight, err := ots.sdk.GetCurrentBlockHeight()
 	if err != nil {
 		logger.Error("ont scan, get current block height error:", err)
@@ -97,7 +97,7 @@ func (ots *OntSubscription) scan() {
 	ots.height = currentHeight + 1
 }
 
-func (ots *OntSubscription) parseOntEvent(height uint32) error {
+func (ots *ontSubscription) parseOntEvent(height uint32) error {
 	ontEvents, err := ots.sdk.GetSmartContractEventByBlock(height)
 	logger.Infof("parseOntEvent, start to parse ont block %d", height)
 	if err != nil {
@@ -168,7 +168,7 @@ func (ots *OntSubscription) parseOntEvent(height uint32) error {
 	return nil
 }
 
-func (ots *OntSubscription) Unsubscribe() {
+func (ots *ontSubscription) Unsubscribe() {
 	logger.Info("Unsubscribing from Ontology endpoint")
 	ots.isDone = true
 }

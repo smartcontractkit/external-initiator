@@ -6,38 +6,38 @@ import (
 	"testing"
 )
 
-type SmartContactEvent struct {
+type smartContactEvent struct {
 	TxHash      string
 	State       byte
 	GasConsumed uint64
-	Notify      []*NotifyEventInfo
+	Notify      []*notifyEventInfo
 }
 
 func TestHandleGetSmartCodeEvent(t *testing.T) {
-	req := JsonRpcRequest{
+	req := JsonrpcMessage{
 		Version: "2.0",
-		Id: "1",
+		ID: []byte("1"),
 		Method: "getsmartcodeevent",
 	}
 
-	rsp, err := HandleOntRequest(req)
+	rsp, err := handleOntRequest(req)
 	assert.NoError(t, err)
-	events := make([]*SmartContactEvent, 0)
-	err = json.Unmarshal(rsp.Result, &events)
+	events := make([]*smartContactEvent, 0)
+	err = json.Unmarshal(rsp[0].Result, &events)
 	assert.NoError(t, err)
 }
 
 func TestHandleGetBlockCount(t *testing.T) {
-	req := JsonRpcRequest{
+	req := JsonrpcMessage{
 		Version: "2.0",
-		Id: "1",
+		ID: []byte("1"),
 		Method: "getblockcount",
 	}
 
-	rsp, err := HandleOntRequest(req)
+	rsp, err := handleOntRequest(req)
 	assert.NoError(t, err)
 	var count uint32
-	err = json.Unmarshal(rsp.Result, &count)
+	err = json.Unmarshal(rsp[0].Result, &count)
 	assert.NoError(t, err)
 	assert.Equal(t, count, uint32(1))
 }
