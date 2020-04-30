@@ -59,6 +59,7 @@ func TestMain(m *testing.M) {
 			return
 		}
 
+		fmt.Println("created...")
 		w.WriteHeader(http.StatusCreated)
 	}))
 	defer ts.Close()
@@ -159,6 +160,16 @@ func TestNode_TriggerJob(t *testing.T) {
 			},
 			args{jobId: jobIdWPayload, payload: testPayload},
 			false,
+		},
+		{
+			"does a POST request with invalid payload",
+			fields{
+				AccessKey:    accessKey,
+				AccessSecret: accessSecret,
+				Endpoint:     *u,
+			},
+			args{jobId: jobIdWPayload, payload: []byte(`weird payload`)},
+			true,
 		},
 	}
 	for _, tt := range tests {

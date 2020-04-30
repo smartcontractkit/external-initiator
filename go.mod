@@ -4,6 +4,7 @@ go 1.12
 
 require (
 	github.com/FactomProject/basen v0.0.0-20150613233007-fe3947df716e // indirect
+	github.com/avast/retry-go v2.6.0+incompatible
 	github.com/centrifuge/go-substrate-rpc-client v0.0.4-0.20200117100327-4dc63dc6b2e6
 	github.com/cmars/basen v0.0.0-20150613233007-fe3947df716e // indirect
 	github.com/ethereum/go-ethereum v1.9.12
