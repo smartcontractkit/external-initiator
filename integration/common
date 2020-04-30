@@ -61,6 +61,8 @@ run_ei() {
 
   docker-compose up -d external-initiator
 
+  waitForResponse "http://localhost:8080/health"
+
   popd >/dev/null || exit
 }
 
