@@ -45,6 +45,11 @@ func startService(
 		AccessKey:    config.InitiatorToChainlinkAccessKey,
 		AccessSecret: config.InitiatorToChainlinkSecret,
 		Endpoint:     *clUrl,
+		Retry: chainlink.RetryConfig{
+			Timeout:  config.ChainlinkTimeout,
+			Attempts: config.ChainlinkRetryAttempts,
+			Delay:    config.ChainlinkRetryDelay,
+		},
 	})
 
 	var names []string

@@ -2,6 +2,7 @@ package client
 
 import (
 	"github.com/spf13/viper"
+	"time"
 )
 
 // Config contains the startup configuration parameters.
@@ -21,6 +22,12 @@ type Config struct {
 	ChainlinkToInitiatorSecret string
 	// ExpectsMock is true if the External Initiator should expect mock events from the blockchains
 	ExpectsMock bool
+	// ChainlinkTimeout sets the timeout for job run triggers to the Chainlink node
+	ChainlinkTimeout time.Duration
+	// ChainlinkRetryAttempts sets the maximum number of attempts that will be made for job run triggers
+	ChainlinkRetryAttempts uint
+	// ChainlinkRetryDelay sets the delay between attempts for job run triggers
+	ChainlinkRetryDelay time.Duration
 }
 
 // newConfigFromViper returns a Config based on the values supplied by viper.
@@ -33,5 +40,8 @@ func newConfigFromViper(v *viper.Viper) Config {
 		ChainlinkToInitiatorAccessKey: v.GetString("ci_accesskey"),
 		ChainlinkToInitiatorSecret:    v.GetString("ci_secret"),
 		ExpectsMock:                   v.GetBool("mock"),
+		ChainlinkTimeout:              v.GetDuration("cl_timeout"),
+		ChainlinkRetryAttempts:        v.GetUint("cl_retry_attempts"),
+		ChainlinkRetryDelay:           v.GetDuration("cl_retry_delay"),
 	}
 }

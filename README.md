@@ -29,14 +29,17 @@ Usage:
   external-initiator [endpoint configs] [flags]
 
 Flags:
-      --chainlinkurl string   The URL of the Chainlink Core Service (default "localhost:6688")
-      --ci_accesskey string   The External Initiator access key, used for traffic flowing from Chainlink to this Service
-      --ci_secret string      The External Initiator secret, used for traffic flowing from Chainlink to this Service
-      --databaseurl string    DatabaseURL configures the URL for external initiator to connect to. This must be a properly formatted URL, with a valid scheme (postgres://). (default "postgresql://postgres:password@localhost:5432/ei?sslmode=disable")
-  -h, --help                  help for external-initiator
-      --ic_accesskey string   The Chainlink access key, used for traffic flowing from this Service to Chainlink
-      --ic_secret string      The Chainlink secret, used for traffic flowing from this Service to Chainlink
-      --mock                  Set to true if the External Initiator should expect mock events from the blockchains
+      --chainlinkurl string       The URL of the Chainlink Core Service (default "localhost:6688")
+      --ci_accesskey string       The External Initiator access key, used for traffic flowing from Chainlink to this Service
+      --ci_secret string          The External Initiator secret, used for traffic flowing from Chainlink to this Service
+      --cl_retry_attempts uint    The maximum number of attempts that will be made for job run triggers (default 3)
+      --cl_retry_delay duration   The delay between attempts for job run triggers (default 1s)
+      --cl_timeout duration       The timeout for job run triggers to the Chainlink node (default 5s)
+      --databaseurl string        DatabaseURL configures the URL for external initiator to connect to. This must be a properly formatted URL, with a valid scheme (postgres://). (default "postgresql://postgres:password@localhost:5432/ei?sslmode=disable")
+  -h, --help                      help for external-initiator
+      --ic_accesskey string       The Chainlink access key, used for traffic flowing from this Service to Chainlink
+      --ic_secret string          The Chainlink secret, used for traffic flowing from this Service to Chainlink
+      --mock                      Set to true if the External Initiator should expect mock events from the blockchains
 ```
 
 ### Supply Endpoint configs via HTTP

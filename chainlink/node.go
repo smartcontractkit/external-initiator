@@ -20,11 +20,11 @@ const (
 	externalInitiatorSecretHeader    = "X-Chainlink-EA-Secret"
 )
 
-const (
-	timeout     = 5 * time.Second
-	maxAttempts = 3
-	delay       = 1 * time.Second
-)
+type RetryConfig struct {
+	Timeout  time.Duration
+	Attempts uint
+	Delay    time.Duration
+}
 
 // Node encapsulates all the configuration
 // necessary to interact with a Chainlink node.
@@ -32,6 +32,7 @@ type Node struct {
 	AccessKey    string
 	AccessSecret string
 	Endpoint     url.URL
+	Retry        RetryConfig
 }
 
 // TriggerJob wil send a job run trigger for the
@@ -51,7 +52,7 @@ func (cl Node) TriggerJob(jobId string, data []byte) error {
 	request.Header.Add(externalInitiatorAccessKeyHeader, cl.AccessKey)
 	request.Header.Add(externalInitiatorSecretHeader, cl.AccessSecret)
 
-	_, statusCode, err := withRetry(&http.Client{}, request)
+	_, statusCode, err := cl.Retry.withRetry(&http.Client{}, request)
 	if err != nil {
 		return err
 	}
@@ -63,10 +64,10 @@ func (cl Node) TriggerJob(jobId string, data []byte) error {
 	return nil
 }
 
-func withRetry(client *http.Client, request *http.Request) (responseBody []byte, statusCode int, err error) {
+func (config RetryConfig) withRetry(client *http.Client, request *http.Request) (responseBody []byte, statusCode int, err error) {
 	err = retry.Do(
 		func() error {
-			ctx, cancel := context.WithTimeout(context.Background(), timeout)
+			ctx, cancel := context.WithTimeout(context.Background(), config.Timeout)
 			defer cancel()
 			requestWithTimeout := request.Clone(ctx)
 
@@ -101,10 +102,10 @@ func withRetry(client *http.Client, request *http.Request) (responseBody []byte,
 
 			return nil
 		},
-		retry.Delay(delay),
-		retry.Attempts(maxAttempts),
+		retry.Delay(config.Delay),
+		retry.Attempts(config.Attempts),
 		retry.OnRetry(func(n uint, err error) {
-			logger.Debugw("job run trigger error, will retry", "error", err.Error(), "attempt", n, "timeout", timeout)
+			logger.Debugw("job run trigger error, will retry", "error", err.Error(), "attempt", n, "timeout", config.Timeout)
 		}),
 	)
 

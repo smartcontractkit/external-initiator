@@ -10,6 +10,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 )
 
 var (
@@ -178,6 +179,11 @@ func TestNode_TriggerJob(t *testing.T) {
 				AccessKey:    tt.fields.AccessKey,
 				AccessSecret: tt.fields.AccessSecret,
 				Endpoint:     tt.fields.Endpoint,
+				Retry: RetryConfig{
+					Timeout:  2 * time.Second,
+					Attempts: 3,
+					Delay:    100 * time.Millisecond,
+				},
 			}
 			if err := cl.TriggerJob(tt.args.jobId, tt.args.payload); (err != nil) != tt.wantErr {
 				t.Errorf("TriggerJob() error = %v, wantErr %v", err, tt.wantErr)
