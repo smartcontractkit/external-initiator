@@ -48,6 +48,9 @@ func generateCmd() *cobra.Command {
 	newcmd.Flags().String("ci_secret", "", "The External Initiator secret, used for traffic flowing from Chainlink to this Service")
 	must(v.BindPFlag("ci_secret", newcmd.Flags().Lookup("ci_secret")))
 
+	newcmd.Flags().Bool("mock", false, "Set to true if the External Initiator should expect mock events from the blockchains")
+	must(v.BindPFlag("mock", newcmd.Flags().Lookup("mock")))
+
 	v.SetEnvPrefix("EI")
 	v.AutomaticEnv()
 

@@ -202,7 +202,7 @@ func (sm *substrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool
 
 		for _, request := range events.Chainlink_OracleRequest {
 			// Check if our jobid matches
-			if request.SpecIndex != sm.filter.JobID {
+			if !sm.matchesJobid(request.SpecIndex) {
 				continue
 			}
 
@@ -233,6 +233,16 @@ func (sm *substrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool
 	}
 
 	return subEvents, true
+}
+
+func (sm substrateManager) matchesJobid(jobid types.Text) bool {
+	if jobid == sm.filter.JobID {
+		return true
+	} else if ExpectsMock && jobid == "mock" {
+		return true
+	}
+
+	return false
 }
 
 func (sm *substrateManager) GetTestJson() []byte {

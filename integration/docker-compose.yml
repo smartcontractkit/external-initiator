@@ -59,6 +59,7 @@ services:
     environment:
       - EI_DATABASEURL=postgresql://ei@postgres:5432/ei?sslmode=disable
       - EI_CHAINLINKURL=http://chainlink:6688/
+      - EI_MOCK=true
     command:
       - '{"name":"eth-mock-http","type":"ethereum","url":"http://mock:8080/rpc/eth","refreshInterval":600}'
       - '{"name":"eth-mock-ws","type":"ethereum","url":"ws://mock:8080/ws/eth"}'

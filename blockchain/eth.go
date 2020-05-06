@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"log"
@@ -169,6 +170,8 @@ type ethLogResponse struct {
 // If there are new events, update ethManager with
 // the latest block number it sees.
 func (e ethManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
+	logger.Debugw("Parsing response", "ExpectsMock", ExpectsMock)
+
 	var msg jsonrpcMessage
 	if err := json.Unmarshal(data, &msg); err != nil {
 		log.Println("failed parsing msg:", msg)
