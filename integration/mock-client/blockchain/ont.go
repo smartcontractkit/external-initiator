@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,7 +19,7 @@ func handleOntRequest(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 }
 
 func handleGetBlockCount(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
-	r, _ := json.Marshal(1)
+	r, _ := json.Marshal(uint32(1))
 	return []JsonrpcMessage{
 		{
 			ID:     msg.ID,
@@ -41,6 +42,15 @@ type notifyEventInfo struct {
 
 func handleGetSmartCodeEvent(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 	eInfos := make([]*executeNotify, 0)
+	nEI := notifyEventInfo{
+		ContractAddress: "0x2aD9B7b9386c2f45223dDFc4A4d81C2957bAE19A",
+		States: []interface{}{hex.EncodeToString([]byte("oracleRequest")), "mock"},
+	}
+	eInfo := &executeNotify{
+		Notify: []notifyEventInfo{nEI},
+	}
+	eInfos = append(eInfos, eInfo)
+
 	data, err := json.Marshal(eInfos)
 	if err != nil {
 		return nil, err
