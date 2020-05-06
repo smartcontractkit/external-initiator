@@ -33,6 +33,9 @@ func startService(
 	dbClient *store.Client,
 	args []string,
 ) {
+	// Set the mocking status before we start anything else
+	blockchain.ExpectsMock = config.ExpectsMock
+
 	clUrl, err := url.Parse(normalizeLocalhost(config.ChainlinkURL))
 	if err != nil {
 		logger.Fatal(err)

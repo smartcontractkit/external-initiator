@@ -19,6 +19,8 @@ type Config struct {
 	ChainlinkToInitiatorAccessKey string
 	// The External Initiator secret, used for traffic flowing from Chainlink to this Service
 	ChainlinkToInitiatorSecret string
+	// ExpectsMock is true if the External Initiator should expect mock events from the blockchains
+	ExpectsMock bool
 }
 
 // newConfigFromViper returns a Config based on the values supplied by viper.
@@ -30,5 +32,6 @@ func newConfigFromViper(v *viper.Viper) Config {
 		DatabaseURL:                   v.GetString("databaseurl"),
 		ChainlinkToInitiatorAccessKey: v.GetString("ci_accesskey"),
 		ChainlinkToInitiatorSecret:    v.GetString("ci_secret"),
+		ExpectsMock:                   v.GetBool("mock"),
 	}
 }

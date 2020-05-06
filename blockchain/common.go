@@ -11,6 +11,8 @@ import (
 	"strings"
 )
 
+var ExpectsMock = false
+
 var blockchains = []string{
 	ETH,
 	XTZ,

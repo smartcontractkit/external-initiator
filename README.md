@@ -29,13 +29,14 @@ Usage:
   external-initiator [endpoint configs] [flags]
 
 Flags:
-      --chainlinkurl string   The URL of the Chainlink Core service (default "localhost:6688")
-      --ci_accesskey string   The External Initiator access key, used for traffic flowing from Chainlink to this service
-      --ci_secret string      The External Initiator secret, used for traffic flowing from Chainlink to this service
+      --chainlinkurl string   The URL of the Chainlink Core Service (default "localhost:6688")
+      --ci_accesskey string   The External Initiator access key, used for traffic flowing from Chainlink to this Service
+      --ci_secret string      The External Initiator secret, used for traffic flowing from Chainlink to this Service
       --databaseurl string    DatabaseURL configures the URL for external initiator to connect to. This must be a properly formatted URL, with a valid scheme (postgres://). (default "postgresql://postgres:password@localhost:5432/ei?sslmode=disable")
   -h, --help                  help for external-initiator
-      --ic_accesskey string   The Chainlink access key, used for traffic flowing from this service to Chainlink
-      --ic_secret string      The Chainlink secret, used for traffic flowing from this service to Chainlink
+      --ic_accesskey string   The Chainlink access key, used for traffic flowing from this Service to Chainlink
+      --ic_secret string      The Chainlink secret, used for traffic flowing from this Service to Chainlink
+      --mock                  Set to true if the External Initiator should expect mock events from the blockchains
 ```
 
 ### Supply Endpoint configs via HTTP
