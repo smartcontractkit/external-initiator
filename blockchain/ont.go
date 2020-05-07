@@ -6,6 +6,7 @@ import (
 	"time"
 
 	ontology_go_sdk "github.com/ontio/ontology-go-sdk"
+	"github.com/ontio/ontology-go-sdk/common"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/store"
@@ -17,14 +18,14 @@ const (
 	scanInterval = 5 * time.Second
 )
 
-func createOntSubscriber(sub store.Subscription) (*ontSubscriber, error) {
+func createOntSubscriber(sub store.Subscription) *ontSubscriber {
 	sdk := ontology_go_sdk.NewOntologySdk()
 	sdk.NewRpcClient().SetAddress(sub.Endpoint.Url)
 	return &ontSubscriber{
 		Sdk:       sdk,
 		Addresses: sub.Ontology.Addresses,
 		JobId:     sub.Job,
-	}, nil
+	}
 }
 
 type ontSubscriber struct {
@@ -107,65 +108,8 @@ func (ots *ontSubscription) parseOntEvent(height uint32) error {
 
 	for _, e := range ontEvents {
 		for _, notify := range e.Notify {
-			states, ok := notify.States.([]interface{})
-			if !ok {
-				continue
-			}
-			_, ok = ots.addresses[notify.ContractAddress]
-			if !ok {
-				continue
-			}
-			if len(states) < 10 {
-				logger.Errorf("parseOntEvent, length of events is illegal")
-				continue
-			}
-			name := fmt.Sprint(states[0])
-			if name == hex.EncodeToString([]byte("oracleRequest")) {
-				jobId := fmt.Sprint(states[1])
-				if !ots.matchesJobid(jobId) {
-					continue
-				}
-				logger.Infof("parseOntEvent, found tracked job: %s", jobId)
-
-				requestID := fmt.Sprint(states[3])
-				p := fmt.Sprint(states[4])
-				callbackAddress := fmt.Sprint(states[5])
-				function := fmt.Sprint(states[6])
-				expiration := fmt.Sprint(states[7])
-				data := fmt.Sprint(states[9])
-				dataBytes, err := hex.DecodeString(data)
-				if err != nil {
-					logger.Error("parseOntEvent, date from hex to bytes error:", err)
-				}
-				js, err := models.ParseCBOR(dataBytes)
-				if err != nil {
-					logger.Error("parseOntEvent, date from bytes to JSON error:", err)
-				}
-				js, err = js.Add("address", notify.ContractAddress)
-				if err != nil {
-					logger.Error("parseOntEvent, date JSON add address error:", err)
-				}
-				js, err = js.Add("requestID", requestID)
-				if err != nil {
-					logger.Error("parseOntEvent, date JSON add requestID error:", err)
-				}
-				js, err = js.Add("payment", p)
-				if err != nil {
-					logger.Error("parseOntEvent, date JSON add payment error:", err)
-				}
-				js, err = js.Add("callbackAddress", callbackAddress)
-				if err != nil {
-					logger.Error("parseOntEvent, date JSON add callbackAddress error:", err)
-				}
-				js, err = js.Add("callbackFunction", function)
-				if err != nil {
-					logger.Error("parseOntEvent, date JSON add callbackFunction error:", err)
-				}
-				js, err = js.Add("expiration", expiration)
-				if err != nil {
-					logger.Error("parseOntEvent, date JSON add expiration error:", err)
-				}
-				event, _ := js.MarshalJSON()
+			event, ok := ots.notifyTrigger(notify)
+			if ok {
 				ots.events <- event
 			}
 		}
@@ -186,4 +130,76 @@ func (ots ontSubscription) matchesJobid(jobid string) bool {
 func (ots *ontSubscription) Unsubscribe() {
 	logger.Info("Unsubscribing from Ontology endpoint")
 	ots.isDone = true
+}
+
+func (ots *ontSubscription) notifyTrigger(notify *common.NotifyEventInfo) ([]byte, bool) {
+	states, ok := notify.States.([]interface{})
+	if !ok {
+		return nil, false
+	}
+	_, ok = ots.addresses[notify.ContractAddress]
+	if !ok {
+		return nil, false
+	}
+	if len(states) < 11 {
+		return nil, false
+	}
+	name := fmt.Sprint(states[0])
+	if name == hex.EncodeToString([]byte("oracleRequest")) {
+		jobId := fmt.Sprint(states[1])
+		if !ots.matchesJobid(jobId) {
+			return nil, false
+		}
+		logger.Infof("parseOntEvent, found tracked job: %s", jobId)
+
+		requestID := fmt.Sprint(states[3])
+		p := fmt.Sprint(states[4])
+		callbackAddress := fmt.Sprint(states[5])
+		function := fmt.Sprint(states[6])
+		expiration := fmt.Sprint(states[7])
+		data := fmt.Sprint(states[9])
+		dataBytes, err := hex.DecodeString(data)
+		if err != nil {
+			logger.Error("parseOntEvent, date from hex to bytes error:", err)
+			return nil, false
+		}
+		js, err := models.ParseCBOR(dataBytes)
+		if err != nil {
+			logger.Error("parseOntEvent, date from bytes to JSON error:", err)
+			return nil, false
+		}
+		js, err = js.Add("address", notify.ContractAddress)
+		if err != nil {
+			logger.Error("parseOntEvent, date JSON add address error:", err)
+			return nil, false
+		}
+		js, err = js.Add("requestID", requestID)
+		if err != nil {
+			logger.Error("parseOntEvent, date JSON add requestID error:", err)
+			return nil, false
+		}
+		js, err = js.Add("payment", p)
+		if err != nil {
+			logger.Error("parseOntEvent, date JSON add payment error:", err)
+			return nil, false
+		}
+		js, err = js.Add("callbackAddress", callbackAddress)
+		if err != nil {
+			logger.Error("parseOntEvent, date JSON add callbackAddress error:", err)
+			return nil, false
+		}
+		js, err = js.Add("callbackFunction", function)
+		if err != nil {
+			logger.Error("parseOntEvent, date JSON add callbackFunction error:", err)
+			return nil, false
+		}
+		js, err = js.Add("expiration", expiration)
+		if err != nil {
+			logger.Error("parseOntEvent, date JSON add expiration error:", err)
+			return nil, false
+		}
+		event, _ := js.MarshalJSON()
+		return event, true
+	}
+	return nil, false
 }

@@ -48,7 +48,7 @@ func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error)
 	case XTZ:
 		return createTezosSubscriber(sub), nil
 	case ONT:
-		return createOntSubscriber(sub)
+		return createOntSubscriber(sub), nil
 	}
 
 	return nil, errors.New("unknown blockchain type for Client subscription")

@@ -44,8 +44,8 @@ func handleGetSmartCodeEvent(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 	eInfos := make([]*executeNotify, 0)
 	nEI := notifyEventInfo{
 		ContractAddress: "0x2aD9B7b9386c2f45223dDFc4A4d81C2957bAE19A",
-		States: []interface{}{hex.EncodeToString([]byte("oracleRequest")), "mock", "0x1", "0x1", "0x1", "0x1",
-			"0x1", "0x1", "0x1", "", "0x1"},
+		States: []interface{}{hex.EncodeToString([]byte("oracleRequest")), "mock", "01", "02", "03", "04",
+			"05", "06", "07", "", "08"},
 	}
 	eInfo := &executeNotify{
 		Notify: []notifyEventInfo{nEI},
