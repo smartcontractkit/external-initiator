@@ -3,12 +3,13 @@ package blockchain
 import (
 	"encoding/hex"
 	"fmt"
+	"time"
+
 	ontology_go_sdk "github.com/ontio/ontology-go-sdk"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
-	"time"
 )
 
 const (
@@ -114,10 +115,14 @@ func (ots *ontSubscription) parseOntEvent(height uint32) error {
 			if !ok {
 				continue
 			}
+			if len(states) < 10 {
+				logger.Errorf("parseOntEvent, length of events is illegal")
+				continue
+			}
 			name := fmt.Sprint(states[0])
 			if name == hex.EncodeToString([]byte("oracleRequest")) {
 				jobId := fmt.Sprint(states[1])
-				if jobId != ots.jobId {
+				if !ots.matchesJobid(jobId) {
 					continue
 				}
 				logger.Infof("parseOntEvent, found tracked job: %s", jobId)
@@ -166,6 +171,16 @@ func (ots *ontSubscription) parseOntEvent(height uint32) error {
 		}
 	}
 	return nil
+}
+
+func (ots ontSubscription) matchesJobid(jobid string) bool {
+	if jobid == ots.jobId {
+		return true
+	} else if ExpectsMock && jobid == "mock" {
+		return true
+	}
+
+	return false
 }
 
 func (ots *ontSubscription) Unsubscribe() {

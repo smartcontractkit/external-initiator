@@ -6,6 +6,7 @@ import (
 	"database/sql/driver"
 	"encoding/csv"
 	"fmt"
+
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pkg/errors"

@@ -5,10 +5,11 @@ package blockchain
 import (
 	"encoding/json"
 	"errors"
-	"github.com/smartcontractkit/external-initiator/store"
-	"github.com/smartcontractkit/external-initiator/subscriber"
 	"net/url"
 	"strings"
+
+	"github.com/smartcontractkit/external-initiator/store"
+	"github.com/smartcontractkit/external-initiator/subscriber"
 )
 
 var ExpectsMock = false

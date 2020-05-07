@@ -2,8 +2,9 @@ package blockchain
 
 import (
 	"encoding/json"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type smartContactEvent struct {
@@ -16,8 +17,8 @@ type smartContactEvent struct {
 func TestHandleGetSmartCodeEvent(t *testing.T) {
 	req := JsonrpcMessage{
 		Version: "2.0",
-		ID: []byte("1"),
-		Method: "getsmartcodeevent",
+		ID:      []byte("1"),
+		Method:  "getsmartcodeevent",
 	}
 
 	rsp, err := handleOntRequest(req)
@@ -30,8 +31,8 @@ func TestHandleGetSmartCodeEvent(t *testing.T) {
 func TestHandleGetBlockCount(t *testing.T) {
 	req := JsonrpcMessage{
 		Version: "2.0",
-		ID: []byte("1"),
-		Method: "getblockcount",
+		ID:      []byte("1"),
+		Method:  "getblockcount",
 	}
 
 	rsp, err := handleOntRequest(req)
