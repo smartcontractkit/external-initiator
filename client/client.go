@@ -8,6 +8,7 @@ import (
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -51,6 +52,15 @@ func generateCmd() *cobra.Command {
 	newcmd.Flags().Bool("mock", false, "Set to true if the External Initiator should expect mock events from the blockchains")
 	must(v.BindPFlag("mock", newcmd.Flags().Lookup("mock")))
 
+	newcmd.Flags().Duration("cl_timeout", 5*time.Second, "The timeout for job run triggers to the Chainlink node")
+	must(v.BindPFlag("cl_timeout", newcmd.Flags().Lookup("cl_timeout")))
+
+	newcmd.Flags().Uint("cl_retry_attempts", 3, "The maximum number of attempts that will be made for job run triggers")
+	must(v.BindPFlag("cl_retry_attempts", newcmd.Flags().Lookup("cl_retry_attempts")))
+
+	newcmd.Flags().Duration("cl_retry_delay", 1*time.Second, "The delay between attempts for job run triggers")
+	must(v.BindPFlag("cl_retry_delay", newcmd.Flags().Lookup("cl_retry_delay")))
+
 	v.SetEnvPrefix("EI")
 	v.AutomaticEnv()
 
@@ -64,6 +74,9 @@ var requiredConfig = []string{
 	"databaseurl",
 	"ci_accesskey",
 	"ci_secret",
+	"cl_timeout",
+	"cl_retry_attempts",
+	"cl_retry_delay",
 }
 
 // runner type matches the function signature of synchronizeForever

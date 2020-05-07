@@ -45,6 +45,11 @@ func startService(
 		AccessKey:    config.InitiatorToChainlinkAccessKey,
 		AccessSecret: config.InitiatorToChainlinkSecret,
 		Endpoint:     *clUrl,
+		Retry: chainlink.RetryConfig{
+			Timeout:  config.ChainlinkTimeout,
+			Attempts: config.ChainlinkRetryAttempts,
+			Delay:    config.ChainlinkRetryDelay,
+		},
 	})
 
 	var names []string
@@ -229,10 +234,12 @@ func (srv *Service) subscribe(sub *store.Subscription, iSubscriber subscriber.IS
 			if !ok {
 				return
 			}
-			err := as.Node.TriggerJob(as.Subscription.Job, event)
-			if err != nil {
-				logger.Error(err)
-			}
+			go func() {
+				err := as.Node.TriggerJob(as.Subscription.Job, event)
+				if err != nil {
+					logger.Error("Failed sending job run trigger: ", err)
+				}
+			}()
 		}
 	}()
 

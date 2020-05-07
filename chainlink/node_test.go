@@ -10,6 +10,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 )
 
 var (
@@ -59,6 +60,7 @@ func TestMain(m *testing.M) {
 			return
 		}
 
+		fmt.Println("created...")
 		w.WriteHeader(http.StatusCreated)
 	}))
 	defer ts.Close()
@@ -160,6 +162,16 @@ func TestNode_TriggerJob(t *testing.T) {
 			args{jobId: jobIdWPayload, payload: testPayload},
 			false,
 		},
+		{
+			"does a POST request with invalid payload",
+			fields{
+				AccessKey:    accessKey,
+				AccessSecret: accessSecret,
+				Endpoint:     *u,
+			},
+			args{jobId: jobIdWPayload, payload: []byte(`weird payload`)},
+			true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -167,6 +179,11 @@ func TestNode_TriggerJob(t *testing.T) {
 				AccessKey:    tt.fields.AccessKey,
 				AccessSecret: tt.fields.AccessSecret,
 				Endpoint:     tt.fields.Endpoint,
+				Retry: RetryConfig{
+					Timeout:  2 * time.Second,
+					Attempts: 3,
+					Delay:    100 * time.Millisecond,
+				},
 			}
 			if err := cl.TriggerJob(tt.args.jobId, tt.args.payload); (err != nil) != tt.wantErr {
 				t.Errorf("TriggerJob() error = %v, wantErr %v", err, tt.wantErr)
