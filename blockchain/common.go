@@ -5,10 +5,11 @@ package blockchain
 import (
 	"encoding/json"
 	"errors"
-	"github.com/smartcontractkit/external-initiator/store"
-	"github.com/smartcontractkit/external-initiator/subscriber"
 	"net/url"
 	"strings"
+
+	"github.com/smartcontractkit/external-initiator/store"
+	"github.com/smartcontractkit/external-initiator/subscriber"
 )
 
 var ExpectsMock = false
@@ -17,6 +18,7 @@ var blockchains = []string{
 	ETH,
 	XTZ,
 	Substrate,
+	ONT,
 }
 
 type Params struct {
@@ -45,6 +47,8 @@ func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error)
 	switch sub.Endpoint.Type {
 	case XTZ:
 		return createTezosSubscriber(sub), nil
+	case ONT:
+		return createOntSubscriber(sub), nil
 	}
 
 	return nil, errors.New("unknown blockchain type for Client subscription")
@@ -53,7 +57,7 @@ func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error)
 func GetConnectionType(endpoint store.Endpoint) (subscriber.Type, error) {
 	switch endpoint.Type {
 	// Add blockchain implementations that encapsulate entire connection here
-	case XTZ:
+	case XTZ, ONT:
 		return subscriber.Client, nil
 	default:
 		u, err := url.Parse(endpoint.Url)
@@ -94,6 +98,10 @@ func GetValidations(t string, params Params) []int {
 		return []int{
 			len(params.AccountIDs),
 		}
+	case ONT:
+		return []int{
+			len(params.Addresses),
+		}
 	}
 
 	return nil
@@ -113,6 +121,10 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 	case Substrate:
 		sub.Substrate = store.SubstrateSubscription{
 			AccountIds: params.AccountIDs,
+		}
+	case ONT:
+		sub.Ontology = store.OntSubscription{
+			Addresses: params.Addresses,
 		}
 	}
 }

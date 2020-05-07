@@ -6,6 +6,7 @@ import (
 	"database/sql/driver"
 	"encoding/csv"
 	"fmt"
+
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pkg/errors"
@@ -105,6 +106,10 @@ func (client Client) prepareSubscription(rawSub *Subscription) (*Subscription, e
 		}
 	case "substrate":
 		if err := client.db.Model(&sub).Related(&sub.Substrate).Error; err != nil {
+			return nil, err
+		}
+	case "ontology":
+		if err := client.db.Model(&sub).Related(&sub.Ontology).Error; err != nil {
 			return nil, err
 		}
 	}
@@ -241,6 +246,7 @@ type Subscription struct {
 	Ethereum     EthSubscription
 	Tezos        TezosSubscription
 	Substrate    SubstrateSubscription
+	Ontology     OntSubscription
 }
 
 type EthSubscription struct {
@@ -260,4 +266,10 @@ type SubstrateSubscription struct {
 	gorm.Model
 	SubscriptionId uint
 	AccountIds     SQLStringArray
+}
+
+type OntSubscription struct {
+	gorm.Model
+	SubscriptionId uint
+	Addresses      SQLStringArray
 }
