@@ -1,9 +1,17 @@
-FROM golang:alpine
+FROM golang:alpine as build-env
 
-RUN apk add build-base
-ADD . /go/src/github.com/smartcontractkit/external-initiator/integration/mock-client
-RUN cd /go/src/github.com/smartcontractkit/external-initiator/integration/mock-client && go get && go build
+RUN apk add build-base linux-headers
+RUN mkdir /mock-client
+WORKDIR /mock-client
+COPY go.mod .
+COPY go.sum .
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o /go/bin/mock-client
+
+FROM scratch
+COPY --from=build-env /go/bin/mock-client /go/bin/mock-client
 
 EXPOSE 8080
 
-ENTRYPOINT ["mock-client"]
+ENTRYPOINT ["/go/bin/mock-client"]
