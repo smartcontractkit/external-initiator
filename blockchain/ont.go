@@ -101,7 +101,7 @@ func (ots *ontSubscription) scan() {
 
 func (ots *ontSubscription) parseOntEvent(height uint32) error {
 	ontEvents, err := ots.sdk.GetSmartContractEventByBlock(height)
-	logger.Infof("parseOntEvent, start to parse ont block %d", height)
+	logger.Debugf("parseOntEvent, start to parse ont block %d", height)
 	if err != nil {
 		return fmt.Errorf("parseOntEvent, get smartcontract event by block error:%s", err)
 	}
@@ -150,7 +150,7 @@ func (ots *ontSubscription) notifyTrigger(notify *common.NotifyEventInfo) ([]byt
 		if !ots.matchesJobid(jobId) {
 			return nil, false
 		}
-		logger.Infof("parseOntEvent, found tracked job: %s", jobId)
+		logger.Debugf("parseOntEvent, found tracked job: %s", jobId)
 
 		requestID := fmt.Sprint(states[3])
 		p := fmt.Sprint(states[4])

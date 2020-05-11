@@ -42,7 +42,7 @@ type tezosSubscription struct {
 }
 
 func (tz tezosSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ ...interface{}) (subscriber.ISubscription, error) {
-	logger.Infof("Using Tezos RPC endpoint: %s\nListening for events on addresses: %v\n", tz.Endpoint, tz.Addresses)
+	logger.Infof("Using Tezos RPC endpoint: %s\nListening for events on addresses: %v", tz.Endpoint, tz.Addresses)
 
 	tzs := tezosSubscription{
 		endpoint:  tz.Endpoint,
@@ -82,7 +82,7 @@ func (tzs tezosSubscription) readMessages() {
 		return
 	}
 	defer resp.Body.Close()
-	logger.Infof("Connected to RPC endpoint at %s, waiting for heads...\n", tzs.endpoint)
+	logger.Debugf("Connected to RPC endpoint at %s, waiting for heads...\n", tzs.endpoint)
 
 	reader := bufio.NewReader(resp.Body)
 
@@ -102,7 +102,7 @@ func (tzs tezosSubscription) readMessages() {
 				return
 			}
 
-			logger.Infof("Got new Tezos head: %s\n", blockID)
+			logger.Debugf("Got new Tezos head: %s\n", blockID)
 			blockJSON, err := tzs.getBlock(blockID)
 			if err != nil {
 				logger.Error(err)
@@ -115,7 +115,7 @@ func (tzs tezosSubscription) readMessages() {
 				return
 			}
 
-			logger.Infof("%v events matching addresses %v\n", len(events), tzs.addresses)
+			logger.Debugf("%v events matching addresses %v\n", len(events), tzs.addresses)
 
 			for _, event := range events {
 				tzs.events <- event

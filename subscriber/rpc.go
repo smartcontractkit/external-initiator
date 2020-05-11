@@ -3,7 +3,6 @@ package subscriber
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"io/ioutil"
 	"net/http"
@@ -44,11 +43,11 @@ func (rpc rpcSubscription) Unsubscribe() {
 }
 
 func (rpc rpcSubscription) poll() {
-	fmt.Printf("Polling %s\n", rpc.endpoint)
+	logger.Debugf("Polling %s\n", rpc.endpoint)
 
 	resp, err := sendPostRequest(rpc.endpoint, rpc.manager.GetTriggerJson())
 	if err != nil {
-		fmt.Printf("Failed polling %s: %v\n", rpc.endpoint, err)
+		logger.Errorf("Failed polling %s: %v\n", rpc.endpoint, err)
 		return
 	}
 

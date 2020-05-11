@@ -11,6 +11,5 @@ func init() {
 }
 
 func main() {
-	logger.Info("Starting External Initiator")
 	client.Run()
 }

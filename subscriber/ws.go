@@ -125,7 +125,7 @@ func (wss websocketSubscription) init() {
 }
 
 func (wss websocketSubscription) reconnect() {
-	logger.Warnf("Lost WS connection to %s\nRetrying in %vs\n", wss.endpoint, 3)
+	logger.Warnf("Lost WS connection to %s\nRetrying in %vs", wss.endpoint, 3)
 	time.Sleep(3 * time.Second)
 
 	c, _, err := websocket.DefaultDialer.Dial(wss.endpoint, nil)
