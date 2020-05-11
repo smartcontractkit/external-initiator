@@ -11,9 +11,6 @@ function create_user_and_database() {
 	    CREATE DATABASE $database;
 	    GRANT ALL PRIVILEGES ON DATABASE $database TO $database;
 EOSQL
-  psql -d "$database" --username "$POSTGRES_USER" <<-EOSQL
-      CREATE EXTENSION IF NOT EXISTS citext;
-EOSQL
 }
 
 if [ -n "$POSTGRES_MULTIPLE_DATABASES" ]; then
