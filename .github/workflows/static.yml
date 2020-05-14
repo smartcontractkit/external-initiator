@@ -1,0 +1,55 @@
+name: golang/static
+on: [push,pull_request]
+
+jobs:
+
+  vet:
+    name: vet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: EI vet
+        uses: grandcolline/golang-github-actions@v1.1.0
+        with:
+          run: vet
+          comment: false
+      - name: Mock client vet
+        uses: grandcolline/golang-github-actions@v1.1.0
+        with:
+          run: vet
+          comment: false
+          directory: integration/mock-client
+
+  shadow:
+    name: Shadow
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: EI check
+        uses: grandcolline/golang-github-actions@v1.1.0
+        with:
+          run: shadow
+          comment: false
+      - name: Mock client check
+        uses: grandcolline/golang-github-actions@v1.1.0
+        with:
+          run: shadow
+          comment: false
+          directory: integration/mock-client
+
+  imports:
+    name: Imports
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: EI check
+        uses: grandcolline/golang-github-actions@v1.1.0
+        with:
+          run: imports
+          comment: false
+      - name: Mock client check
+        uses: grandcolline/golang-github-actions@v1.1.0
+        with:
+          run: imports
+          comment: false
+          directory: integration/mock-client

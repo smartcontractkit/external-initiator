@@ -1,8 +1,9 @@
 package client
 
 import (
-	"github.com/spf13/viper"
 	"time"
+
+	"github.com/spf13/viper"
 )
 
 // Config contains the startup configuration parameters.

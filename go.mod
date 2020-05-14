@@ -22,6 +22,7 @@ require (
 	github.com/stretchr/testify v1.5.1
 	github.com/tidwall/gjson v1.6.0
 	go.uber.org/zap v1.14.1
+	golang.org/x/tools v0.0.0-20200513201620-d5fe73897c97 // indirect
 	gopkg.in/gormigrate.v1 v1.6.0
 	launchpad.net/gocheck v0.0.0-00010101000000-000000000000 // indirect
 )

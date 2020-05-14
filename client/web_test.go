@@ -3,13 +3,14 @@ package client
 import (
 	"bytes"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"net/http"
-	"net/http/httptest"
-	"testing"
 )
 
 type storeFailer struct {
@@ -255,7 +256,7 @@ func TestRequireAuth(t *testing.T) {
 			req.Header.Set(externalInitiatorAccessKeyHeader, key)
 			req.Header.Set(externalInitiatorSecretHeader, secret)
 
-			w := httptest.NewRecorder()
+			w = httptest.NewRecorder()
 			srv.ServeHTTP(w, req)
 			assert.NotEqual(t, http.StatusUnauthorized, w.Code)
 		} else {

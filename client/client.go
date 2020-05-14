@@ -5,12 +5,12 @@ package client
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/smartcontractkit/chainlink/core/logger"
-	"github.com/smartcontractkit/external-initiator/store"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/smartcontractkit/chainlink/core/logger"
+	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

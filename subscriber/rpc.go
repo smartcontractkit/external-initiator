@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/smartcontractkit/chainlink/core/logger"
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	"github.com/smartcontractkit/chainlink/core/logger"
 )
 
 // RpcSubscriber holds the configuration for

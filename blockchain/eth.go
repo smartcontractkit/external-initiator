@@ -3,13 +3,14 @@ package blockchain
 import (
 	"encoding/json"
 	"errors"
+	"log"
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
-	"log"
-	"math/big"
 )
 
 const ETH = "ethereum"
