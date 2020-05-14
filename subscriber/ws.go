@@ -2,9 +2,10 @@ package subscriber
 
 import (
 	"errors"
+	"time"
+
 	"github.com/gorilla/websocket"
 	"github.com/smartcontractkit/chainlink/core/logger"
-	"time"
 )
 
 // WebsocketSubscriber holds the configuration for
@@ -30,7 +31,8 @@ func (wss WebsocketSubscriber) Test() error {
 	resp := make(chan []byte)
 
 	go func() {
-		_, body, err := c.ReadMessage()
+		var body []byte
+		_, body, err = c.ReadMessage()
 		if err != nil {
 			close(resp)
 		}

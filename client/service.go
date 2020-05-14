@@ -2,17 +2,18 @@ package client
 
 import (
 	"encoding/json"
+	"net/url"
+	"os"
+	"os/signal"
+	"strings"
+	"time"
+
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/blockchain"
 	"github.com/smartcontractkit/external-initiator/chainlink"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
-	"net/url"
-	"os"
-	"os/signal"
-	"strings"
-	"time"
 )
 
 type storeInterface interface {
@@ -57,7 +58,7 @@ func startService(
 	var names []string
 	for _, e := range args {
 		var endpoint store.Endpoint
-		err := json.Unmarshal([]byte(e), &endpoint)
+		err = json.Unmarshal([]byte(e), &endpoint)
 		if err != nil {
 			continue
 		}

@@ -7,12 +7,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/avast/retry-go"
-	"github.com/smartcontractkit/chainlink/core/logger"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/avast/retry-go"
+	"github.com/smartcontractkit/chainlink/core/logger"
 )
 
 const (

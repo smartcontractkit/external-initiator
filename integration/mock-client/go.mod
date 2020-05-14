@@ -8,4 +8,5 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/smartcontractkit/chainlink v0.8.2
 	github.com/stretchr/testify v1.5.1
+	go.uber.org/zap v1.14.1
 )
