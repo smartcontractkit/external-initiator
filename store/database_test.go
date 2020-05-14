@@ -4,13 +4,14 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"net/url"
 	"os"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type Config struct {
@@ -264,7 +265,7 @@ func TestClient_SaveEndpoint(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := db.SaveEndpoint(tt.args.endpoint); (err != nil) != tt.wantErr {
+			if err = db.SaveEndpoint(tt.args.endpoint); (err != nil) != tt.wantErr {
 				t.Errorf("SaveEndpoint() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if !tt.wantErr && err == nil {

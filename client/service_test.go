@@ -2,14 +2,15 @@ package client
 
 import (
 	"errors"
+	"reflect"
+	"testing"
+	"time"
+
 	"github.com/smartcontractkit/external-initiator/blockchain"
 	"github.com/smartcontractkit/external-initiator/chainlink"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/stretchr/testify/require"
-	"reflect"
-	"testing"
-	"time"
 )
 
 type storeClientFailer struct {

@@ -1,9 +1,10 @@
 package client
 
 import (
+	"testing"
+
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func Test_validateParams(t *testing.T) {

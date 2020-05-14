@@ -1,9 +1,10 @@
 package client
 
 import (
+	"testing"
+
 	"github.com/magiconair/properties/assert"
 	"github.com/spf13/viper"
-	"testing"
 )
 
 func Test_newConfigFromViper(t *testing.T) {
