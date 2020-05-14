@@ -3,15 +3,14 @@ package store
 import (
 	"database/sql"
 	"database/sql/driver"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"fmt"
 	"net/url"
 	"os"
 	"reflect"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 type Config struct {

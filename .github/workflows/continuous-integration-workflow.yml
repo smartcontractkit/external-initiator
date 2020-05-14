@@ -1,0 +1,38 @@
+name: Continuous Integration Workflow
+on: push
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgres://ei@localhost:5432/ei_test?sslmode=disable
+    services:
+      postgres:
+        image: postgres
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Set up Postgres user
+        uses: docker://postgres
+        with:
+          args: psql -v ON_ERROR_STOP=1 --username postgres -h postgres -c "CREATE USER ei NOSUPERUSER CREATEDB;"
+      - name: Checkout the repo
+        uses: actions/checkout@v2
+      - name: Fetch EI dependencies
+        run: go mod download
+      - name: Test EI
+        run: go test -v ./...
+      - name: Fetch Mock client dependencies
+        run: cd ./integration/mock-client && go mod download
+      - name: Test Mock client
+        run: cd ./integration/mock-client && go test -v ./...
