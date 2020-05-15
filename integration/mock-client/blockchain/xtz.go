@@ -1,11 +1,11 @@
 package blockchain
 
 import (
-	"github.com/smartcontractkit/chainlink/core/logger"
 	"net/http"
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/smartcontractkit/chainlink/core/logger"
 )
 
 type xtzMonitorResponse struct {

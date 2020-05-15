@@ -1,15 +1,16 @@
 package blockchain
 
 import (
+	"io/ioutil"
+	"os"
+	"path"
+	"testing"
+
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
-	"io/ioutil"
-	"os"
-	"path"
-	"testing"
 )
 
 func TestCreateTezosSubscriber(t *testing.T) {

@@ -1,9 +1,10 @@
 package blockchain
 
 import (
+	"testing"
+
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
-	"testing"
 )
 
 func Test_GetConnectionType(t *testing.T) {

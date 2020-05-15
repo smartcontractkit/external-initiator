@@ -1,13 +1,14 @@
 package blockchain
 
 import (
+	"reflect"
+	"testing"
+
 	"github.com/centrifuge/go-substrate-rpc-client/types"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"reflect"
-	"testing"
 )
 
 var (

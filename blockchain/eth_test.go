@@ -1,15 +1,16 @@
 package blockchain
 
 import (
+	"math/big"
+	"reflect"
+	"testing"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/magiconair/properties/assert"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/stretchr/testify/require"
-	"math/big"
-	"reflect"
-	"testing"
 )
 
 func TestCreateEthFilterMessage(t *testing.T) {

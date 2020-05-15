@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"os"
 	"testing"
+
+	"github.com/gorilla/websocket"
 )
 
 var rpcMockUrl *url.URL
@@ -58,14 +60,17 @@ func TestMain(m *testing.M) {
 	}
 
 	ws := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		c, err := upgrader.Upgrade(w, r, nil)
+		var c *websocket.Conn
+		c, err = upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			log.Print("upgrade:", err)
 			return
 		}
 		defer c.Close()
 		for {
-			mt, message, err := c.ReadMessage()
+			var mt int
+			var message []byte
+			mt, message, err = c.ReadMessage()
 			if err != nil {
 				log.Println("read:", err)
 				break
