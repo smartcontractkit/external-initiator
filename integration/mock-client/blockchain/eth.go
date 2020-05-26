@@ -31,7 +31,7 @@ type ethSubscribeResponse struct {
 	Result       json.RawMessage `json:"result"`
 }
 
-func handleMapStringInterface(in map[string]interface{}) (ethLogResponse, error) {
+func handleMapStringInterface(in map[string]json.RawMessage) (ethLogResponse, error) {
 	topics, err := getTopicsFromMap(in)
 	if err != nil {
 		return ethLogResponse{}, err
@@ -62,7 +62,7 @@ func handleMapStringInterface(in map[string]interface{}) (ethLogResponse, error)
 }
 
 func handleEthSubscribe(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
-	var contents []interface{}
+	var contents []json.RawMessage
 	err := json.Unmarshal(msg.Params, &contents)
 	if err != nil {
 		return nil, err
@@ -72,12 +72,13 @@ func handleEthSubscribe(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 		return nil, errors.New(fmt.Sprint("possibly incorrect length of params array:", len(contents)))
 	}
 
-	req, ok := contents[1].(map[string]interface{})
-	if !ok {
-		return nil, errors.New("type cast to map[string]interface{} failed")
+	var filter map[string]json.RawMessage
+	err = json.Unmarshal(contents[1], &filter)
+	if err != nil {
+		return nil, err
 	}
 
-	log, err := handleMapStringInterface(req)
+	log, err := handleMapStringInterface(filter)
 	if err != nil {
 		return nil, err
 	}
@@ -101,12 +102,12 @@ func handleEthSubscribe(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 		// Send a confirmation message first
 		// This is currently ignored, so don't fill
 		{
-			Version: msg.Version,
+			Version: "2.0",
 			ID:      msg.ID,
 			Method:  "eth_subscribe",
 		},
 		{
-			Version: msg.Version,
+			Version: "2.0",
 			ID:      msg.ID,
 			Method:  "eth_subscribe",
 			Params:  subBz,
@@ -135,15 +136,16 @@ type ethLogResponse struct {
 	Topics           []string `json:"topics"`
 }
 
-func getTopicsFromMap(req map[string]interface{}) ([][]common.Hash, error) {
+func getTopicsFromMap(req map[string]json.RawMessage) ([][]common.Hash, error) {
 	topicsInterface, ok := req["topics"]
 	if !ok {
 		return nil, errors.New("no topics included")
 	}
 
-	topicsArr, ok := topicsInterface.([]interface{})
-	if !ok {
-		return nil, errors.New("could not cast topics to []interface{}")
+	var topicsArr []*[]string
+	err := json.Unmarshal(topicsInterface, &topicsArr)
+	if err != nil {
+		return nil, err
 	}
 
 	var finalTopics [][]common.Hash
@@ -152,13 +154,8 @@ func getTopicsFromMap(req map[string]interface{}) ([][]common.Hash, error) {
 			continue
 		}
 
-		topic, ok := t.(*[]string)
-		if !ok || topic == nil {
-			continue
-		}
-
-		topics := make([]common.Hash, len(*topic))
-		for i, s := range *topic {
+		topics := make([]common.Hash, len(*t))
+		for i, s := range *t {
 			topics[i] = common.HexToHash(s)
 		}
 
@@ -168,25 +165,16 @@ func getTopicsFromMap(req map[string]interface{}) ([][]common.Hash, error) {
 	return finalTopics, nil
 }
 
-func getAddressesFromMap(req map[string]interface{}) ([]common.Address, error) {
+func getAddressesFromMap(req map[string]json.RawMessage) ([]common.Address, error) {
 	addressesInterface, ok := req["address"]
 	if !ok {
 		return nil, errors.New("no addresses included")
 	}
 
-	addressesIntf, ok := addressesInterface.([]interface{})
-	if !ok {
-		return nil, errors.New("could not cast addresses to []interface{}")
-	}
-
 	var addresses []common.Address
-	for _, intf := range addressesIntf {
-		str, ok := intf.(string)
-		if !ok {
-			return nil, errors.New("unable to cast into string")
-		}
-
-		addresses = append(addresses, common.HexToAddress(str))
+	err := json.Unmarshal(addressesInterface, &addresses)
+	if err != nil {
+		return nil, err
 	}
 
 	if len(addresses) < 1 {
@@ -197,7 +185,7 @@ func getAddressesFromMap(req map[string]interface{}) ([]common.Address, error) {
 }
 
 func ethLogRequestToResponse(msg JsonrpcMessage) (ethLogResponse, error) {
-	var reqs []map[string]interface{}
+	var reqs []map[string]json.RawMessage
 	err := json.Unmarshal(msg.Params, &reqs)
 	if err != nil {
 		return ethLogResponse{}, err
