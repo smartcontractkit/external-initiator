@@ -54,8 +54,8 @@ func createCfxManager(p subscriber.Type, config store.Subscription) cfxManager {
 // cfxManager is using RPC:
 // Sends a "cfx_getLogs" request.
 func (e cfxManager) GetTriggerJson() []byte {
-	if e.p == subscriber.RPC && e.fq.FromBlock == "" {
-		e.fq.FromBlock = "latest_state"
+	if e.p == subscriber.RPC && e.fq.fromEpoch == "" {
+		e.fq.fromEpoch = "latest_state"
 	}
 
 	filter, err := e.fq.toMapInterface()
@@ -125,7 +125,7 @@ func (e cfxManager) ParseTestResponse(data []byte) error {
 		if err := json.Unmarshal(msg.Result, &res); err != nil {
 			return err
 		}
-		e.fq.FromBlock = res
+		e.fq.fromEpoch = res
 	}
 
 	return nil
@@ -133,7 +133,7 @@ func (e cfxManager) ParseTestResponse(data []byte) error {
 
 type cfxLogResponse struct {
 	LogIndex         string   `json:"logIndex"`
-	BlockNumber      string   `json:"epochNumber"`
+	EpochNumber      string   `json:"epochNumber"`
 	BlockHash        string   `json:"blockHash"`
 	TransactionHash  string   `json:"transactionHash"`
 	TransactionIndex string   `json:"transactionIndex"`
@@ -174,24 +174,24 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 			}
 			events = append(events, event)
 
-			// Check if we can update the "fromBlock" in the query,
+			// Check if we can update the "fromEpoch" in the query,
 			// so we only get new events from blocks we haven't queried yet
-			curBlkn, err := hexutil.DecodeBig(evt.BlockNumber)
+			curBlkn, err := hexutil.DecodeBig(evt.EpochNumber)
 			if err != nil {
 				continue
 			}
 			// Increment the block number by 1, since we want events from *after* this block number
 			curBlkn.Add(curBlkn, big.NewInt(1))
 
-			fromBlkn, err := hexutil.DecodeBig(e.fq.FromBlock)
-			if err != nil && !(e.fq.FromBlock == "latest" || e.fq.FromBlock == "") {
+			fromBlkn, err := hexutil.DecodeBig(e.fq.fromEpoch)
+			if err != nil && !(e.fq.fromEpoch == "latest_mined" || e.fq.fromEpoch == "") {
 				continue
 			}
 
-			// If our query "fromBlock" is "latest", or our current "fromBlock" is in the past compared to
+			// If our query "fromEpoch" is "latest_mined", or our current "fromEpoch" is in the past compared to
 			// the last event we received, we want to update the query
-			if e.fq.FromBlock == "latest" || e.fq.FromBlock == "" || curBlkn.Cmp(fromBlkn) > 0 {
-				e.fq.FromBlock = hexutil.EncodeBig(curBlkn)
+			if e.fq.fromEpoch == "latest_mined" || e.fq.fromEpoch == "" || curBlkn.Cmp(fromBlkn) > 0 {
+				e.fq.fromEpoch = hexutil.EncodeBig(curBlkn)
 			}
 		}
 	}
@@ -201,8 +201,8 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 
 type cfxFilterQuery struct {
 	BlockHash *common.Hash     // used by cfx_getLogs, return logs only from block with this hash
-	FromBlock string           // beginning of the queried range, nil means genesis block
-	ToBlock   string           // end of the range, nil means latest block
+	fromEpoch string           // beginning of the queried range, nil means genesis block
+	toEpoch   string           // end of the range, nil means latest block
 	Addresses []common.Address // restricts matches to events created by specific contracts
 
 	// The Topic list restricts matches to particular event topics. Each event has a list
@@ -226,19 +226,19 @@ func (q cfxFilterQuery) toMapInterface() (interface{}, error) {
 	}
 	if q.BlockHash != nil {
 		arg["blockHash"] = *q.BlockHash
-		if q.FromBlock != "" || q.ToBlock != "" {
-			return nil, errors.New("cannot specify both BlockHash and FromBlock/ToBlock")
+		if q.fromEpoch != "" || q.toEpoch != "" {
+			return nil, errors.New("cannot specify both BlockHash and fromEpoch/toEpoch")
 		}
 	} else {
-		if q.FromBlock == "" {
-			arg["fromBlock"] = "0x0"
+		if q.fromEpoch == "" {
+			arg["fromEpoch"] = "0x0"
 		} else {
-			arg["fromBlock"] = q.FromBlock
+			arg["fromEpoch"] = q.fromEpoch
 		}
-		if q.ToBlock == "" {
-			arg["toBlock"] = "latest"
+		if q.toEpoch == "" {
+			arg["toEpoch"] = "latest_mined"
 		} else {
-			arg["toBlock"] = q.ToBlock
+			arg["toEpoch"] = q.toEpoch
 		}
 	}
 	return arg, nil
