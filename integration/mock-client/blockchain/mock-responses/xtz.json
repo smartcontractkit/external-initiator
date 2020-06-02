@@ -1,0 +1,43 @@
+{
+  "operations": [
+    [],
+    [],
+    [],
+    [
+      {
+        "protocol": "nonsense",
+        "chainID": "main",
+        "hash": "8BADF00D8BADF00D8BADF00D8BADF00D8BADF00D8BADF00D8BADF00D",
+        "branch": "8BADF00D",
+        "contents": [
+          {
+            "kind": "transaction",
+            "source": "BaDc0Ff3BaDc0Ff3BaDc0Ff3BaDc0Ff3BaDc0Ff3BaDc0Ff3BaDc0Ff3",
+            "fee": "666",
+            "counter": "666",
+            "gas_limit": "6666",
+            "storage_limit": "42",
+            "amount": "66666",
+            "destination": "0x2aD9B7b9386c2f45223dDFc4A4d81C2957bAE19A",
+            "parameters": {},
+            "metadata": {
+              "balance_updates": [],
+              "operation_result": {},
+              "internal_operation_results": []
+            }
+          }
+        ]
+      }
+    ]
+  ],
+  "monitor": {
+    "hash": "8BADF00D8BADF00D8BADF00D8BADF00D8BADF00D8BADF00D8BADF00D",
+    "level": 0,
+    "proto": 0,
+    "predecessor": "BaDc0Ff3BaDc0Ff3BaDc0Ff3BaDc0Ff3BaDc0Ff3BaDc0Ff3BaDc0Ff3",
+    "validationPass": 0,
+    "operationsHash": "00000000000000000000000000000000000000000000000000000000",
+    "context": "00000000000000000000000000000000000000000000000000000000",
+    "protocolData": ""
+  }
+}

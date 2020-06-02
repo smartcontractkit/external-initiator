@@ -1,0 +1,7 @@
+{
+  "getblockcount": [
+    {
+      "result": 1
+    }
+  ]
+}

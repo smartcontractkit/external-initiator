@@ -18,6 +18,11 @@ type JsonrpcMessage struct {
 }
 
 func HandleRequest(conn, platform string, msg JsonrpcMessage) ([]JsonrpcMessage, error) {
+	cannedResponse, ok := GetCannedResponse(platform, msg)
+	if ok {
+		return cannedResponse, nil
+	}
+
 	switch platform {
 	case "eth":
 		return handleEthRequest(conn, msg)
