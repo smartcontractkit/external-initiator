@@ -35,10 +35,10 @@ func TestHandleGetBlockCount(t *testing.T) {
 		Method:  "getblockcount",
 	}
 
-	rsp, err := handleOntRequest(req)
-	assert.NoError(t, err)
+	rsp, ok := GetCannedResponse("ont", req)
+	assert.True(t, ok)
 	var count uint32
-	err = json.Unmarshal(rsp[0].Result, &count)
+	err := json.Unmarshal(rsp[0].Result, &count)
 	assert.NoError(t, err)
 	assert.Equal(t, count, uint32(1))
 }

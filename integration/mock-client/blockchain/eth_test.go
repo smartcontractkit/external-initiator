@@ -242,15 +242,15 @@ func Test_handleEthBlockNumber(t *testing.T) {
 		msg JsonrpcMessage
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    []JsonrpcMessage
-		wantErr bool
+		name   string
+		args   args
+		want   []JsonrpcMessage
+		wantOk bool
 	}{
 		{
 			"returns a block number with the correct ID",
 			args{
-				JsonrpcMessage{ID: []byte(`123`)},
+				JsonrpcMessage{ID: []byte(`123`), Method: "eth_blockNumber"},
 			},
 			[]JsonrpcMessage{
 				{
@@ -259,14 +259,14 @@ func Test_handleEthBlockNumber(t *testing.T) {
 					Result:  []byte(`"0x0"`),
 				},
 			},
-			false,
+			true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := handleEthBlockNumber(tt.args.msg)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("handleEthBlockNumber() error = %v, wantErr %v", err, tt.wantErr)
+			got, ok := GetCannedResponse("eth", tt.args.msg)
+			if ok != tt.wantOk {
+				t.Errorf("handleEthBlockNumber() ok = %v, wantOk %v", ok, tt.wantOk)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
@@ -373,22 +373,6 @@ func Test_handleEthRequest(t *testing.T) {
 			},
 			nil,
 			true,
-		},
-		{
-			"gets block number",
-			args{
-				"rpc",
-				JsonrpcMessage{
-					Method: "eth_blockNumber",
-				},
-			},
-			[]JsonrpcMessage{
-				{
-					Version: "2.0",
-					Result:  json.RawMessage(`"0x0"`),
-				},
-			},
-			false,
 		},
 		{
 			"gets logs",

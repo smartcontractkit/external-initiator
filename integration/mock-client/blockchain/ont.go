@@ -9,23 +9,11 @@ import (
 
 func handleOntRequest(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 	switch msg.Method {
-	case "getblockcount":
-		return handleGetBlockCount(msg)
 	case "getsmartcodeevent":
 		return handleGetSmartCodeEvent(msg)
 	}
 
 	return nil, errors.New(fmt.Sprint("unexpected method: ", msg.Method))
-}
-
-func handleGetBlockCount(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
-	r, _ := json.Marshal(uint32(1))
-	return []JsonrpcMessage{
-		{
-			ID:     msg.ID,
-			Result: r,
-		},
-	}, nil
 }
 
 type executeNotify struct {

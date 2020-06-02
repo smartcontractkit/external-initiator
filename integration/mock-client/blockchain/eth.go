@@ -16,8 +16,6 @@ func handleEthRequest(conn string, msg JsonrpcMessage) ([]JsonrpcMessage, error)
 		}
 	} else {
 		switch msg.Method {
-		case "eth_blockNumber":
-			return handleEthBlockNumber(msg)
 		case "eth_getLogs":
 			return handleEthGetLogs(msg)
 		}
@@ -111,16 +109,6 @@ func handleEthSubscribe(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 			ID:      msg.ID,
 			Method:  "eth_subscribe",
 			Params:  subBz,
-		},
-	}, nil
-}
-
-func handleEthBlockNumber(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
-	return []JsonrpcMessage{
-		{
-			Version: "2.0",
-			ID:      msg.ID,
-			Result:  []byte(`"0x0"`),
 		},
 	}, nil
 }
