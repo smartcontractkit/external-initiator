@@ -25,6 +25,7 @@ type Subscription struct {
 	Tezos        migration1576509489.TezosSubscription
 	Substrate    migration1576783801.SubstrateSubscription
 	Ontology     migration1587897988.OntSubscription
+	Conflux 		 CfxSubscription
 }
 
 func Migrate(tx *gorm.DB) error {
@@ -35,12 +36,12 @@ func Migrate(tx *gorm.DB) error {
 
 	err = tx.AutoMigrate(&CfxSubscription{}).AddForeignKey("subscription_id", "subscriptions(id)", "CASCADE", "CASCADE").Error
 	if err != nil {
-		return errors.Wrap(err, "failed to auto migrate OntSubscription")
+		return errors.Wrap(err, "failed to auto migrate CfxSubscription")
 	}
 
 	return nil
 }
 
 func Rollback(tx *gorm.DB) error {
-	return tx.DropTable("ont_subscriptions").Error
+	return tx.DropTable("cfx_subscriptions").Error
 }
