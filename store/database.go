@@ -49,7 +49,7 @@ func (arr SQLStringArray) Value() (driver.Value, error) {
 	var buf bytes.Buffer
 	w := csv.NewWriter(&buf)
 	err := w.Write(arr)
-	if err != nil {
+	if err != nil && err != io.EOF {
 		return nil, errors.Wrap(err, "csv encoding of string array")
 	}
 	w.Flush()
