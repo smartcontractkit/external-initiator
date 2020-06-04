@@ -6,6 +6,7 @@ import (
 	"database/sql/driver"
 	"encoding/csv"
 	"fmt"
+	"io"
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
@@ -36,7 +37,7 @@ func (arr *SQLStringArray) Scan(src interface{}) error {
 	buf := bytes.NewBufferString(str)
 	r := csv.NewReader(buf)
 	ret, err := r.Read()
-	if err != nil {
+	if err != nil && err != io.EOF {
 		return errors.Wrap(err, "badly formatted csv string array")
 	}
 	*arr = ret
@@ -48,7 +49,7 @@ func (arr SQLStringArray) Value() (driver.Value, error) {
 	var buf bytes.Buffer
 	w := csv.NewWriter(&buf)
 	err := w.Write(arr)
-	if err != nil {
+	if err != nil && err != io.EOF {
 		return nil, errors.Wrap(err, "csv encoding of string array")
 	}
 	w.Flush()
