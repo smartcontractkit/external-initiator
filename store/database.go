@@ -158,7 +158,7 @@ func (client Client) SaveSubscription(sub *Subscription) error {
 	}
 	e, _ := client.LoadEndpoint(sub.EndpointName)
 	if e.Name != sub.EndpointName {
-		return errors.New(fmt.Sprintf("Unable to get endpoint %s", sub.EndpointName))
+		return fmt.Errorf("Unable to get endpoint %s", sub.EndpointName)
 	}
 	return client.db.Create(sub).Error
 }

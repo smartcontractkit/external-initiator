@@ -5,7 +5,6 @@ package chainlink
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -59,7 +58,7 @@ func (cl Node) TriggerJob(jobId string, data []byte) error {
 	}
 
 	if statusCode >= 400 {
-		return errors.New(fmt.Sprintf("Received faulty status code: %v", statusCode))
+		return fmt.Errorf("Received faulty status code: %v", statusCode)
 	}
 
 	return nil
@@ -96,7 +95,7 @@ func (config RetryConfig) withRetry(client *http.Client, request *http.Request) 
 
 			// Retry on 5xx since this might give a different result
 			if 500 <= r.StatusCode && r.StatusCode < 600 {
-				e = errors.New(fmt.Sprintf("remote server error: %v\nResponse body: %v", r.StatusCode, string(responseBody)))
+				e = fmt.Errorf("remote server error: %v\nResponse body: %v", r.StatusCode, string(responseBody))
 				logger.Error(e)
 				return e
 			}
