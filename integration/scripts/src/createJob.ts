@@ -29,7 +29,8 @@ async function createJob({chainlinkUrl}: Options) {
                     name: "mock-client",
                     body: {
                         endpoint: process.argv[2],
-                        addresses: [process.argv[3]]
+                        addresses: [process.argv[3]],
+                        accountIds: [process.argv[4]],
                     }
                 }
             }
