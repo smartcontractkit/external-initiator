@@ -9,8 +9,6 @@ title "EI event test using $1"
 event_test() {
   trap exit_handler EXIT
 
-  docker exec integration_chainlink chainlink admin login -f /run/secrets/apicredentials
-
   expected_job_count=$(expr "$(docker exec integration_chainlink chainlink -j jobs list | jq length)" + 1)
   local log=$LOG_PATH/send_event_transaction.log
 

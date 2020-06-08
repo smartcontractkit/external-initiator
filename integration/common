@@ -46,6 +46,10 @@ launch_chainlink() {
   title "Chainlink is running."
 }
 
+login_chainlink() {
+  docker exec integration_chainlink chainlink admin login -f /run/secrets/apicredentials
+}
+
 run_ei() {
   title "Running External Initiator..."
 
@@ -120,11 +124,13 @@ build_docker() {
   title "Done building Docker images"
 }
 
-reset_volumes() {
+reset() {
   title "Removing Docker volumes"
 
   docker volume rm integration_cl || :
   docker volume rm integration_pg || :
+
+  rm ./integration/cl_login.txt || :
 
   title "Done removing Docker volumes"
 }
