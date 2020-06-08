@@ -12,7 +12,7 @@ run_test() {
   title "Initiating a fresh test"
 
   # Remove old volumes so we can run a fresh test
-  reset_volumes
+  reset
 
   start_docker
 
@@ -20,6 +20,8 @@ run_test() {
 
   # Run EI after access credentials has been generated
   run_ei
+
+  login_chainlink
 
   ./integration/test_ei_event "eth-mock-http"
   ./integration/test_ei_event "eth-mock-ws"

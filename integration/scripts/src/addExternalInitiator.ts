@@ -1,8 +1,8 @@
 // @ts-ignore
 import url from 'url'
-import {credentials, getArgs, registerPromiseHandler,} from './common'
+import {getArgs, getLoginCookie, registerPromiseHandler,} from './common'
 
-const request = require('request-promise').defaults({jar: true});
+const axios = require('axios')
 
 async function main() {
     registerPromiseHandler();
@@ -26,21 +26,25 @@ async function addExternalInitiator({
                                         chainlinkUrl,
                                     }: Options) {
     const sessionsUrl = url.resolve(chainlinkUrl, '/sessions');
-    await request.post(sessionsUrl, {json: credentials});
-
     const externalInitiatorsUrl = url.resolve(chainlinkUrl, '/v2/external_initiators');
-    const externalInitiator = await request.post(externalInitiatorsUrl, {
-        json: {
+    const externalInitiator = await axios.post(externalInitiatorsUrl,
+        {
             name: "mock-client",
             url: url.resolve(initiatorUrl, "/jobs")
+        },
+        {
+            withCredentials: true,
+            headers: {
+                Cookie: await getLoginCookie(sessionsUrl)
+            }
         }
-    }).catch((e: any) => {
+    ).catch((e: any) => {
         console.error(e);
         throw Error(`Error creating EI ${e}`)
     });
 
-    console.log(`EI incoming accesskey: ${externalInitiator.data.attributes.incomingAccessKey}`);
-    console.log(`EI incoming secret: ${externalInitiator.data.attributes.incomingSecret}`);
-    console.log(`EI outgoing token: ${externalInitiator.data.attributes.outgoingToken}`);
-    console.log(`EI outgoing secret: ${externalInitiator.data.attributes.outgoingSecret}`)
+    console.log(`EI incoming accesskey: ${externalInitiator.data.data.attributes.incomingAccessKey}`);
+    console.log(`EI incoming secret: ${externalInitiator.data.data.attributes.incomingSecret}`);
+    console.log(`EI outgoing token: ${externalInitiator.data.data.attributes.outgoingToken}`);
+    console.log(`EI outgoing secret: ${externalInitiator.data.data.attributes.outgoingSecret}`)
 }

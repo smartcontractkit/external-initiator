@@ -1,5 +1,9 @@
 import chalk from 'chalk'
 import 'source-map-support/register'
+import {promises as fs} from 'fs'
+
+const axios = require('axios')
+const path = require('path')
 
 /**
  * Default credentials for testing node
@@ -9,6 +13,28 @@ export const credentials = {
     email: 'notreal@fakeemail.ch',
     password: 'twochains'
 };
+
+/**
+ * Sign in and store authentication cookie.
+ * If authenticated cookie already exists, returns that.
+ * @param url URL of the Chainlink node
+ */
+export async function getLoginCookie(url: string) {
+    const loginPath = path.resolve(__dirname, '../../cl_login.txt')
+    try {
+        return await fs.readFile(loginPath, "utf8")
+    } catch (e) {
+        const response = await axios.post(url, credentials, {withCredentials: true})
+        const cookiesHeader = response.headers['set-cookie']
+        let cookies = []
+        for (let i = 0; i < cookiesHeader.length; i++) {
+            cookies.push(cookiesHeader[i].split(/[,;]/)[0])
+        }
+        const cookieString = cookies.join("; ") + ";"
+        await fs.writeFile(loginPath, cookieString)
+        return cookieString
+    }
+}
 
 /**
  * Registers a global promise handler that will exit the currently

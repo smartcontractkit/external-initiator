@@ -1,8 +1,8 @@
 // @ts-ignore
 import url from 'url'
-import {credentials, getArgs, registerPromiseHandler,} from './common'
+import {getArgs, getLoginCookie, registerPromiseHandler,} from './common'
 
-const request = require('request-promise').defaults({jar: true});
+const axios = require('axios')
 
 async function main() {
     registerPromiseHandler();
@@ -21,8 +21,6 @@ interface Options {
 
 async function createJob({chainlinkUrl}: Options) {
     const sessionsUrl = url.resolve(chainlinkUrl, '/sessions');
-    await request.post(sessionsUrl, {json: credentials});
-
     const job = {
         initiators: [
             {
@@ -39,10 +37,15 @@ async function createJob({chainlinkUrl}: Options) {
         tasks: [{type: 'noop'}]
     };
     const specsUrl = url.resolve(chainlinkUrl, '/v2/specs');
-    const Job = await request.post(specsUrl, {json: job}).catch((e: any) => {
+    const Job = await axios.post(specsUrl, job, {
+        withCredentials: true,
+        headers: {
+            cookie: await getLoginCookie(sessionsUrl)
+        }
+    }).catch((e: any) => {
         console.error(e);
         throw Error(`Error creating Job ${e}`)
     });
 
-    console.log('Deployed Job at:', Job.data.id);
+    console.log('Deployed Job at:', Job.data.data.id);
 }
