@@ -132,11 +132,11 @@ func monitor(endpoint string) (*http.Response, error) {
 	}
 	if resp.StatusCode == 400 {
 		resp.Body.Close()
-		return nil, errors.New(fmt.Sprintf("%s returned 400. This endpoint may not support calls to /monitor", endpoint))
+		return nil, fmt.Errorf("%s returned 400. This endpoint may not support calls to /monitor", endpoint)
 	}
 	if resp.StatusCode != 200 {
 		resp.Body.Close()
-		return nil, errors.New(fmt.Sprintf("Unexpected status code %v from endpoint %s", resp.StatusCode, endpoint))
+		return nil, fmt.Errorf("Unexpected status code %v from endpoint %s", resp.StatusCode, endpoint)
 	}
 	return resp, nil
 }

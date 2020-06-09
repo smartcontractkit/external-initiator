@@ -20,7 +20,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://chainlink@postgres:5432/chainlink?sslmode=disable
     volumes:
-      - 'cl:/chainlink'
+      - "cl:/chainlink"
     networks:
       - integration
   postgres:
@@ -30,8 +30,8 @@ services:
       - POSTGRES_MULTIPLE_DATABASES=chainlink,ei
       - POSTGRES_HOST_AUTH_METHOD=trust
     volumes:
-      - './docker-init-scripts/postgres:/docker-entrypoint-initdb.d'
-      - 'pg:/var/lib/postgresql/data'
+      - "./docker-init-scripts/postgres:/docker-entrypoint-initdb.d"
+      - "pg:/var/lib/postgresql/data"
     networks:
       - integration
   mock:
@@ -65,6 +65,7 @@ services:
       - '{"name":"eth-mock-ws","type":"ethereum","url":"ws://mock:8080/ws/eth"}'
       - '{"name":"xtz-mock-http","type":"tezos","url":"http://mock:8080/http/xtz"}'
       - '{"name":"ont-mock-http","type":"ontology","url":"http://mock:8080/rpc/ont"}'
+      - '{"name":"substrate-mock-ws","type":"substrate","url":"ws://mock:8080/ws/substrate"}'
     networks:
       - integration
 volumes:

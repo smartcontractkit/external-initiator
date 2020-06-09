@@ -40,12 +40,12 @@ func generateCreateSubscriptionReq(id, endpoint string, addresses, topics, accou
 		Endpoint   string   `json:"endpoint"`
 		Addresses  []string `json:"addresses"`
 		Topics     []string `json:"eventTopics"`
-		AccountIDs []string `json:"accountIds"`
+		AccountIds []string `json:"accountIds"`
 	}{
 		Endpoint:   endpoint,
 		Addresses:  addresses,
 		Topics:     topics,
-		AccountIDs: accountIds,
+		AccountIds: accountIds,
 	}
 
 	return CreateSubscriptionReq{

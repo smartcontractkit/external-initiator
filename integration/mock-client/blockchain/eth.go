@@ -180,7 +180,7 @@ func ethLogRequestToResponse(msg JsonrpcMessage) (ethLogResponse, error) {
 	}
 
 	if len(reqs) != 1 {
-		return ethLogResponse{}, errors.New(fmt.Sprintf("Expected exactly 1 filter in request, got %d", len(reqs)))
+		return ethLogResponse{}, fmt.Errorf("Expected exactly 1 filter in request, got %d", len(reqs))
 	}
 
 	return handleMapStringInterface(reqs[0])

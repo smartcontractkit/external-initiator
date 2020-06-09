@@ -25,7 +25,7 @@ type Params struct {
 	Endpoint   string   `json:"endpoint"`
 	Addresses  []string `json:"addresses"`
 	Topics     []string `json:"eventTopics"`
-	AccountIDs []string `json:"accountIds"`
+	AccountIds []string `json:"accountIds"`
 }
 
 // CreateJsonManager creates a new instance of a JSON blockchain manager with the provided
@@ -96,7 +96,7 @@ func GetValidations(t string, params Params) []int {
 		}
 	case Substrate:
 		return []int{
-			len(params.AccountIDs),
+			len(params.AccountIds),
 		}
 	case ONT:
 		return []int{
@@ -120,7 +120,7 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 		}
 	case Substrate:
 		sub.Substrate = store.SubstrateSubscription{
-			AccountIds: params.AccountIDs,
+			AccountIds: params.AccountIds,
 		}
 	case ONT:
 		sub.Ontology = store.OntSubscription{

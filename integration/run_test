@@ -28,6 +28,11 @@ run_test() {
   ./integration/test_ei_event "xtz-mock-http"
   ./integration/test_ei_event "ont-mock-http"
 
+  source ./integration/test_substrate.env
+  ./integration/test_ei_event "substrate-mock-ws" "$SUBSTRATE_OPERATOR_1_ACCOUNT_ID"
+  ./integration/test_ei_event "substrate-mock-ws" "$SUBSTRATE_OPERATOR_2_ACCOUNT_ID"
+  ./integration/test_ei_event "substrate-mock-ws" "$SUBSTRATE_OPERATOR_3_ACCOUNT_ID"
+
   stop_docker
 
   title "Done running tests"
