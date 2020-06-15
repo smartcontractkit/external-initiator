@@ -278,23 +278,3 @@ func (sm *substrateManager) ParseTestResponse(data []byte) error {
 	sm.meta = &metadata
 	return nil
 }
-
-func convertStringArrayToKV(data []string) map[string]string {
-	result := make(map[string]string)
-	var key string
-
-	for i, val := range data {
-		if len(val) == 0 {
-			continue
-		}
-
-		if i%2 == 0 {
-			key = val
-		} else if len(key) != 0 {
-			result[key] = val
-			key = ""
-		}
-	}
-
-	return result
-}
