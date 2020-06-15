@@ -26,12 +26,14 @@ func createTezosSubscriber(sub store.Subscription) tezosSubscriber {
 	return tezosSubscriber{
 		Endpoint:  strings.TrimSuffix(sub.Endpoint.Url, "/"),
 		Addresses: sub.Tezos.Addresses,
+		JobID:     sub.Job,
 	}
 }
 
 type tezosSubscriber struct {
 	Endpoint  string
 	Addresses []string
+	JobID     string
 }
 
 type tezosSubscription struct {
@@ -40,6 +42,7 @@ type tezosSubscription struct {
 	addresses   []string
 	monitorResp *http.Response
 	isDone      bool
+	jobid       string
 }
 
 func (tz tezosSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ ...interface{}) (subscriber.ISubscription, error) {
@@ -49,6 +52,7 @@ func (tz tezosSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ .
 		endpoint:  tz.Endpoint,
 		events:    channel,
 		addresses: tz.Addresses,
+		jobid:     tz.JobID,
 	}
 
 	go tzs.readMessagesWithRetry()
@@ -110,7 +114,7 @@ func (tzs tezosSubscription) readMessages() {
 				return
 			}
 
-			events, err := extractEventsFromBlock(blockJSON, tzs.addresses)
+			events, err := extractEventsFromBlock(blockJSON, tzs.addresses, tzs.jobid)
 			if err != nil {
 				logger.Error(err)
 				return
@@ -184,7 +188,7 @@ func (tzs tezosSubscription) Unsubscribe() {
 	}
 }
 
-func extractEventsFromBlock(data []byte, addresses []string) ([]subscriber.Event, error) {
+func extractEventsFromBlock(data []byte, addresses []string, jobid string) ([]subscriber.Event, error) {
 	if !gjson.ValidBytes(data) {
 		return nil, errors.New("got invalid JSON object from Tezos RPC endpoint")
 	}
@@ -224,32 +228,82 @@ func extractEventsFromBlock(data []byte, addresses []string) ([]subscriber.Event
 		 You can find this under metadata->internal_operation_results
 		*/
 		for _, content := range t.Contents {
-			if hasDestinationInAddresses(content, addresses) {
-				event, err := t.toEvent()
-				if err != nil {
-					return nil, err
-				}
-				events = append(events, event)
+			// Check to see if this is a successful oracle request to
+			// one of the oracle addresses we monitor.
+			op, ok := getSuccessfulRequestCall(content, addresses)
+			if !ok {
+				continue
 			}
+
+			vals, err := op.Parameters.Value.GetValues()
+			if err != nil {
+				return nil, err
+			}
+
+			if !matchesXtzJobid(vals, jobid) {
+				// Does not match jobid
+				continue
+			}
+
+			params, err := getXtzKeyValues(vals)
+			if err != nil {
+				return nil, err
+			}
+
+			event, err := json.Marshal(params)
+			if err != nil {
+				return nil, err
+			}
+			events = append(events, event)
 		}
 	}
 	return events, nil
 }
 
-func hasDestinationInAddresses(content xtzTransactionContent, addresses []string) bool {
-	for _, address := range addresses {
-		if address == content.Destination {
-			return true
+func matchesXtzJobid(values []string, expected string) bool {
+	if len(values) < 4 {
+		// Not enough params
+		return false
+	}
+
+	jobid := values[3]
+	if jobid == expected {
+		return true
+	} else if ExpectsMock && jobid == "mock" {
+		return true
+	}
+
+	return false
+}
+
+func getSuccessfulRequestCall(content xtzTransactionContent, oracleAddresses []string) (xtzInternalOperationResult, bool) {
+	if content.Metadata.OperationResult.Status != "applied" {
+		// Transaction did not succeed
+		return xtzInternalOperationResult{}, false
+	}
+
+	for _, op := range content.Metadata.InternalOperationResults {
+		// Check for oracle request
+		if op.Parameters.Entrypoint != "create_request" {
+			continue
 		}
-		if content.Metadata.InternalOperationResults != nil {
-			for _, internalOperationResult := range *content.Metadata.InternalOperationResults {
-				if address == internalOperationResult.Destination {
-					return true
-				}
+
+		// Check if internal operation succeeded
+		if op.Result.Status != "applied" {
+			continue
+		}
+
+		// Check for the call from the Link token to the Oracle contract
+		for _, address := range oracleAddresses {
+			if op.Destination == address {
+				// The destination is an oracle address we monitor,
+				// this is a successful oracle request.
+				return op, true
 			}
 		}
 	}
-	return false
+
+	return xtzInternalOperationResult{}, false
 }
 
 func extractBlockIDFromHeaderJSON(data []byte) (string, error) {
@@ -308,17 +362,118 @@ type xtzTransactionContent struct {
 }
 
 type xtzTransactionContentMetadata struct {
-	BalanceUpdates           []interface{}                 `json:"balance_updates"`
-	OperationResult          interface{}                   `json:"operation_result"`
-	InternalOperationResults *[]xtzInternalOperationResult `json:"internal_operation_results"`
+	BalanceUpdates           []interface{}                `json:"balance_updates"`
+	OperationResult          xtzOperationResult           `json:"operation_result"`
+	InternalOperationResults []xtzInternalOperationResult `json:"internal_operation_results"`
 }
 
 type xtzInternalOperationResult struct {
-	Kind        string      `json:"kind"`
-	Source      string      `json:"source"`
-	Nonce       int         `json:"nonce"`
-	Amount      string      `json:"amount"`
-	Destination string      `json:"destination"`
-	Parameters  interface{} `json:"parameters"`
-	Result      interface{} `json:"result"`
+	Kind        string                         `json:"kind"`
+	Source      string                         `json:"source"`
+	Nonce       int                            `json:"nonce"`
+	Amount      string                         `json:"amount"`
+	Destination string                         `json:"destination"`
+	Parameters  xtzInternalOperationParameters `json:"parameters"`
+	Result      xtzOperationResult             `json:"result"`
+}
+
+type xtzOperationResult struct {
+	Status              string        `json:"status"`
+	Errors              []interface{} `json:"errors"`
+	Storage             interface{}   `json:"storage"`
+	BalanceUpdates      []interface{} `json:"balance_updates"`
+	ConsumedGas         string        `json:"consumed_gas"`
+	StorageSize         string        `json:"storage_size"`
+	PaidStorageSizeDiff string        `json:"paid_storage_size_diff"`
+}
+
+type xtzInternalOperationParameters struct {
+	Entrypoint string  `json:"entrypoint"`
+	Value      xtzArgs `json:"value"`
+}
+
+func getXtzKeyValues(vals []string) (map[string]string, error) {
+	if len(vals) < 7 {
+		return nil, errors.New("not enough values provided")
+	}
+
+	// Values #1, #2, #3, #4 are client, amount, request_id and job_id.
+	// The last two values are target and timeout.
+	// We ignore these when converting to key-value arrays,
+	// then we add the necessary values with correct keys.
+	kv := convertStringArrayToKV(vals[4 : len(vals)-2])
+	kv["address"] = vals[len(vals)-2]
+	kv["payment"] = vals[1]
+	return kv, nil
+}
+
+type xtzArgs struct {
+	Prim   string            `json:"prim,omitempty"`
+	Args   []json.RawMessage `json:"args,omitempty"`
+	Bytes  string            `json:"bytes,omitempty"`
+	Int    string            `json:"int,omitempty"`
+	String string            `json:"string,omitempty"`
+}
+
+func (a xtzArgs) GetValue() string {
+	if a.Bytes != "" {
+		return a.Bytes
+	} else if a.Int != "" {
+		return a.Int
+	} else if a.String != "" {
+		return a.String
+	}
+	return ""
+}
+
+func (a xtzArgs) GetValues() ([]string, error) {
+	// If we don't have any args, return the value
+	if len(a.Args) < 1 {
+		return []string{a.GetValue()}, nil
+	}
+
+	args, err := a.GetArgs()
+	if err != nil {
+		return nil, err
+	}
+
+	var result []string
+	for _, arg := range args {
+		values, err := arg.GetValues()
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, values...)
+	}
+
+	return result, nil
+}
+
+func (a xtzArgs) GetArgs() ([]xtzArgs, error) {
+	if len(a.Args) < 1 {
+		return nil, nil
+	}
+
+	var args []xtzArgs
+	// Iterate the array of objects _or_ arrays
+	for _, bz := range a.Args {
+		var arg xtzArgs
+		err := json.Unmarshal(bz, &arg)
+		// If we cannot unmarshal to an object, check if we can unmarshal to an array of objects
+		if err != nil {
+			var argArgs []xtzArgs
+			err = json.Unmarshal(bz, &argArgs)
+			if err != nil {
+				// This was neither an object or an array of objects, return error
+				return nil, err
+			}
+			// Unmarshal succeeded, add the objects to our result list
+			args = append(args, argArgs...)
+			continue
+		}
+		// Our initial object unmarshal succeeded, add the object to result list
+		args = append(args, arg)
+	}
+
+	return args, nil
 }

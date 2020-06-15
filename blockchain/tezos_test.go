@@ -91,7 +91,7 @@ func Test_extractEventsFromBlock(t *testing.T) {
 		func(t *testing.T) {
 			json := []byte("{")
 
-			_, err := extractEventsFromBlock(json, addresses)
+			_, err := extractEventsFromBlock(json, addresses, "test123")
 			assert.NotNil(t, err)
 
 		})
@@ -99,7 +99,7 @@ func Test_extractEventsFromBlock(t *testing.T) {
 		func(t *testing.T) {
 			json := []byte("[[]]")
 
-			_, err := extractEventsFromBlock(json, addresses)
+			_, err := extractEventsFromBlock(json, addresses, "test123")
 			assert.NotNil(t, err)
 
 		})
@@ -107,37 +107,19 @@ func Test_extractEventsFromBlock(t *testing.T) {
 		func(t *testing.T) {
 			json := userInitiatedSampleJSON
 
-			events, err := extractEventsFromBlock(json, []string{"notAnAddress"})
+			events, err := extractEventsFromBlock(json, []string{"notAnAddress"}, "test123")
 			assert.Nil(t, err)
 			assert.Len(t, events, 0)
 		})
-	t.Run("extracts user-initiated calls to matching addresses",
-		func(t *testing.T) {
-			json := userInitiatedSampleJSON
-
-			events, err := extractEventsFromBlock(json, addresses)
-			assert.Nil(t, err)
-			assert.Len(t, events, 1)
-			assert.IsType(t, []subscriber.Event{}, events)
-
-			expectedAmount := "42"
-			actualAmount := gjson.GetBytes(events[0], "contents.0.amount").Str
-
-			assert.Equal(t, expectedAmount, actualAmount)
-		})
 	t.Run("extracts SC-initiated calls to matching addresses",
 		func(t *testing.T) {
-			json := scInitiatedSampleJSON
+			js := scInitiatedSampleJSON
 
-			events, err := extractEventsFromBlock(json, addresses)
+			events, err := extractEventsFromBlock(js, addresses, "test123")
 			assert.Nil(t, err)
 			assert.Len(t, events, 1)
 			assert.IsType(t, []subscriber.Event{}, events)
-
-			expectedAmount := "1000000"
-			actualAmount := gjson.GetBytes(events[0], "contents.0.amount").Str
-
-			assert.Equal(t, expectedAmount, actualAmount)
+			assert.Equal(t, "XTZUSD", gjson.GetBytes(events[0], "pair").Str)
 		})
 }
 
