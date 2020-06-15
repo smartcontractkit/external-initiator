@@ -22,8 +22,243 @@
             "parameters": {},
             "metadata": {
               "balance_updates": [],
-              "operation_result": {},
-              "internal_operation_results": []
+              "operation_result": {
+                "status": "applied",
+                "storage": {}
+              },
+              "internal_operation_results": [
+                {
+                  "kind": "transaction",
+                  "source": "KT1U313dYFyMiU2aQnVCLgsFYUodz3JcdAMy",
+                  "nonce": 1,
+                  "amount": "0",
+                  "destination": "0x2aD9B7b9386c2f45223dDFc4A4d81C2957bAE19A",
+                  "parameters": {
+                    "entrypoint": "create_request",
+                    "value": {
+                      "prim": "Pair",
+                      "args": [
+                        {
+                          "bytes": "01aab88c820fb7068dc80ee842fad707079465898f00"
+                        },
+                        {
+                          "prim": "Pair",
+                          "args": [
+                            {
+                              "prim": "Pair",
+                              "args": [
+                                {
+                                  "int": "2"
+                                },
+                                {
+                                  "prim": "Pair",
+                                  "args": [
+                                    {
+                                      "int": "2"
+                                    },
+                                    {
+                                      "bytes": "mock"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "prim": "Pair",
+                              "args": [
+                                [
+                                  {
+                                    "prim": "Pair",
+                                    "args": [
+                                      {
+                                        "string": "pair"
+                                      },
+                                      {
+                                        "string": "XTZUSD"
+                                      }
+                                    ]
+                                  }
+                                ],
+                                {
+                                  "prim": "Pair",
+                                  "args": [
+                                    {
+                                      "bytes": "01aab88c820fb7068dc80ee842fad707079465898f007365745f78747a757364"
+                                    },
+                                    {
+                                      "int": "1591867271"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "result": {
+                    "status": "applied",
+                    "storage": {
+                      "prim": "Pair",
+                      "args": [
+                        {
+                          "prim": "Pair",
+                          "args": [
+                            {
+                              "prim": "Pair",
+                              "args": [
+                                {
+                                  "prim": "True"
+                                },
+                                {
+                                  "bytes": "0000db8fc132cf9624febe1675fbfd0c0fcdd7655f23"
+                                }
+                              ]
+                            },
+                            {
+                              "prim": "Pair",
+                              "args": [
+                                {
+                                  "int": "0"
+                                },
+                                {
+                                  "int": "5"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "prim": "Pair",
+                          "args": [
+                            {
+                              "prim": "Pair",
+                              "args": [
+                                {
+                                  "int": "2"
+                                },
+                                {
+                                  "int": "4660"
+                                }
+                              ]
+                            },
+                            {
+                              "prim": "Pair",
+                              "args": [
+                                {
+                                  "int": "4661"
+                                },
+                                {
+                                  "bytes": "01d5607532739f1f42600bfe74ce16e7bc1a58fc2600"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    "big_map_diff": [
+                      {
+                        "action": "update",
+                        "big_map": "4661",
+                        "key_hash": "exprvQn8AzK1dNmwdFsuMGALq99fMJnVhGckhbp2eMxtvpJB9eZJML",
+                        "key": {
+                          "prim": "Pair",
+                          "args": [
+                            {
+                              "bytes": "01aab88c820fb7068dc80ee842fad707079465898f00"
+                            },
+                            {
+                              "int": "2"
+                            }
+                          ]
+                        },
+                        "value": {
+                          "int": "1"
+                        }
+                      },
+                      {
+                        "action": "update",
+                        "big_map": "4660",
+                        "key_hash": "expru2dKqDfZG8hu4wNGkiyunvq2hdSKuVYtcKta7BWP6Q18oNxKjS",
+                        "key": {
+                          "int": "1"
+                        },
+                        "value": {
+                          "prim": "Pair",
+                          "args": [
+                            {
+                              "prim": "Pair",
+                              "args": [
+                                {
+                                  "int": "2"
+                                },
+                                {
+                                  "prim": "Pair",
+                                  "args": [
+                                    {
+                                      "bytes": "01aab88c820fb7068dc80ee842fad707079465898f00"
+                                    },
+                                    {
+                                      "int": "2"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "prim": "Pair",
+                              "args": [
+                                {
+                                  "prim": "Pair",
+                                  "args": [
+                                    {
+                                      "bytes": ""
+                                    },
+                                    [
+                                      {
+                                        "prim": "Pair",
+                                        "args": [
+                                          {
+                                            "string": "XTZUSD"
+                                          },
+                                          []
+                                        ]
+                                      }
+                                    ]
+                                  ]
+                                },
+                                {
+                                  "prim": "Pair",
+                                  "args": [
+                                    {
+                                      "bytes": "01aab88c820fb7068dc80ee842fad707079465898f007365745f78747a757364"
+                                    },
+                                    {
+                                      "int": "1591867271"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ],
+                    "balance_updates": [
+                      {
+                        "kind": "contract",
+                        "contract": "tz1er9TimMNEX7GbJzPaAQX84evBiKkEE6np",
+                        "change": "-67000"
+                      }
+                    ],
+                    "consumed_gas": "92436",
+                    "storage_size": "4446",
+                    "paid_storage_size_diff": "67"
+                  }
+                }
+              ]
             }
           }
         ]
