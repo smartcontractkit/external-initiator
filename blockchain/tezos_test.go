@@ -122,20 +122,3 @@ func Test_extractEventsFromBlock(t *testing.T) {
 			assert.Equal(t, "XTZUSD", gjson.GetBytes(events[0], "pair").Str)
 		})
 }
-
-func Test_toEvent(t *testing.T) {
-	t.Run("marshals TzTransaction to event JSON",
-		func(t *testing.T) {
-			expected := []byte(`{"protocol":"foo","chain_id":"foo","hash":"foo","branch":"foo","contents":[]}`)
-			transaction := xtzTransaction{
-				Protocol: "foo",
-				ChainID:  "foo",
-				Hash:     "foo",
-				Branch:   "foo",
-				Contents: []xtzTransactionContent{},
-			}
-			event, err := transaction.toEvent()
-			assert.Nil(t, err)
-			assert.Equal(t, subscriber.Event(expected), event)
-		})
-}

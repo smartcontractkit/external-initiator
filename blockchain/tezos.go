@@ -235,7 +235,13 @@ func extractEventsFromBlock(data []byte, addresses []string, jobid string) ([]su
 				continue
 			}
 
-			vals, err := op.Parameters.Value.GetValues()
+			var args xtzArgs
+			err := json.Unmarshal(op.Parameters.Value, &args)
+			if err != nil {
+				return nil, err
+			}
+
+			vals, err := args.GetValues()
 			if err != nil {
 				return nil, err
 			}
@@ -249,6 +255,9 @@ func extractEventsFromBlock(data []byte, addresses []string, jobid string) ([]su
 			if err != nil {
 				return nil, err
 			}
+			// Set the address to the oracle address.
+			// The adapter will use this to fulfill the request.
+			params["xtzAddr"] = op.Destination
 
 			event, err := json.Marshal(params)
 			if err != nil {
@@ -319,14 +328,6 @@ func extractBlockIDFromHeaderJSON(data []byte) (string, error) {
 	return header.Hash, nil
 }
 
-func (t xtzTransaction) toEvent() (subscriber.Event, error) {
-	event, err := json.Marshal(t)
-	if err != nil {
-		return nil, err
-	}
-	return event, nil
-}
-
 type xtzHeader struct {
 	Hash           string   `json:"hash"`
 	Level          int      `json:"level"`
@@ -388,8 +389,8 @@ type xtzOperationResult struct {
 }
 
 type xtzInternalOperationParameters struct {
-	Entrypoint string  `json:"entrypoint"`
-	Value      xtzArgs `json:"value"`
+	Entrypoint string          `json:"entrypoint"`
+	Value      json.RawMessage `json:"value"`
 }
 
 func getXtzKeyValues(vals []string) (map[string]string, error) {
@@ -402,8 +403,8 @@ func getXtzKeyValues(vals []string) (map[string]string, error) {
 	// We ignore these when converting to key-value arrays,
 	// then we add the necessary values with correct keys.
 	kv := convertStringArrayToKV(vals[4 : len(vals)-2])
-	kv["address"] = vals[len(vals)-2]
 	kv["payment"] = vals[1]
+	kv["request_id"] = vals[2]
 	return kv, nil
 }
 
