@@ -119,6 +119,8 @@ func Test_extractEventsFromBlock(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Len(t, events, 1)
 			assert.IsType(t, []subscriber.Event{}, events)
-			assert.Equal(t, "XTZUSD", gjson.GetBytes(events[0], "pair").Str)
+			assert.Equal(t, "XTZ", gjson.GetBytes(events[0], "from").Str)
+			assert.Equal(t, "USD", gjson.GetBytes(events[0], "to").Str)
+			assert.Equal(t, "9", gjson.GetBytes(events[0], "request_id").Str)
 		})
 }

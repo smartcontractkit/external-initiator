@@ -72,7 +72,7 @@
                                         "prim": "Pair",
                                         "args": [
                                             {
-                                                "bytes": "01aab88c820fb7068dc80ee842fad707079465898f00"
+                                                "bytes": "0188f44dcf9c11f086cf0ab6b8a4bfeb456196fc7c00"
                                             },
                                             {
                                                 "prim": "Pair",
@@ -87,7 +87,7 @@
                                                                 "prim": "Pair",
                                                                 "args": [
                                                                     {
-                                                                        "int": "2"
+                                                                        "int": "1"
                                                                     },
                                                                     {
                                                                         "bytes": "test123"
@@ -104,11 +104,93 @@
                                                                     "prim": "Pair",
                                                                     "args": [
                                                                         {
-                                                                            "string": "pair"
+                                                                            "string": ""
                                                                         },
+                                                                        [
+                                                                            {
+                                                                                "prim": "Elt",
+                                                                                "args": [
+                                                                                    {
+                                                                                        "string": "from"
+                                                                                    },
+                                                                                    {
+                                                                                        "prim": "Right",
+                                                                                        "args": [
+                                                                                            {
+                                                                                                "prim": "Right",
+                                                                                                "args": [
+                                                                                                    {
+                                                                                                        "string": "XTZ"
+                                                                                                    }
+                                                                                                ]
+                                                                                            }
+                                                                                        ]
+                                                                                    }
+                                                                                ]
+                                                                            }
+                                                                        ]
+                                                                    ]
+                                                                },
+                                                                {
+                                                                    "prim": "Pair",
+                                                                    "args": [
                                                                         {
-                                                                            "string": "XTZUSD"
-                                                                        }
+                                                                            "string": ""
+                                                                        },
+                                                                        [
+                                                                            {
+                                                                                "prim": "Elt",
+                                                                                "args": [
+                                                                                    {
+                                                                                        "string": "to"
+                                                                                    },
+                                                                                    {
+                                                                                        "prim": "Right",
+                                                                                        "args": [
+                                                                                            {
+                                                                                                "prim": "Right",
+                                                                                                "args": [
+                                                                                                    {
+                                                                                                        "string": "USD"
+                                                                                                    }
+                                                                                                ]
+                                                                                            }
+                                                                                        ]
+                                                                                    }
+                                                                                ]
+                                                                            }
+                                                                        ]
+                                                                    ]
+                                                                },
+                                                                {
+                                                                    "prim": "Pair",
+                                                                    "args": [
+                                                                        {
+                                                                            "string": ""
+                                                                        },
+                                                                        [
+                                                                            {
+                                                                                "prim": "Elt",
+                                                                                "args": [
+                                                                                    {
+                                                                                        "string": "multiply"
+                                                                                    },
+                                                                                    {
+                                                                                        "prim": "Right",
+                                                                                        "args": [
+                                                                                            {
+                                                                                                "prim": "Left",
+                                                                                                "args": [
+                                                                                                    {
+                                                                                                        "int": "10000"
+                                                                                                    }
+                                                                                                ]
+                                                                                            }
+                                                                                        ]
+                                                                                    }
+                                                                                ]
+                                                                            }
+                                                                        ]
                                                                     ]
                                                                 }
                                                             ],
@@ -116,10 +198,10 @@
                                                                 "prim": "Pair",
                                                                 "args": [
                                                                     {
-                                                                        "bytes": "01aab88c820fb7068dc80ee842fad707079465898f007365745f78747a757364"
+                                                                        "bytes": "0188f44dcf9c11f086cf0ab6b8a4bfeb456196fc7c007365745f78747a757364"
                                                                     },
                                                                     {
-                                                                        "int": "1591867271"
+                                                                        "int": "1592392589"
                                                                     }
                                                                 ]
                                                             }
@@ -145,7 +227,7 @@
                                                                 "prim": "True"
                                                             },
                                                             {
-                                                                "bytes": "0000db8fc132cf9624febe1675fbfd0c0fcdd7655f23"
+                                                                "bytes": "0000d2b5082af7b929149485400a86bc00075861f5df"
                                                             }
                                                         ]
                                                     },
@@ -153,10 +235,10 @@
                                                         "prim": "Pair",
                                                         "args": [
                                                             {
-                                                                "int": "0"
+                                                                "int": "1"
                                                             },
                                                             {
-                                                                "int": "5"
+                                                                "int": "1"
                                                             }
                                                         ]
                                                     }
@@ -169,10 +251,10 @@
                                                         "prim": "Pair",
                                                         "args": [
                                                             {
-                                                                "int": "2"
+                                                                "int": "10"
                                                             },
                                                             {
-                                                                "int": "4660"
+                                                                "int": "6501"
                                                             }
                                                         ]
                                                     },
@@ -180,10 +262,10 @@
                                                         "prim": "Pair",
                                                         "args": [
                                                             {
-                                                                "int": "4661"
+                                                                "int": "6502"
                                                             },
                                                             {
-                                                                "bytes": "01d5607532739f1f42600bfe74ce16e7bc1a58fc2600"
+                                                                "bytes": "01db9cca0ad87b3891f72d8fb0db1e13aa8f1ad5ea00"
                                                             }
                                                         ]
                                                     }
@@ -194,29 +276,29 @@
                                     "big_map_diff": [
                                         {
                                             "action": "update",
-                                            "big_map": "4661",
-                                            "key_hash": "exprvQn8AzK1dNmwdFsuMGALq99fMJnVhGckhbp2eMxtvpJB9eZJML",
+                                            "big_map": "6502",
+                                            "key_hash": "exprvAN9wF4piTT1QJL7L8AkMBpSqAysdkxXP4PMmSnPagTBJ44Rfw",
                                             "key": {
                                                 "prim": "Pair",
                                                 "args": [
                                                     {
-                                                        "bytes": "01aab88c820fb7068dc80ee842fad707079465898f00"
+                                                        "bytes": "0188f44dcf9c11f086cf0ab6b8a4bfeb456196fc7c00"
                                                     },
                                                     {
-                                                        "int": "2"
+                                                        "int": "3"
                                                     }
                                                 ]
                                             },
                                             "value": {
-                                                "int": "1"
+                                                "int": "9"
                                             }
                                         },
                                         {
                                             "action": "update",
-                                            "big_map": "4660",
-                                            "key_hash": "expru2dKqDfZG8hu4wNGkiyunvq2hdSKuVYtcKta7BWP6Q18oNxKjS",
+                                            "big_map": "6501",
+                                            "key_hash": "exprtvAzqNE9zfpBLL9nKEaY1Dd2rznyG9iTFtECJvDkuub1bj3XvW",
                                             "key": {
-                                                "int": "1"
+                                                "int": "9"
                                             },
                                             "value": {
                                                 "prim": "Pair",
@@ -231,10 +313,10 @@
                                                                 "prim": "Pair",
                                                                 "args": [
                                                                     {
-                                                                        "bytes": "01aab88c820fb7068dc80ee842fad707079465898f00"
+                                                                        "bytes": "0188f44dcf9c11f086cf0ab6b8a4bfeb456196fc7c00"
                                                                     },
                                                                     {
-                                                                        "int": "2"
+                                                                        "int": "3"
                                                                     }
                                                                 ]
                                                             }
@@ -247,16 +329,100 @@
                                                                 "prim": "Pair",
                                                                 "args": [
                                                                     {
-                                                                        "bytes": ""
+                                                                        "bytes": "abc12345"
                                                                     },
                                                                     [
                                                                         {
                                                                             "prim": "Pair",
                                                                             "args": [
                                                                                 {
-                                                                                    "string": "XTZUSD"
+                                                                                    "string": ""
                                                                                 },
-                                                                                []
+                                                                                [
+                                                                                    {
+                                                                                        "prim": "Elt",
+                                                                                        "args": [
+                                                                                            {
+                                                                                                "string": "from"
+                                                                                            },
+                                                                                            {
+                                                                                                "prim": "Right",
+                                                                                                "args": [
+                                                                                                    {
+                                                                                                        "prim": "Right",
+                                                                                                        "args": [
+                                                                                                            {
+                                                                                                                "string": "XTZ"
+                                                                                                            }
+                                                                                                        ]
+                                                                                                    }
+                                                                                                ]
+                                                                                            }
+                                                                                        ]
+                                                                                    }
+                                                                                ]
+                                                                            ]
+                                                                        },
+                                                                        {
+                                                                            "prim": "Pair",
+                                                                            "args": [
+                                                                                {
+                                                                                    "string": ""
+                                                                                },
+                                                                                [
+                                                                                    {
+                                                                                        "prim": "Elt",
+                                                                                        "args": [
+                                                                                            {
+                                                                                                "string": "to"
+                                                                                            },
+                                                                                            {
+                                                                                                "prim": "Right",
+                                                                                                "args": [
+                                                                                                    {
+                                                                                                        "prim": "Right",
+                                                                                                        "args": [
+                                                                                                            {
+                                                                                                                "string": "USD"
+                                                                                                            }
+                                                                                                        ]
+                                                                                                    }
+                                                                                                ]
+                                                                                            }
+                                                                                        ]
+                                                                                    }
+                                                                                ]
+                                                                            ]
+                                                                        },
+                                                                        {
+                                                                            "prim": "Pair",
+                                                                            "args": [
+                                                                                {
+                                                                                    "string": ""
+                                                                                },
+                                                                                [
+                                                                                    {
+                                                                                        "prim": "Elt",
+                                                                                        "args": [
+                                                                                            {
+                                                                                                "string": "multiply"
+                                                                                            },
+                                                                                            {
+                                                                                                "prim": "Right",
+                                                                                                "args": [
+                                                                                                    {
+                                                                                                        "prim": "Left",
+                                                                                                        "args": [
+                                                                                                            {
+                                                                                                                "int": "10000"
+                                                                                                            }
+                                                                                                        ]
+                                                                                                    }
+                                                                                                ]
+                                                                                            }
+                                                                                        ]
+                                                                                    }
+                                                                                ]
                                                                             ]
                                                                         }
                                                                     ]
@@ -266,10 +432,10 @@
                                                                 "prim": "Pair",
                                                                 "args": [
                                                                     {
-                                                                        "bytes": "01aab88c820fb7068dc80ee842fad707079465898f007365745f78747a757364"
+                                                                        "bytes": "0188f44dcf9c11f086cf0ab6b8a4bfeb456196fc7c007365745f78747a757364"
                                                                     },
                                                                     {
-                                                                        "int": "1591867271"
+                                                                        "int": "1592395099"
                                                                     }
                                                                 ]
                                                             }

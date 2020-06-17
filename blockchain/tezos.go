@@ -258,6 +258,10 @@ func extractEventsFromBlock(data []byte, addresses []string, jobid string) ([]su
 			// Set the address to the oracle address.
 			// The adapter will use this to fulfill the request.
 			params["xtzAddr"] = op.Destination
+			params["request_id"], err = op.Result.GetRequestId()
+			if err != nil {
+				return nil, err
+			}
 
 			event, err := json.Marshal(params)
 			if err != nil {
@@ -379,13 +383,55 @@ type xtzInternalOperationResult struct {
 }
 
 type xtzOperationResult struct {
-	Status              string        `json:"status"`
-	Errors              []interface{} `json:"errors"`
-	Storage             interface{}   `json:"storage"`
-	BalanceUpdates      []interface{} `json:"balance_updates"`
-	ConsumedGas         string        `json:"consumed_gas"`
-	StorageSize         string        `json:"storage_size"`
-	PaidStorageSizeDiff string        `json:"paid_storage_size_diff"`
+	Status              string          `json:"status"`
+	Errors              []interface{}   `json:"errors"`
+	Storage             json.RawMessage `json:"storage"`
+	BalanceUpdates      []interface{}   `json:"balance_updates"`
+	ConsumedGas         string          `json:"consumed_gas"`
+	StorageSize         string          `json:"storage_size"`
+	PaidStorageSizeDiff string          `json:"paid_storage_size_diff"`
+	BigMapDiff          []xtzBigMapDiff `json:"big_map_diff"`
+}
+
+type xtzBigMapDiff struct {
+	Action  string      `json:"action"`
+	BigMap  string      `json:"big_map"`
+	KeyHash string      `json:"key_hash"`
+	Key     interface{} `json:"key"`
+	Value   xtzValue    `json:"value"`
+}
+
+// Since there is no event-based request_id, we need to check
+// the storage changes in the operation to see the oracle
+// request id.
+func (op xtzOperationResult) GetRequestId() (string, error) {
+	var arg xtzArgs
+	err := json.Unmarshal(op.Storage, &arg)
+	if err != nil {
+		return "", err
+	}
+
+	vals, err := arg.GetValues()
+	if err != nil {
+		return "", err
+	}
+
+	// We expect to get the big_map index in the
+	// 7th value from storage changes.
+	if len(vals) < 7 {
+		return "", errors.New("expected at least 7 storage changes")
+	}
+
+	bigMapIndex := vals[6]
+
+	for _, bmd := range op.BigMapDiff {
+		if bmd.BigMap != bigMapIndex {
+			continue
+		}
+		return bmd.Value.Int, nil
+	}
+
+	return "", errors.New("unable to find request_id")
 }
 
 type xtzInternalOperationParameters struct {
@@ -398,22 +444,36 @@ func getXtzKeyValues(vals []string) (map[string]string, error) {
 		return nil, errors.New("not enough values provided")
 	}
 
-	// Values #1, #2, #3, #4 are client, amount, request_id and job_id.
+	// Values #1, #2, #3, #4 are client, amount, (client) request_id and job_id.
 	// The last two values are target and timeout.
 	// We ignore these when converting to key-value arrays,
 	// then we add the necessary values with correct keys.
-	kv := convertStringArrayToKV(vals[4 : len(vals)-2])
+	requestParams := vals[4 : len(vals)-2]
+	// Since parameters are sent with "adapter name", with key-value pairs,
+	// we can get rid of the adapter names.
+	var kvParams []string
+	for i := 0; i < len(requestParams); i++ {
+		if i%3 == 0 {
+			continue
+		}
+		kvParams = append(kvParams, requestParams[i])
+	}
+
+	kv := convertStringArrayToKV(kvParams)
 	kv["payment"] = vals[1]
-	kv["request_id"] = vals[2]
 	return kv, nil
 }
 
+type xtzValue struct {
+	Bytes  string `json:"bytes,omitempty"`
+	Int    string `json:"int,omitempty"`
+	String string `json:"string,omitempty"`
+}
+
 type xtzArgs struct {
-	Prim   string            `json:"prim,omitempty"`
-	Args   []json.RawMessage `json:"args,omitempty"`
-	Bytes  string            `json:"bytes,omitempty"`
-	Int    string            `json:"int,omitempty"`
-	String string            `json:"string,omitempty"`
+	xtzValue
+	Prim string            `json:"prim,omitempty"`
+	Args []json.RawMessage `json:"args,omitempty"`
 }
 
 func (a xtzArgs) GetValue() string {
