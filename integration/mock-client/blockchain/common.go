@@ -28,6 +28,8 @@ func HandleRequest(conn, platform string, msg JsonrpcMessage) ([]JsonrpcMessage,
 		return handleEthRequest(conn, msg)
 	case "ont":
 		return handleOntRequest(msg)
+	case "binance-sc":
+		return handleBscRequest(conn, msg)
 	default:
 		return nil, errors.New(fmt.Sprint("unexpected platform: ", platform))
 	}

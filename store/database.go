@@ -113,6 +113,10 @@ func (client Client) prepareSubscription(rawSub *Subscription) (*Subscription, e
 		if err := client.db.Model(&sub).Related(&sub.Ontology).Error; err != nil {
 			return nil, err
 		}
+	case "binance-smart-chain":
+		if err := client.db.Model(&sub).Related(&sub.BinanceSC).Error; err != nil {
+			return nil, err
+		}
 	}
 
 	return &sub, nil
@@ -248,6 +252,7 @@ type Subscription struct {
 	Tezos        TezosSubscription
 	Substrate    SubstrateSubscription
 	Ontology     OntSubscription
+	BinanceSC    BscSubscription
 }
 
 type EthSubscription struct {
@@ -270,6 +275,12 @@ type SubstrateSubscription struct {
 }
 
 type OntSubscription struct {
+	gorm.Model
+	SubscriptionId uint
+	Addresses      SQLStringArray
+}
+
+type BscSubscription struct {
 	gorm.Model
 	SubscriptionId uint
 	Addresses      SQLStringArray

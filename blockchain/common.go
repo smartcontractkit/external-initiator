@@ -19,6 +19,7 @@ var blockchains = []string{
 	XTZ,
 	Substrate,
 	ONT,
+	BSC,
 }
 
 type Params struct {
@@ -36,6 +37,8 @@ func CreateJsonManager(t subscriber.Type, sub store.Subscription) (subscriber.Js
 		return createEthManager(t, sub), nil
 	case Substrate:
 		return createSubstrateManager(t, sub)
+	case BSC:
+		return createBscManager(t, sub), nil
 	}
 
 	return nil, errors.New("unknown blockchain type for JSON manager")
@@ -102,6 +105,10 @@ func GetValidations(t string, params Params) []int {
 		return []int{
 			len(params.Addresses),
 		}
+	case BSC:
+		return []int{
+			len(params.Addresses) + len(params.Topics),
+		}
 	}
 
 	return nil
@@ -124,6 +131,10 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 		}
 	case ONT:
 		sub.Ontology = store.OntSubscription{
+			Addresses: params.Addresses,
+		}
+	case BSC:
+		sub.BinanceSC = store.BscSubscription{
 			Addresses: params.Addresses,
 		}
 	}
