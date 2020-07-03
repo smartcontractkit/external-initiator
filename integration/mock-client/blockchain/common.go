@@ -7,6 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// JsonrpcMessage declares JSON-RPC message type
+// TODO: replace with "github.com/smartcontractkit/external-initiator/blockchain".JsonrpcMessage
 type JsonrpcMessage struct {
 	Version string          `json:"jsonrpc"`
 	ID      json.RawMessage `json:"id,omitempty"`
@@ -32,7 +34,7 @@ func HandleRequest(conn, platform string, msg JsonrpcMessage) ([]JsonrpcMessage,
 	case "binance-smart-chain":
 		return handleBscRequest(conn, msg)
 	default:
-		return nil, fmt.Errorf("unexpected platform:  %v", platform)
+		return nil, fmt.Errorf("unexpected platform: %v", platform)
 	}
 }
 

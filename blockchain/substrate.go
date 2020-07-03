@@ -64,7 +64,7 @@ func (sm *substrateManager) GetTriggerJson() []byte {
 		sm.key = key
 	}
 
-	msg := jsonrpcMessage{
+	msg := JsonrpcMessage{
 		Version: "2.0",
 		ID:      json.RawMessage(`1`),
 		Method:  "state_subscribeStorage",
@@ -167,7 +167,7 @@ type substrateSubscribeResponse struct {
 }
 
 func (sm *substrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
-	var msg jsonrpcMessage
+	var msg JsonrpcMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
 		logger.Error("Failed parsing JSON-RPC message:", err)
@@ -247,7 +247,7 @@ func (sm substrateManager) matchesJobid(jobid types.Text) bool {
 }
 
 func (sm *substrateManager) GetTestJson() []byte {
-	msg := jsonrpcMessage{
+	msg := JsonrpcMessage{
 		Version: "2.0",
 		ID:      json.RawMessage(`1`),
 		Method:  "state_getMetadata",
@@ -257,7 +257,7 @@ func (sm *substrateManager) GetTestJson() []byte {
 }
 
 func (sm *substrateManager) ParseTestResponse(data []byte) error {
-	var msg jsonrpcMessage
+	var msg JsonrpcMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
 		return err

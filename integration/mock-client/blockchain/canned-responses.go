@@ -9,6 +9,7 @@ import (
 
 type cannedResponse map[string][]JsonrpcMessage
 
+// GetCannedResponse returns the static response form a file, if such exists.
 func GetCannedResponse(platform string, msg JsonrpcMessage) ([]JsonrpcMessage, bool) {
 	bz, err := mockresponses.Get(platform)
 	if err != nil {
@@ -28,10 +29,11 @@ func GetCannedResponse(platform string, msg JsonrpcMessage) ([]JsonrpcMessage, b
 		return nil, false
 	}
 
-	return setJsonrpcId(msg.ID, responseList), true
+	return setJsonRpcId(msg.ID, responseList), true
 }
 
-func setJsonrpcId(id json.RawMessage, msgs []JsonrpcMessage) []JsonrpcMessage {
+//nolint:stylecheck,golint
+func setJsonRpcId(id json.RawMessage, msgs []JsonrpcMessage) []JsonrpcMessage {
 	for i := 0; i < len(msgs); i++ {
 		msgs[i].ID = id
 	}

@@ -1,0 +1,58 @@
+{
+  "status": [
+    {
+      "jsonrpc": "2.0",
+      "result": {
+        "chain_id": "testnet",
+        "latest_protocol_version": 22,
+        "protocol_version": 22,
+        "rpc_addr": "0.0.0.0:3030",
+        "sync_info": {
+          "latest_block_hash": "BwriiJV8JoQHCnrjfZ154vgAjpWdLLBxXrijAPRMWUud",
+          "latest_block_height": 8541639,
+          "latest_block_time": "2020-07-03T13:18:13.672556924Z",
+          "latest_state_root": "Dcbk1aFNrmVn5kxVpqw4FzE5L2hvtvp5zE2uWcdYB14v",
+          "syncing": false
+        },
+        "validators": [
+          {
+            "account_id": "node3",
+            "is_slashed": false
+          },
+          {
+            "account_id": "cryptium.stakingpool",
+            "is_slashed": false
+          },
+          {
+            "account_id": "node2",
+            "is_slashed": false
+          },
+          {
+            "account_id": "pool_dokiacapital.stakingpool",
+            "is_slashed": false
+          },
+          {
+            "account_id": "bisontrails.stakingpool",
+            "is_slashed": false
+          },
+          {
+            "account_id": "certusone.stakingpool",
+            "is_slashed": false
+          },
+          {
+            "account_id": "stakepool.hashquark.testnet",
+            "is_slashed": false
+          },
+          {
+            "account_id": "staked.stakingpool",
+            "is_slashed": false
+          }
+        ],
+        "version": {
+          "build": "ebe21b33",
+          "version": "1.0.0"
+        }
+      }
+    }
+  ]
+}

@@ -143,7 +143,8 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 	}
 }
 
-type jsonrpcMessage struct {
+// JsonrpcMessage declares JSON-RPC message type
+type JsonrpcMessage struct {
 	Version string          `json:"jsonrpc"`
 	ID      json.RawMessage `json:"id,omitempty"`
 	Method  string          `json:"method,omitempty"`

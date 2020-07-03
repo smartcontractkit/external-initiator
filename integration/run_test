@@ -31,6 +31,7 @@ run_test() {
   ./integration/test_ei_event "ont-mock-http"
   ./integration/test_ei_event "bsc-mock-http"
   ./integration/test_ei_event "bsc-mock-ws"
+  ./integration/test_ei_event "near-mock-http"
 
   source ./integration/test_substrate.env
   ./integration/test_ei_event "substrate-mock-ws" "$SUBSTRATE_OPERATOR_1_ACCOUNT_ID"
