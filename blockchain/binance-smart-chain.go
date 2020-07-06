@@ -2,11 +2,9 @@ package blockchain
 
 import (
 	"encoding/json"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/smartcontractkit/chainlink/core/eth"
 	"github.com/smartcontractkit/chainlink/core/logger"
-	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"math/big"
@@ -23,25 +21,10 @@ type bscManager struct {
 // createBscManager creates a new instance of bscManager with the provided
 // connection type and store.Subscription config.
 func createBscManager(p subscriber.Type, config store.Subscription) bscManager {
-	var addresses []common.Address
-	for _, a := range config.BinanceSmartChain.Addresses {
-		addresses = append(addresses, common.HexToAddress(a))
-	}
-
-	// Hard-set the topics to match the OracleRequest()
-	// event emitted by the oracle contract provided.
-	topics := [][]common.Hash{{
-		models.RunLogTopic20190207withoutIndexes,
-		common.HexToHash(StringToBytes32(config.Job)),
-	}}
-
 	return bscManager{
 		ethManager{
-			fq: &filterQuery{
-				Addresses: addresses,
-				Topics:    topics,
-			},
-			p: p,
+			fq: createEvmFilterQuery(config.Job, config.BinanceSmartChain.Addresses),
+			p:  p,
 		},
 	}
 }
