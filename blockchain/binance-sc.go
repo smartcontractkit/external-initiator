@@ -15,15 +15,15 @@ import (
 
 const BSC = "binance-smart-chain"
 
-// The ethManager implements the subscriber.JsonManager interface and allows
+// The bscManager implements the subscriber.JsonManager interface and allows
 // for interacting with ETH nodes over RPC or WS.
 type bscManager struct {
 	fq *bscFilterQuery
 	p  subscriber.Type
 }
 
-// createEthManager creates a new instance of ethManager with the provided
-// connection type and store.EthSubscription config.
+// createBscManager creates a new instance of bscManager with the provided
+// connection type and store.Subscription config.
 func createBscManager(p subscriber.Type, config store.Subscription) bscManager {
 	var addresses []common.Address
 	for _, a := range config.BinanceSC.Addresses {
@@ -45,12 +45,12 @@ func createBscManager(p subscriber.Type, config store.Subscription) bscManager {
 }
 
 // GetTriggerJson generates a JSON payload to the ETH node
-// using the config in ethManager.
+// using the config in bscManager.
 //
-// If ethManager is using WebSocket:
+// If bscManager is using WebSocket:
 // Creates a new "eth_subscribe" subscription.
 //
-// If ethManager is using RPC:
+// If bscManager is using RPC:
 // Sends a "eth_getLogs" request.
 func (e bscManager) GetTriggerJson() []byte {
 	if e.p == subscriber.RPC && e.fq.FromBlock == "" {
@@ -92,10 +92,10 @@ func (e bscManager) GetTriggerJson() []byte {
 // GetTestJson generates a JSON payload to test
 // the connection to the ETH node.
 //
-// If ethManager is using WebSocket:
+// If bscManager is using WebSocket:
 // Returns nil.
 //
-// If ethManager is using RPC:
+// If bscManager is using RPC:
 // Sends a request to get the latest block number.
 func (e bscManager) GetTestJson() []byte {
 	if e.p == subscriber.RPC {
@@ -120,12 +120,12 @@ func (e bscManager) GetTestJson() []byte {
 // ETH node after sending GetTestJson(), and returns
 // the error from parsing, if any.
 //
-// If ethManager is using WebSocket:
+// If bscManager is using WebSocket:
 // Returns nil.
 //
-// If ethManager is using RPC:
+// If bscManager is using RPC:
 // Attempts to parse the block number in the response.
-// If successful, stores the block number in ethManager.
+// If successful, stores the block number in bscManager.
 func (e bscManager) ParseTestResponse(data []byte) error {
 	if e.p == subscriber.RPC {
 		var msg jsonrpcMessage
@@ -151,8 +151,8 @@ type bscSubscribeResponse struct {
 // ETH node, and returns a slice of subscriber.Events
 // and if the parsing was successful.
 //
-// If ethManager is using RPC:
-// If there are new events, update ethManager with
+// If bscManager is using RPC:
+// If there are new events, update bscManager with
 // the latest block number it sees.
 func (e bscManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	logger.Debugw("Parsing response", "ExpectsMock", ExpectsMock)
