@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	evmWordSize      = common.HashLength
+	evmWordSize      = utils.EVMWordByteLen
 	requesterSize    = evmWordSize
 	idSize           = evmWordSize
 	paymentSize      = evmWordSize
@@ -26,7 +26,7 @@ const (
 )
 
 func StringToBytes32(jobid string) string {
-	value := common.RightPadBytes([]byte(jobid), utils.EVMWordByteLen)
+	value := common.RightPadBytes([]byte(jobid), evmWordSize)
 	hx := utils.RemoveHexPrefix(hexutil.Encode(value))
 
 	if len(hx) > utils.EVMWordHexLen {
@@ -44,11 +44,11 @@ func logEventToOracleRequest(log eth.Log) (models.JSON, error) {
 	dataLengthStart := expirationEnd + versionSize + dataLocationSize
 	cborStart := dataLengthStart + dataLengthSize
 
-	if len(log.Data) < dataLengthStart+32 {
+	if len(log.Data) < dataLengthStart+evmWordSize {
 		return models.JSON{}, errors.New("malformed data")
 	}
 
-	dataLengthBytes, err := data.SafeByteSlice(dataLengthStart, dataLengthStart+32)
+	dataLengthBytes, err := data.SafeByteSlice(dataLengthStart, dataLengthStart+evmWordSize)
 	if err != nil {
 		return models.JSON{}, err
 	}
