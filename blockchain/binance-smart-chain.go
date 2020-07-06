@@ -2,7 +2,6 @@ package blockchain
 
 import (
 	"encoding/json"
-	"errors"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/smartcontractkit/chainlink/core/eth"
@@ -18,8 +17,7 @@ const BSC = "binance-smart-chain"
 // The bscManager implements the subscriber.JsonManager interface and allows
 // for interacting with ETH nodes over RPC or WS.
 type bscManager struct {
-	fq *bscFilterQuery
-	p  subscriber.Type
+	ethManager
 }
 
 // createBscManager creates a new instance of bscManager with the provided
@@ -30,17 +28,21 @@ func createBscManager(p subscriber.Type, config store.Subscription) bscManager {
 		addresses = append(addresses, common.HexToAddress(a))
 	}
 
+	// Hard-set the topics to match the OracleRequest()
+	// event emitted by the oracle contract provided.
 	topics := [][]common.Hash{{
 		models.RunLogTopic20190207withoutIndexes,
 		common.HexToHash(StringToBytes32(config.Job)),
 	}}
 
 	return bscManager{
-		fq: &bscFilterQuery{
-			Addresses: addresses,
-			Topics:    topics,
+		ethManager{
+			fq: &filterQuery{
+				Addresses: addresses,
+				Topics:    topics,
+			},
+			p: p,
 		},
-		p: p,
 	}
 }
 
@@ -53,40 +55,7 @@ func createBscManager(p subscriber.Type, config store.Subscription) bscManager {
 // If bscManager is using RPC:
 // Sends a "eth_getLogs" request.
 func (e bscManager) GetTriggerJson() []byte {
-	if e.p == subscriber.RPC && e.fq.FromBlock == "" {
-		e.fq.FromBlock = "latest"
-	}
-
-	filter, err := e.fq.toMapInterface()
-	if err != nil {
-		return nil
-	}
-
-	filterBytes, err := json.Marshal(filter)
-	if err != nil {
-		return nil
-	}
-
-	msg := jsonrpcMessage{
-		Version: "2.0",
-		ID:      json.RawMessage(`1`),
-	}
-
-	switch e.p {
-	case subscriber.WS:
-		msg.Method = "eth_subscribe"
-		msg.Params = json.RawMessage(`["logs",` + string(filterBytes) + `]`)
-	case subscriber.RPC:
-		msg.Method = "eth_getLogs"
-		msg.Params = json.RawMessage(`[` + string(filterBytes) + `]`)
-	}
-
-	bytes, err := json.Marshal(msg)
-	if err != nil {
-		return nil
-	}
-
-	return bytes
+	return e.ethManager.GetTriggerJson()
 }
 
 // GetTestJson generates a JSON payload to test
@@ -98,22 +67,7 @@ func (e bscManager) GetTriggerJson() []byte {
 // If bscManager is using RPC:
 // Sends a request to get the latest block number.
 func (e bscManager) GetTestJson() []byte {
-	if e.p == subscriber.RPC {
-		msg := jsonrpcMessage{
-			Version: "2.0",
-			ID:      json.RawMessage(`1`),
-			Method:  "eth_blockNumber",
-		}
-
-		bytes, err := json.Marshal(msg)
-		if err != nil {
-			return nil
-		}
-
-		return bytes
-	}
-
-	return nil
+	return e.ethManager.GetTestJson()
 }
 
 // ParseTestResponse parses the response from the
@@ -127,24 +81,7 @@ func (e bscManager) GetTestJson() []byte {
 // Attempts to parse the block number in the response.
 // If successful, stores the block number in bscManager.
 func (e bscManager) ParseTestResponse(data []byte) error {
-	if e.p == subscriber.RPC {
-		var msg jsonrpcMessage
-		if err := json.Unmarshal(data, &msg); err != nil {
-			return err
-		}
-		var res string
-		if err := json.Unmarshal(msg.Result, &res); err != nil {
-			return err
-		}
-		e.fq.FromBlock = res
-	}
-
-	return nil
-}
-
-type bscSubscribeResponse struct {
-	Subscription string          `json:"subscription"`
-	Result       json.RawMessage `json:"result"`
+	return e.ethManager.ParseTestResponse(data)
 }
 
 // ParseResponse parses the response from the
@@ -155,7 +92,7 @@ type bscSubscribeResponse struct {
 // If there are new events, update bscManager with
 // the latest block number it sees.
 func (e bscManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
-	logger.Debugw("Parsing response", "ExpectsMock", ExpectsMock)
+	logger.Debugw("Parsing Binance Smart Chain response", "ExpectsMock", ExpectsMock)
 
 	var msg jsonrpcMessage
 	if err := json.Unmarshal(data, &msg); err != nil {
@@ -167,7 +104,7 @@ func (e bscManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 
 	switch e.p {
 	case subscriber.WS:
-		var res bscSubscribeResponse
+		var res ethSubscribeResponse
 		if err := json.Unmarshal(msg.Params, &res); err != nil {
 			logger.Error("unmarshal:", err)
 			return nil, false
@@ -200,7 +137,7 @@ func (e bscManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	case subscriber.RPC:
 		var rawEvents []eth.Log
 		if err := json.Unmarshal(msg.Result, &rawEvents); err != nil {
-			logger.Error(err)
+			logger.Error("unmarshal:", err)
 			return nil, false
 		}
 
@@ -230,7 +167,7 @@ func (e bscManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 
 			fromBlkn, err := hexutil.DecodeBig(e.fq.FromBlock)
 			if err != nil && !(e.fq.FromBlock == "latest" || e.fq.FromBlock == "") {
-				logger.Error(err)
+				logger.Error("Failed to get block number from event:", err)
 				continue
 			}
 
@@ -243,49 +180,4 @@ func (e bscManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	}
 
 	return events, true
-}
-
-type bscFilterQuery struct {
-	BlockHash *common.Hash     // used by eth_getLogs, return logs only from block with this hash
-	FromBlock string           // beginning of the queried range, nil means genesis block
-	ToBlock   string           // end of the range, nil means latest block
-	Addresses []common.Address // restricts matches to events created by specific contracts
-
-	// The Topic list restricts matches to particular event topics. Each event has a list
-	// of topics. Topics matches a prefix of that list. An empty element slice matches any
-	// topic. Non-empty elements represent an alternative that matches any of the
-	// contained topics.
-	//
-	// Examples:
-	// {} or nil          matches any topic list
-	// {{A}}              matches topic A in first position
-	// {{}, {B}}          matches any topic in first position AND B in second position
-	// {{A}, {B}}         matches topic A in first position AND B in second position
-	// {{A, B}, {C, D}}   matches topic (A OR B) in first position AND (C OR D) in second position
-	Topics [][]common.Hash
-}
-
-func (q bscFilterQuery) toMapInterface() (interface{}, error) {
-	arg := map[string]interface{}{
-		"address": q.Addresses,
-		"topics":  q.Topics,
-	}
-	if q.BlockHash != nil {
-		arg["blockHash"] = *q.BlockHash
-		if q.FromBlock != "" || q.ToBlock != "" {
-			return nil, errors.New("cannot specify both BlockHash and FromBlock/ToBlock")
-		}
-	} else {
-		if q.FromBlock == "" {
-			arg["fromBlock"] = "0x0"
-		} else {
-			arg["fromBlock"] = q.FromBlock
-		}
-		if q.ToBlock == "" {
-			arg["toBlock"] = "latest"
-		} else {
-			arg["toBlock"] = q.ToBlock
-		}
-	}
-	return arg, nil
 }
