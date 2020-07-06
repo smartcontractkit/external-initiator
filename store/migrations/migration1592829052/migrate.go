@@ -9,7 +9,7 @@ import (
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1587897988"
 )
 
-type BscSubscription struct {
+type BinanceSmartChainSubscription struct {
 	gorm.Model
 	SubscriptionId uint
 	Addresses      string
@@ -17,13 +17,14 @@ type BscSubscription struct {
 
 type Subscription struct {
 	gorm.Model
-	ReferenceId  string `gorm:"unique;not null"`
-	Job          string
-	EndpointName string
-	Ethereum     migration0.EthSubscription
-	Tezos        migration1576509489.TezosSubscription
-	Substrate    migration1576783801.SubstrateSubscription
-	Ontology     migration1587897988.OntSubscription
+	ReferenceId       string `gorm:"unique;not null"`
+	Job               string
+	EndpointName      string
+	Ethereum          migration0.EthSubscription
+	Tezos             migration1576509489.TezosSubscription
+	Substrate         migration1576783801.SubstrateSubscription
+	Ontology          migration1587897988.OntSubscription
+	BinanceSmartChain BinanceSmartChainSubscription
 }
 
 func Migrate(tx *gorm.DB) error {
@@ -32,7 +33,7 @@ func Migrate(tx *gorm.DB) error {
 		return errors.Wrap(err, "failed to auto migrate Subscription")
 	}
 
-	err = tx.AutoMigrate(&BscSubscription{}).AddForeignKey("subscription_id", "subscriptions(id)", "CASCADE", "CASCADE").Error
+	err = tx.AutoMigrate(&BinanceSmartChainSubscription{}).AddForeignKey("subscription_id", "subscriptions(id)", "CASCADE", "CASCADE").Error
 	if err != nil {
 		return errors.Wrap(err, "failed to auto migrate OntSubscription")
 	}

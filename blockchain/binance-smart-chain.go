@@ -26,7 +26,7 @@ type bscManager struct {
 // connection type and store.Subscription config.
 func createBscManager(p subscriber.Type, config store.Subscription) bscManager {
 	var addresses []common.Address
-	for _, a := range config.BinanceSC.Addresses {
+	for _, a := range config.BinanceSmartChain.Addresses {
 		addresses = append(addresses, common.HexToAddress(a))
 	}
 

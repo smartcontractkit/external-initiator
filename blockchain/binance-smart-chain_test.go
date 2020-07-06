@@ -16,32 +16,32 @@ import (
 func TestCreateBscFilterMessage(t *testing.T) {
 	tests := []struct {
 		name string
-		args store.BscSubscription
+		args store.BinanceSmartChainSubscription
 		p    subscriber.Type
 		want []byte
 	}{
 		{
 			"empty",
-			store.BscSubscription{},
+			store.BinanceSmartChainSubscription{},
 			subscriber.WS,
 			[]byte(`{"jsonrpc":"2.0","id":1,"method":"eth_subscribe","params":["logs",{"address":null,"fromBlock":"0x0","toBlock":"latest","topics":[["0xd8d7ecc4800d25fa53ce0372f13a416d98907a7ef3d8d3bdd79cf4fe75529c65","0x0000000000000000000000000000000000000000000000000000000000000000"]]}]}`),
 		},
 		{
 			"address only",
-			store.BscSubscription{Addresses: []string{"0x049Bd8C3adC3fE7d3Fc2a44541d955A537c2A484"}},
+			store.BinanceSmartChainSubscription{Addresses: []string{"0x049Bd8C3adC3fE7d3Fc2a44541d955A537c2A484"}},
 			subscriber.WS,
 			[]byte(`{"jsonrpc":"2.0","id":1,"method":"eth_subscribe","params":["logs",{"address":["0x049bd8c3adc3fe7d3fc2a44541d955a537c2a484"],"fromBlock":"0x0","toBlock":"latest","topics":[["0xd8d7ecc4800d25fa53ce0372f13a416d98907a7ef3d8d3bdd79cf4fe75529c65","0x0000000000000000000000000000000000000000000000000000000000000000"]]}]}`),
 		},
 		{
 			"empty RPC",
-			store.BscSubscription{},
+			store.BinanceSmartChainSubscription{},
 			subscriber.RPC,
 			[]byte(`{"jsonrpc":"2.0","id":1,"method":"eth_getLogs","params":[{"address":null,"fromBlock":"latest","toBlock":"latest","topics":[["0xd8d7ecc4800d25fa53ce0372f13a416d98907a7ef3d8d3bdd79cf4fe75529c65","0x0000000000000000000000000000000000000000000000000000000000000000"]]}]}`),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := createBscManager(tt.p, store.Subscription{BinanceSC: tt.args}).GetTriggerJson(); !reflect.DeepEqual(got, tt.want) {
+			if got := createBscManager(tt.p, store.Subscription{BinanceSmartChain: tt.args}).GetTriggerJson(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetTriggerJson() = %s, want %s", got, tt.want)
 			}
 		})

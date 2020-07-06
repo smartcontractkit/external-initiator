@@ -134,7 +134,7 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 			Addresses: params.Addresses,
 		}
 	case BSC:
-		sub.BinanceSC = store.BscSubscription{
+		sub.BinanceSmartChain = store.BinanceSmartChainSubscription{
 			Addresses: params.Addresses,
 		}
 	}
