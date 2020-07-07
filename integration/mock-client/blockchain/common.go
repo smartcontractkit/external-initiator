@@ -31,7 +31,7 @@ func HandleRequest(conn, platform string, msg JsonrpcMessage) ([]JsonrpcMessage,
 	case "binance-smart-chain":
 		return handleBscRequest(conn, msg)
 	default:
-		return nil, errors.New(fmt.Sprint("unexpected platform: ", platform))
+		return nil, fmt.Errorf("unexpected platform:  %v", platform)
 	}
 }
 
