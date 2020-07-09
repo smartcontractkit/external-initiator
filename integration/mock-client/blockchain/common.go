@@ -2,7 +2,6 @@ package blockchain
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
