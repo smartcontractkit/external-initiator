@@ -78,7 +78,7 @@ func (e bscManager) ParseTestResponse(data []byte) error {
 func (e bscManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	logger.Debugw("Parsing Binance Smart Chain response", "ExpectsMock", ExpectsMock)
 
-	var msg jsonrpcMessage
+	var msg JsonrpcMessage
 	if err := json.Unmarshal(data, &msg); err != nil {
 		logger.Error("failed parsing JSON-RPC message:", msg)
 		return nil, false

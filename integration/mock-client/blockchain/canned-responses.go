@@ -7,20 +7,30 @@ import (
 	mockresponses "github.com/smartcontractkit/external-initiator/integration/mock-client/blockchain/mock-responses"
 )
 
-type cannedResponse map[string][]JsonrpcMessage
+type cannedResponses map[string][]JsonrpcMessage
 
-// GetCannedResponse returns the static response form a file, if such exists.
-func GetCannedResponse(platform string, msg JsonrpcMessage) ([]JsonrpcMessage, bool) {
+// GetCannedResponses returns the static responses from a file, if such exists. JSON-RPC ID not set!
+func GetCannedResponses(platform string) (cannedResponses, bool) {
 	bz, err := mockresponses.Get(platform)
 	if err != nil {
 		logger.Debug(err)
 		return nil, false
 	}
 
-	var responses cannedResponse
+	var responses cannedResponses
 	err = json.Unmarshal(bz, &responses)
 	if err != nil {
 		logger.Error(err)
+		return nil, false
+	}
+
+	return responses, true
+}
+
+// GetCannedResponse returns the static response from a file, if such exists for the JSON-RPC method.
+func GetCannedResponse(platform string, msg JsonrpcMessage) ([]JsonrpcMessage, bool) {
+	responses, ok := GetCannedResponses(platform)
+	if !ok {
 		return nil, false
 	}
 
