@@ -264,7 +264,7 @@ func Test_handleBscBlockNumber(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, ok := GetCannedResponse("binance-sc", tt.args.msg)
+			got, ok := GetCannedResponse("binance-smart-chain", tt.args.msg)
 			if ok != tt.wantOk {
 				t.Errorf("handleBscBlockNumber() ok = %v, wantOk %v", ok, tt.wantOk)
 				return
