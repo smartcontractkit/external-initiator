@@ -1,16 +1,21 @@
 package blockchain
 
 import (
+	b64 "encoding/base64"
 	"encoding/json"
-	"time"
+	"errors"
+	"fmt"
 
+	"github.com/smartcontractkit/chainlink/core/logger"
+	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 )
 
 const (
 	// NEAR platform name
-	NEAR             = "near"
-	NEARScanInterval = 5 * time.Second
+	NEAR = "near"
+	// maxRequests max number of requests contract returns
+	maxRequests = 10
 )
 
 // NEARQueryCall is a JSON-RPC Params strutc for NEAR JSON-RPC query Method
@@ -28,11 +33,6 @@ type NEARQueryResult struct {
 	Logs        []uint8 `json:"logs"`
 	BlockHeight uint64  `json:"block_height"`
 	BlockHash   string  `json:"block_hash"`
-}
-
-type NEARManager struct {
-	p      subscriber.Type
-	status *NEARStatus
 }
 
 // NEARVersion type contains NEAR version info
@@ -66,6 +66,79 @@ type NEARStatus struct {
 	Validators            []NEARValidator `json:"validators"`
 }
 
+type NEARManager struct {
+	connectionType subscriber.Type
+	status         *NEARStatus
+}
+
+// createNEARManager creates a new instance of NEARManager with the provided
+// connection type and store.Subscription config.
+func createNEARManager(connectionType subscriber.Type, config store.Subscription) (*NEARManager, error) {
+	if connectionType != subscriber.RPC {
+		return nil, errors.New("only RPC connections are allowed for NEAR")
+	}
+
+	return &NEARManager{
+		connectionType: connectionType,
+	}, nil
+}
+
+// GetTriggerJson generates a JSON payload to the NEAR node
+// using the config in NEARManager.
+//
+// If NEARManager is using RPC: Returns a "query" request.
+func (m NEARManager) GetTriggerJson() []byte {
+	// TODO: hardcoded client account
+	clientAccount := "client.oracle.testnet"
+	args := fmt.Sprintf(`{"account": "%v", "max_requests": "%v"}`, clientAccount, maxRequests)
+
+	queryCall := NEARQueryCall{
+		RequestType: "call_function",
+		Finality:    "final",
+		AccountID:   "oracle.oracle.testnet", // TODO: hardcoded oracle account
+		MethodName:  "get_requests",
+		ArgsBase64:  b64.StdEncoding.EncodeToString([]byte(args)),
+	}
+
+	queryCallBytes, err := json.Marshal(queryCall)
+	if err != nil {
+		return nil
+	}
+
+	msg := JsonrpcMessage{
+		Version: "2.0",
+		ID:      json.RawMessage(`1`),
+	}
+
+	switch m.connectionType {
+	case subscriber.RPC:
+		msg.Method = "query"
+		msg.Params = json.RawMessage(string(queryCallBytes))
+	default:
+		return nil
+	}
+
+	bytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil
+	}
+
+	return bytes
+}
+
+func (m NEARManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
+	logger.Debugw("Parsing response", "ExpectsMock", ExpectsMock)
+
+	var msg JsonrpcMessage
+	if err := json.Unmarshal(data, &msg); err != nil {
+		logger.Error("Failed parsing JSON-RPC message: ", err)
+		return nil, false
+	}
+
+	// TODO: build []subscriber.Event
+	return nil, false
+}
+
 // GetTestJson generates a JSON payload to test
 // the connection to the NEAR node.
 //
@@ -75,7 +148,7 @@ type NEARStatus struct {
 // If NEARManager is using RPC:
 // Returns a request to get the network status.
 func (m NEARManager) GetTestJson() []byte {
-	if m.p == subscriber.RPC {
+	if m.connectionType == subscriber.RPC {
 		msg := JsonrpcMessage{
 			Version: "2.0",
 			ID:      json.RawMessage(`1`),
@@ -104,7 +177,7 @@ func (m NEARManager) GetTestJson() []byte {
 // Attempts to parse the status in the response.
 // If successful, stores the status in NEARManager.
 func (m NEARManager) ParseTestResponse(data []byte) error {
-	if m.p == subscriber.RPC {
+	if m.connectionType == subscriber.RPC {
 		var msg JsonrpcMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
 			return err

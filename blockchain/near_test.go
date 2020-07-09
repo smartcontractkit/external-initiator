@@ -9,7 +9,7 @@ import (
 
 func Test_NEARManager_GetTestJson(t *testing.T) {
 	type args struct {
-		p subscriber.Type
+		connectionType subscriber.Type
 	}
 	tests := []struct {
 		name string
@@ -18,24 +18,18 @@ func Test_NEARManager_GetTestJson(t *testing.T) {
 	}{
 		{
 			"returns JSON when using RPC",
-			args{
-				p: subscriber.RPC,
-			},
+			args{connectionType: subscriber.RPC},
 			[]byte(`{"jsonrpc":"2.0","id":1,"method":"status"}`),
 		},
 		{
 			"returns empty when using WS",
-			args{
-				p: subscriber.WS,
-			},
+			args{connectionType: subscriber.WS},
 			nil,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := NEARManager{
-				p: tt.args.p,
-			}
+			m := NEARManager{connectionType: tt.args.connectionType}
 			if got := m.GetTestJson(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetTestJson() = %v, want %v", got, tt.want)
 			}
@@ -45,7 +39,7 @@ func Test_NEARManager_GetTestJson(t *testing.T) {
 
 func Test_NEARManager_ParseTestResponse(t *testing.T) {
 	type fields struct {
-		p subscriber.Type
+		connectionType subscriber.Type
 	}
 	type args struct {
 		data []byte
@@ -58,30 +52,58 @@ func Test_NEARManager_ParseTestResponse(t *testing.T) {
 	}{
 		{
 			"does nothing for WS",
-			fields{p: subscriber.WS},
+			fields{connectionType: subscriber.WS},
 			args{},
 			false,
 		},
 		{
 			"fails unmarshal payload",
-			fields{p: subscriber.RPC},
+			fields{connectionType: subscriber.RPC},
 			args{[]byte(`error`)},
 			true,
 		},
 		{
 			"fails unmarshal result",
-			fields{p: subscriber.RPC},
+			fields{connectionType: subscriber.RPC},
 			args{[]byte(`{"jsonrpc":"2.0","id":1,"result":["0x1"]}`)},
 			true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := NEARManager{
-				p: tt.fields.p,
-			}
+			m := NEARManager{connectionType: tt.fields.connectionType}
 			if err := m.ParseTestResponse(tt.args.data); (err != nil) != tt.wantErr {
 				t.Errorf("ParseTestResponse() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_NEARManager_GetTriggerJson(t *testing.T) {
+	type args struct {
+		connectionType subscriber.Type
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			"returns JSON-RPC message when using RPC",
+			args{connectionType: subscriber.RPC},
+			true,
+		},
+		{
+			"returns empty when using WS",
+			args{connectionType: subscriber.WS},
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := NEARManager{connectionType: tt.args.connectionType}
+			if got := m.GetTriggerJson(); (got != nil) != tt.want {
+				t.Errorf("GetTriggerJson() = %v, want %v", got, tt.want)
 			}
 		})
 	}

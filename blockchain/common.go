@@ -21,6 +21,7 @@ var blockchains = []string{
 	Substrate,
 	ONT,
 	BSC,
+	NEAR,
 }
 
 type Params struct {
@@ -42,6 +43,8 @@ func CreateJsonManager(t subscriber.Type, sub store.Subscription) (subscriber.Js
 		return createSubstrateManager(t, sub)
 	case BSC:
 		return createBscManager(t, sub), nil
+	case NEAR:
+		return createNEARManager(t, sub)
 	}
 
 	return nil, errors.New("unknown blockchain type for JSON manager")
@@ -112,6 +115,10 @@ func GetValidations(t string, params Params) []int {
 		return []int{
 			len(params.Addresses),
 		}
+	case NEAR:
+		return []int{
+			len(params.Addresses),
+		}
 	}
 
 	return nil
@@ -139,6 +146,10 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 	case BSC:
 		sub.BinanceSmartChain = store.BinanceSmartChainSubscription{
 			Addresses: params.Addresses,
+		}
+	case NEAR:
+		sub.NEAR = store.NEARSubscription{
+			AccountIds: params.Addresses,
 		}
 	}
 }

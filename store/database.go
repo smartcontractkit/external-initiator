@@ -117,6 +117,10 @@ func (client Client) prepareSubscription(rawSub *Subscription) (*Subscription, e
 		if err := client.db.Model(&sub).Related(&sub.BinanceSmartChain).Error; err != nil {
 			return nil, err
 		}
+	case "near":
+		if err := client.db.Model(&sub).Related(&sub.NEAR).Error; err != nil {
+			return nil, err
+		}
 	}
 
 	return &sub, nil
@@ -253,6 +257,7 @@ type Subscription struct {
 	Substrate         SubstrateSubscription
 	Ontology          OntSubscription
 	BinanceSmartChain BinanceSmartChainSubscription
+	NEAR              NEARSubscription
 }
 
 type EthSubscription struct {
@@ -284,4 +289,10 @@ type BinanceSmartChainSubscription struct {
 	gorm.Model
 	SubscriptionId uint
 	Addresses      SQLStringArray
+}
+
+type NEARSubscription struct {
+	gorm.Model
+	SubscriptionId uint
+	AccountIds     SQLStringArray
 }
