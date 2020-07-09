@@ -107,7 +107,7 @@ func GetValidations(t string, params Params) []int {
 		}
 	case BSC:
 		return []int{
-			len(params.Addresses) + len(params.Topics),
+			len(params.Addresses),
 		}
 	}
 
