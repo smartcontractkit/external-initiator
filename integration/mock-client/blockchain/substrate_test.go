@@ -9,6 +9,8 @@ import (
 	"github.com/centrifuge/go-substrate-rpc-client/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/external-initiator/blockchain"
 )
 
 const expectedStorageKey = "0x26aa394eea5630e07c48ae0c9558cef780d41e5e16056765bc8461851072c9d7"
@@ -107,31 +109,11 @@ func includesKeyInChanges(expectedKey string, changes []types.KeyValueOption) bo
 	return false
 }
 
-// EventChainlinkOracleRequest is the event structure we expect
-// to be emitted from the Chainlink pallet
-type EventChainlinkOracleRequest struct {
-	Phase              types.Phase
-	OracleAccountID    types.AccountID
-	SpecIndex          types.Text
-	RequestIdentifier  types.U64
-	RequesterAccountID types.AccountID
-	DataVersion        types.U64
-	Bytes              []byte
-	Callback           types.Text
-	Payment            types.U32
-	Topics             []types.Hash
-}
-
-type EventRecords struct {
-	types.EventRecords
-	Chainlink_OracleRequest []EventChainlinkOracleRequest //nolint:stylecheck,golint
-}
-
 func testEventRecordsDecoding(t *testing.T, metadata *types.Metadata, changes []types.KeyValueOption) {
 	for _, change := range changes {
 		testName := fmt.Sprintf("Test decoding storage change %x", change.StorageKey)
 		t.Run(testName, func(t *testing.T) {
-			events := EventRecords{}
+			events := blockchain.EventRecords{}
 			err := types.EventRecordsRaw(change.StorageData).DecodeEventRecords(metadata, &events)
 			require.NoError(t, err)
 			assert.NotNil(t, events)
