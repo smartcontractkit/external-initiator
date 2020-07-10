@@ -9,6 +9,9 @@ COPY go.mod .
 COPY go.sum .
 RUN go mod download
 COPY . .
+# Delete ./integration folder that is not needed in the context of external-initiator,
+# but is required in the context of mock-client build
+RUN rm -rf ./integration
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o /go/bin/external-initiator
 
 FROM scratch

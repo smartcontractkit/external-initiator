@@ -36,8 +36,8 @@ services:
       - integration
   mock:
     build:
-      context: ./mock-client
-      dockerfile: Dockerfile
+      context: ../.
+      dockerfile: ./integration/mock-client/Dockerfile
     restart: on-failure
     ports:
       - "8081:8080"

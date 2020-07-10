@@ -1,3 +1,6 @@
-integration
+# This is required when building mock-client, and will be removed manually 
+# in external-initiator Dockerfile (not needed in that context).
+# -----------
+# integration
 README.md
 .circleci
