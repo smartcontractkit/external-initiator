@@ -39,10 +39,10 @@ func CreateJsonManager(t subscriber.Type, sub store.Subscription) (subscriber.Js
 		return createEthManager(t, sub), nil
 	case HMY:
 		return createHmyManager(t, sub), nil
-	case Substrate:
-		return createSubstrateManager(t, sub)
 	case BSC:
 		return createBscManager(t, sub), nil
+	case Substrate:
+		return createSubstrateManager(t, sub)
 	case NEAR:
 		return createNEARManager(t, sub)
 	}

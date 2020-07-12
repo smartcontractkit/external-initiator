@@ -18,21 +18,33 @@ const (
 	maxRequests = 10
 )
 
-// NEARQueryCall is a JSON-RPC Params strutc for NEAR JSON-RPC query Method
+// NEARQuery is a JSON-RPC Params struct for NEAR JSON-RPC query Method
+type NEARQuery struct {
+	RequestType string `json:"request_type"`
+	Finality    string `json:"finality"`
+	AccountID   string `json:"account_id"`
+}
+
+// NEARQueryCall is a JSON-RPC Params struct for NEAR JSON-RPC query Method
+// where "request_type": "call_function".
+//
+// NEAR "call_function" request type, calls method_name in contract account_id
+// as view function with data as parameters.
 type NEARQueryCall struct {
+	// TODO: how to embed NEARQuery here?
 	RequestType string `json:"request_type"`
 	Finality    string `json:"finality"`
 	AccountID   string `json:"account_id"`
 	MethodName  string `json:"method_name"`
-	ArgsBase64  string `json:"args_base64"`
+	ArgsBase64  string `json:"args_base64"` // base64-encoded
 }
 
 // NEARQueryResult is a result struct for NEAR JSON-RPC NEARQueryCall response
 type NEARQueryResult struct {
-	Result      []uint8 `json:"result"`
-	Logs        []uint8 `json:"logs"`
-	BlockHeight uint64  `json:"block_height"`
-	BlockHash   string  `json:"block_hash"`
+	Result      json.RawMessage `json:"result"`
+	Logs        []byte          `json:"logs"`
+	BlockHeight uint64          `json:"block_height"`
+	BlockHash   string          `json:"block_hash"`
 }
 
 // NEARVersion type contains NEAR version info
@@ -64,6 +76,23 @@ type NEARStatus struct {
 	RPCAddr               string          `json:"rpc_addr"`
 	SyncInfo              NEARSyncInfo    `json:"sync_info"`
 	Validators            []NEARValidator `json:"validators"`
+}
+
+// NEAROracleRequestArgs contains the oracle request arguments
+type NEAROracleRequestArgs struct {
+	CallerAccount   string `json:caller_account`
+	RequestSpec     string `json:request_spec` // base64-encoded
+	CallbackAddress string `json:callback_address`
+	CallbackMethod  string `json:callback_method`
+	Data            string `json:data`       // base64-encoded
+	Payment         uint64 `json:payment`    // in LINK tokens
+	Expiration      uint64 `json:expiration` // in nanoseconds
+}
+
+// NEAROracleRequest is the request returned by the oracle get_requests function
+type NEAROracleRequest struct {
+	Nonce   uint32                `json:nonce`
+	Request NEAROracleRequestArgs `json:request`
 }
 
 type NEARManager struct {
@@ -135,8 +164,32 @@ func (m NEARManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 		return nil, false
 	}
 
-	// TODO: build []subscriber.Event
-	return nil, false
+	var queryResult NEARQueryResult
+	if err := json.Unmarshal(msg.Result, &queryResult); err != nil {
+		logger.Error("Failed parsing NEARQueryResult:", err)
+		return nil, false
+	}
+
+	var oracleRequests []NEAROracleRequest
+	if err := json.Unmarshal(queryResult.Result, &oracleRequests); err != nil {
+		logger.Error("Failed parsing NEAROracleRequests:", err)
+		return nil, false
+	}
+
+	var events []subscriber.Event
+
+	for _, r := range oracleRequests {
+		request := r.Request
+
+		event, err := json.Marshal(request)
+		if err != nil {
+			logger.Error("failed marshaling request:", err)
+			continue
+		}
+		events = append(events, event)
+	}
+
+	return events, false
 }
 
 // GetTestJson generates a JSON payload to test

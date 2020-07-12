@@ -108,3 +108,6 @@ func Test_NEARManager_GetTriggerJson(t *testing.T) {
 		})
 	}
 }
+
+func Test_NEARManager_ParseResponse(t *testing.T) {
+}

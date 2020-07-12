@@ -10,14 +10,14 @@ Initiate Chainlink job runs from external sources.
 
 ### Environment variables
 
-| Key | Description | Example |
-|-----|-------------|---------|
-| `EI_DATABASEURL` | Postgres connection URL | `postgresql://user:pass@localhost:5432/ei` |
-| `EI_CHAINLINKURL` | The URL of the Chainlink Core service | `http://localhost:6688` |
-| `EI_IC_ACCESSKEY` | The Chainlink access key, used for traffic flowing from this service to Chainlink | `0b7d4a293bff4baf8de852bfa1f1f78a` |
-| `EI_IC_SECRET` | The Chainlink secret, used for traffic flowing from this service to Chainlink | `h23MjHx17UJKBf3b0MWNI2P/UPh3c3O7/j8ivKCBhvcWH3H+xso4Gehny/lgpAht` |
-| `EI_CI_ACCESSKEY` | The External Initiator access key, used for traffic flowing from Chainlink to this service | `0b7d4a293bff4baf8de852bfa1f1f78a` |
-| `EI_CI_SECRET` | The External Initiator secret, used for traffic flowing from Chainlink to this service | `h23MjHx17UJKBf3b0MWNI2P/UPh3c3O7/j8ivKCBhvcWH3H+xso4Gehny/lgpAht` |
+| Key               | Description                                                                                | Example                                                            |
+| ----------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| `EI_DATABASEURL`  | Postgres connection URL                                                                    | `postgresql://user:pass@localhost:5432/ei`                         |
+| `EI_CHAINLINKURL` | The URL of the Chainlink Core service                                                      | `http://localhost:6688`                                            |
+| `EI_IC_ACCESSKEY` | The Chainlink access key, used for traffic flowing from this service to Chainlink          | `0b7d4a293bff4baf8de852bfa1f1f78a`                                 |
+| `EI_IC_SECRET`    | The Chainlink secret, used for traffic flowing from this service to Chainlink              | `h23MjHx17UJKBf3b0MWNI2P/UPh3c3O7/j8ivKCBhvcWH3H+xso4Gehny/lgpAht` |
+| `EI_CI_ACCESSKEY` | The External Initiator access key, used for traffic flowing from Chainlink to this service | `0b7d4a293bff4baf8de852bfa1f1f78a`                                 |
+| `EI_CI_SECRET`    | The External Initiator secret, used for traffic flowing from Chainlink to this service     | `h23MjHx17UJKBf3b0MWNI2P/UPh3c3O7/j8ivKCBhvcWH3H+xso4Gehny/lgpAht` |
 
 ## Usage
 
