@@ -4,6 +4,8 @@ set -e
 
 source ./integration/common
 
+source_mock_env
+
 run_test() {
   trap exit_handler EXIT
 
@@ -23,15 +25,15 @@ run_test() {
 
   login_chainlink
 
-  ./integration/test_ei_event "eth-mock-http" "$SUBSCRIBED_ADDRESS" ""
-  ./integration/test_ei_event "eth-mock-ws" "$SUBSCRIBED_ADDRESS" ""
-  ./integration/test_ei_event "hmy-mock-http" "$SUBSCRIBED_ADDRESS" ""
-  ./integration/test_ei_event "hmy-mock-ws" "$SUBSCRIBED_ADDRESS" ""
-  ./integration/test_ei_event "xtz-mock-http" "$SUBSCRIBED_ADDRESS" ""
-  ./integration/test_ei_event "ont-mock-http" "$SUBSCRIBED_ADDRESS" ""
-  ./integration/test_ei_event "bsc-mock-http" "$SUBSCRIBED_ADDRESS" ""
-  ./integration/test_ei_event "bsc-mock-ws" "$SUBSCRIBED_ADDRESS" ""
-  # ./integration/test_ei_event "near-mock-http"
+  ./integration/test_ei_event "eth-mock-http" "$EVM_SUBSCRIBED_ADDRESS" ""
+  ./integration/test_ei_event "eth-mock-ws" "$EVM_SUBSCRIBED_ADDRESS" ""
+  ./integration/test_ei_event "hmy-mock-http" "$EVM_SUBSCRIBED_ADDRESS" ""
+  ./integration/test_ei_event "hmy-mock-ws" "$EVM_SUBSCRIBED_ADDRESS" ""
+  ./integration/test_ei_event "xtz-mock-http" "$EVM_SUBSCRIBED_ADDRESS" ""
+  ./integration/test_ei_event "ont-mock-http" "$EVM_SUBSCRIBED_ADDRESS" ""
+  ./integration/test_ei_event "bsc-mock-http" "$EVM_SUBSCRIBED_ADDRESS" ""
+  ./integration/test_ei_event "bsc-mock-ws" "$EVM_SUBSCRIBED_ADDRESS" ""
+  # ./integration/test_ei_event "near-mock-http" "" "$NEAR_ORACLE_ACCOUNT_ID"
 
   source ./integration/test_substrate.env
   ./integration/test_ei_event "substrate-mock-ws" "" "$SUBSTRATE_OPERATOR_1_ACCOUNT_ID"

@@ -1,8 +1,10 @@
 #!/bin/bash
 
+set -e
+
 source ./integration/common
 
-set -e
+source_mock_env
 
 title "EI event test using $1"
 

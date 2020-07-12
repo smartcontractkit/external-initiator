@@ -4,8 +4,11 @@ CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 LOG_PATH="$CUR_DIR/tmp/logs"
 mkdir -p "$LOG_PATH"
 
-SUBSCRIBED_ADDRESS="0x2aD9B7b9386c2f45223dDFc4A4d81C2957bAE19A"
-export SUBSCRIBED_ADDRESS
+source_mock_env() {
+  source ./integration/mock-env/evm.env
+  source ./integration/mock-env/near.env
+  source ./integration/mock-env/substrate.env
+}
 
 assert() {
   sleepCount=0
