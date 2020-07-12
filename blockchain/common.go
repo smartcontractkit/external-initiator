@@ -5,6 +5,7 @@ package blockchain
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/url"
 	"strings"
 
@@ -47,7 +48,7 @@ func CreateJsonManager(t subscriber.Type, sub store.Subscription) (subscriber.Js
 		return createNEARManager(t, sub)
 	}
 
-	return nil, errors.New("unknown blockchain type for JSON manager")
+	return nil, fmt.Errorf("unknown blockchain type %v for JSON manager", sub.Endpoint.Type)
 }
 
 // CreateClientManager creates a new instance of a subscriber.ISubscriber with the provided
@@ -117,7 +118,7 @@ func GetValidations(t string, params Params) []int {
 		}
 	case NEAR:
 		return []int{
-			len(params.Addresses),
+			len(params.AccountIds),
 		}
 	}
 
@@ -149,7 +150,7 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 		}
 	case NEAR:
 		sub.NEAR = store.NEARSubscription{
-			AccountIds: params.Addresses,
+			AccountIds: params.AccountIds,
 		}
 	}
 }

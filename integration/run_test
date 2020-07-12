@@ -23,20 +23,20 @@ run_test() {
 
   login_chainlink
 
-  ./integration/test_ei_event "eth-mock-http"
-  ./integration/test_ei_event "eth-mock-ws"
-  ./integration/test_ei_event "hmy-mock-http"
-  ./integration/test_ei_event "hmy-mock-ws"
-  ./integration/test_ei_event "xtz-mock-http"
-  ./integration/test_ei_event "ont-mock-http"
-  ./integration/test_ei_event "bsc-mock-http"
-  ./integration/test_ei_event "bsc-mock-ws"
+  ./integration/test_ei_event "eth-mock-http" "$SUBSCRIBED_ADDRESS" ""
+  ./integration/test_ei_event "eth-mock-ws" "$SUBSCRIBED_ADDRESS" ""
+  ./integration/test_ei_event "hmy-mock-http" "$SUBSCRIBED_ADDRESS" ""
+  ./integration/test_ei_event "hmy-mock-ws" "$SUBSCRIBED_ADDRESS" ""
+  ./integration/test_ei_event "xtz-mock-http" "$SUBSCRIBED_ADDRESS" ""
+  ./integration/test_ei_event "ont-mock-http" "$SUBSCRIBED_ADDRESS" ""
+  ./integration/test_ei_event "bsc-mock-http" "$SUBSCRIBED_ADDRESS" ""
+  ./integration/test_ei_event "bsc-mock-ws" "$SUBSCRIBED_ADDRESS" ""
   # ./integration/test_ei_event "near-mock-http"
 
   source ./integration/test_substrate.env
-  ./integration/test_ei_event "substrate-mock-ws" "$SUBSTRATE_OPERATOR_1_ACCOUNT_ID"
-  ./integration/test_ei_event "substrate-mock-ws" "$SUBSTRATE_OPERATOR_2_ACCOUNT_ID"
-  ./integration/test_ei_event "substrate-mock-ws" "$SUBSTRATE_OPERATOR_3_ACCOUNT_ID"
+  ./integration/test_ei_event "substrate-mock-ws" "" "$SUBSTRATE_OPERATOR_1_ACCOUNT_ID"
+  ./integration/test_ei_event "substrate-mock-ws" "" "$SUBSTRATE_OPERATOR_2_ACCOUNT_ID"
+  ./integration/test_ei_event "substrate-mock-ws" "" "$SUBSTRATE_OPERATOR_3_ACCOUNT_ID"
 
   stop_docker
 
