@@ -45,7 +45,7 @@ func CreateJsonManager(t subscriber.Type, sub store.Subscription) (subscriber.Js
 	case Substrate:
 		return createSubstrateManager(t, sub)
 	case NEAR:
-		return createNEARManager(t, sub)
+		return createNearManager(t, sub)
 	}
 
 	return nil, fmt.Errorf("unknown blockchain type %v for JSON manager", sub.Endpoint.Type)

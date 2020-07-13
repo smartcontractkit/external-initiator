@@ -95,38 +95,57 @@ type NEAROracleRequest struct {
 	Request NEAROracleRequestArgs `json:request`
 }
 
-type NEARManager struct {
+type nearFilter struct {
+	JobID      string
+	AccountIDs []string
+}
+
+type nearManager struct {
+	filter         nearFilter
 	connectionType subscriber.Type
 	status         *NEARStatus
 }
 
-// createNEARManager creates a new instance of NEARManager with the provided
+// createNearManager creates a new instance of nearManager with the provided
 // connection type and store.Subscription config.
-func createNEARManager(connectionType subscriber.Type, config store.Subscription) (*NEARManager, error) {
+func createNearManager(connectionType subscriber.Type, config store.Subscription) (*nearManager, error) {
 	if connectionType != subscriber.RPC {
 		return nil, errors.New("only RPC connections are allowed for NEAR")
 	}
 
-	return &NEARManager{
+	var accountIDs []string
+	for _, id := range config.NEAR.AccountIds {
+		accountIDs = append(accountIDs, id)
+	}
+
+	return &nearManager{
+		filter: nearFilter{
+			JobID:      config.Job,
+			AccountIDs: accountIDs,
+		},
 		connectionType: connectionType,
 	}, nil
 }
 
 // GetTriggerJson generates a JSON payload to the NEAR node
-// using the config in NEARManager.
+// using the config in nearManager.
 //
-// If NEARManager is using RPC: Returns a "query" request.
-func (m NEARManager) GetTriggerJson() []byte {
+// If nearManager is using RPC: Returns a "query" request.
+func (m nearManager) GetTriggerJson() []byte {
 	// TODO: hardcoded client account
+	// We are not interested to query requests for a specific client,
+	// but all requests made through a specific contract.
 	clientAccount := "client.oracle.testnet"
 	args := fmt.Sprintf(`{"account": "%v", "max_requests": "%v"}`, clientAccount, maxRequests)
 
 	queryCall := NEARQueryCall{
 		RequestType: "call_function",
 		Finality:    "final",
-		AccountID:   "oracle.oracle.testnet", // TODO: hardcoded oracle account
-		MethodName:  "get_requests",
-		ArgsBase64:  b64.StdEncoding.EncodeToString([]byte(args)),
+		// TODO: hardcoded first oracle account
+		// How do we support query for multiple oracle accounts/contracts?
+		AccountID:  m.filter.AccountIDs[0],
+		MethodName: "get_requests",
+		ArgsBase64: b64.StdEncoding.EncodeToString([]byte(args)),
 	}
 
 	queryCallBytes, err := json.Marshal(queryCall)
@@ -155,7 +174,7 @@ func (m NEARManager) GetTriggerJson() []byte {
 	return bytes
 }
 
-func (m NEARManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
+func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	logger.Debugw("Parsing response", "ExpectsMock", ExpectsMock)
 
 	var msg JsonrpcMessage
@@ -195,12 +214,12 @@ func (m NEARManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 // GetTestJson generates a JSON payload to test
 // the connection to the NEAR node.
 //
-// If NEARManager is using WebSocket:
+// If nearManager is using WebSocket:
 // Returns nil.
 //
-// If NEARManager is using RPC:
+// If nearManager is using RPC:
 // Returns a request to get the network status.
-func (m NEARManager) GetTestJson() []byte {
+func (m nearManager) GetTestJson() []byte {
 	if m.connectionType == subscriber.RPC {
 		msg := JsonrpcMessage{
 			Version: "2.0",
@@ -223,13 +242,13 @@ func (m NEARManager) GetTestJson() []byte {
 // NEAR node after sending GetTestJson(), and returns
 // the error from parsing, if any.
 //
-// If NEARManager is using WebSocket:
+// If nearManager is using WebSocket:
 // Returns nil.
 //
-// If NEARManager is using RPC:
+// If nearManager is using RPC:
 // Attempts to parse the status in the response.
-// If successful, stores the status in NEARManager.
-func (m NEARManager) ParseTestResponse(data []byte) error {
+// If successful, stores the status in nearManager.
+func (m nearManager) ParseTestResponse(data []byte) error {
 	if m.connectionType == subscriber.RPC {
 		var msg JsonrpcMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
