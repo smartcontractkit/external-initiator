@@ -117,16 +117,6 @@ func (ots *ontSubscription) parseOntEvent(height uint32) error {
 	return nil
 }
 
-func (ots ontSubscription) matchesJobid(jobid string) bool {
-	if jobid == ots.jobId {
-		return true
-	} else if ExpectsMock && jobid == "mock" {
-		return true
-	}
-
-	return false
-}
-
 func (ots *ontSubscription) Unsubscribe() {
 	logger.Info("Unsubscribing from Ontology endpoint")
 	ots.isDone = true
@@ -147,7 +137,8 @@ func (ots *ontSubscription) notifyTrigger(notify *common.NotifyEventInfo) ([]byt
 	name := fmt.Sprint(states[0])
 	if name == hex.EncodeToString([]byte("oracleRequest")) {
 		jobId := fmt.Sprint(states[1])
-		if !ots.matchesJobid(jobId) {
+		// Check if our jobID matches
+		if !matchesJobID(ots.jobId, jobId) {
 			return nil, false
 		}
 		logger.Debugf("parseOntEvent, found tracked job: %s", jobId)

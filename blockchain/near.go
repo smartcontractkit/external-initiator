@@ -175,7 +175,7 @@ func (m nearManager) GetTriggerJson() []byte {
 }
 
 func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
-	logger.Debugw("Parsing response", "ExpectsMock", ExpectsMock)
+	logger.Debugw("Parsing NEAR response", "ExpectsMock", ExpectsMock)
 
 	var msg JsonrpcMessage
 	if err := json.Unmarshal(data, &msg); err != nil {
@@ -199,6 +199,17 @@ func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 
 	for _, r := range oracleRequests {
 		request := r.Request
+
+		jobID, err := b64.StdEncoding.DecodeString(request.RequestSpec)
+		if err != nil {
+			logger.Error("Failed parsing NEAROracleRequestArgs.RequestSpec:", err)
+			return nil, false
+		}
+
+		// Check if our jobID matches
+		if !matchesJobID(m.filter.JobID, string(jobID)) {
+			continue
+		}
 
 		event, err := json.Marshal(request)
 		if err != nil {

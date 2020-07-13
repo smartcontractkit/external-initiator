@@ -13,6 +13,7 @@ import (
 	"github.com/smartcontractkit/external-initiator/subscriber"
 )
 
+// ExpectsMock variable is set when we run in a mock context
 var ExpectsMock = false
 
 var blockchains = []string{
@@ -183,4 +184,15 @@ func convertStringArrayToKV(data []string) map[string]string {
 	}
 
 	return result
+}
+
+// matchesJobID checks if expected jobID matches the actual one, or are we in a mock context.
+func matchesJobID(expected string, actual string) bool {
+	if actual == expected {
+		return true
+	} else if ExpectsMock && actual == "mock" {
+		return true
+	}
+
+	return false
 }

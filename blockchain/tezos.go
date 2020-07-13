@@ -188,7 +188,7 @@ func (tzs tezosSubscription) Unsubscribe() {
 	}
 }
 
-func extractEventsFromBlock(data []byte, addresses []string, jobid string) ([]subscriber.Event, error) {
+func extractEventsFromBlock(data []byte, addresses []string, jobID string) ([]subscriber.Event, error) {
 	if !gjson.ValidBytes(data) {
 		return nil, errors.New("got invalid JSON object from Tezos RPC endpoint")
 	}
@@ -246,8 +246,8 @@ func extractEventsFromBlock(data []byte, addresses []string, jobid string) ([]su
 				return nil, err
 			}
 
-			if !matchesXtzJobid(vals, jobid) {
-				// Does not match jobid
+			// Check if our jobID matches
+			if !matchesXtzJobid(vals, jobID) {
 				continue
 			}
 
@@ -279,14 +279,8 @@ func matchesXtzJobid(values []string, expected string) bool {
 		return false
 	}
 
-	jobid := values[3]
-	if jobid == expected {
-		return true
-	} else if ExpectsMock && jobid == "mock" {
-		return true
-	}
-
-	return false
+	jobID := values[3]
+	return matchesJobID(expected, jobID)
 }
 
 func getSuccessfulRequestCall(content xtzTransactionContent, oracleAddresses []string) (xtzInternalOperationResult, bool) {
