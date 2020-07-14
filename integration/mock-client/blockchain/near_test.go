@@ -173,10 +173,10 @@ func Test_handleNEARRequest_query_get_requests(t *testing.T) {
 			assert.Equal(t, resp[0].ID, tt.args.msg.ID)
 
 			// Unmarshal and check result
-			var result blockchain.NEARQueryResult
-			err = json.Unmarshal(resp[0].Result, &result)
-			require.NotNil(t, result)
+			oracleRequests, err := blockchain.ParseNEAROracleRequests(resp[0])
 			require.Nil(t, err)
+			assert.NotNil(t, oracleRequests)
+			assert.Equal(t, 2, len(oracleRequests))
 		})
 	}
 }

@@ -25,6 +25,8 @@ func HandleRequest(conn, platform string, msg JsonrpcMessage) ([]JsonrpcMessage,
 		return handleOntRequest(msg)
 	case "binance-smart-chain":
 		return handleBscRequest(conn, msg)
+	case "near":
+		return handleNEARRequest(conn, msg)
 	default:
 		return nil, fmt.Errorf("unexpected platform: %v", platform)
 	}

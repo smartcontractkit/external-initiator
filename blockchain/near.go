@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store"
@@ -41,10 +42,10 @@ type NEARQueryCall struct {
 
 // NEARQueryResult is a result struct for NEAR JSON-RPC NEARQueryCall response
 type NEARQueryResult struct {
-	Result      json.RawMessage `json:"result"`
-	Logs        []byte          `json:"logs"`
-	BlockHeight uint64          `json:"block_height"`
-	BlockHash   string          `json:"block_hash"`
+	Result      []byte `json:"result"`
+	Logs        []byte `json:"logs"`
+	BlockHeight uint64 `json:"block_height"`
+	BlockHash   string `json:"block_hash"`
 }
 
 // NEARVersion type contains NEAR version info
@@ -91,7 +92,7 @@ type NEAROracleRequestArgs struct {
 
 // NEAROracleRequest is the request returned by the oracle get_requests function
 type NEAROracleRequest struct {
-	Nonce   uint32                `json:"nonce"`
+	Nonce   string                `json:"nonce"`
 	Request NEAROracleRequestArgs `json:"request"`
 }
 
@@ -183,15 +184,8 @@ func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 		return nil, false
 	}
 
-	var queryResult NEARQueryResult
-	if err := json.Unmarshal(msg.Result, &queryResult); err != nil {
-		logger.Error("Failed parsing NEARQueryResult:", err)
-		return nil, false
-	}
-
-	var oracleRequests []NEAROracleRequest
-	if err := json.Unmarshal(queryResult.Result, &oracleRequests); err != nil {
-		logger.Error("Failed parsing NEAROracleRequests:", err)
+	oracleRequests, err := ParseNEAROracleRequests(msg)
+	if err != nil {
 		return nil, false
 	}
 
@@ -274,4 +268,32 @@ func (m nearManager) ParseTestResponse(data []byte) error {
 	}
 
 	return nil
+}
+
+// ParseNEAROracleRequests will unmarshal JsonrpcMessage result.result as []NEAROracleRequest
+func ParseNEAROracleRequests(msg JsonrpcMessage) ([]NEAROracleRequest, error) {
+	var queryResult NEARQueryResult
+	if err := json.Unmarshal(msg.Result, &queryResult); err != nil {
+		logger.Error("Failed parsing NEARQueryResult:", err)
+		return nil, err
+	}
+
+	cleanResult := cleanNEAROracleRequestRaw(queryResult.Result)
+
+	var oracleRequests []NEAROracleRequest
+	if err := json.Unmarshal(cleanResult, &oracleRequests); err != nil {
+		logger.Error("Failed parsing NEAROracleRequests:", err)
+		return nil, err
+	}
+
+	return oracleRequests, nil
+}
+
+func cleanNEAROracleRequestRaw(data []byte) []byte {
+	str := string(data)
+	// remove escape dashes
+	strNoDash := strings.Replace(str, "\\", "", -1)
+	// remove first and last doublequote
+	strNoDashNoQuotes := strNoDash[1 : len(strNoDash)-1]
+	return []byte(strNoDashNoQuotes)
 }
