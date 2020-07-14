@@ -80,19 +80,19 @@ type NEARStatus struct {
 
 // NEAROracleRequestArgs contains the oracle request arguments
 type NEAROracleRequestArgs struct {
-	CallerAccount   string `json:caller_account`
-	RequestSpec     string `json:request_spec` // base64-encoded
-	CallbackAddress string `json:callback_address`
-	CallbackMethod  string `json:callback_method`
-	Data            string `json:data`       // base64-encoded
-	Payment         uint64 `json:payment`    // in LINK tokens
-	Expiration      uint64 `json:expiration` // in nanoseconds
+	CallerAccount   string `json:"caller_account"`
+	RequestSpec     string `json:"request_spec"` // base64-encoded
+	CallbackAddress string `json:"callback_address"`
+	CallbackMethod  string `json:"callback_method"`
+	Data            string `json:"data"`       // base64-encoded
+	Payment         uint64 `json:"payment"`    // in LINK tokens
+	Expiration      uint64 `json:"expiration"` // in nanoseconds
 }
 
 // NEAROracleRequest is the request returned by the oracle get_requests function
 type NEAROracleRequest struct {
-	Nonce   uint32                `json:nonce`
-	Request NEAROracleRequestArgs `json:request`
+	Nonce   uint32                `json:"nonce"`
+	Request NEAROracleRequestArgs `json:"request"`
 }
 
 type nearFilter struct {
