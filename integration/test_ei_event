@@ -24,10 +24,10 @@ event_test() {
   assert "Jobs count" "docker exec integration_chainlink chainlink -j jobs list | jq length" "$expected_job_count"
 
   # Check job runs
-  assert "This job Runs count" "docker exec integration_chainlink chainlink -j runs list --jobid $jid | jq length" 1
+  assert "This job Runs count" "docker exec integration_chainlink chainlink -j runs list --jobid $jid | jq length" $4
 
   # Check that the run completed
-  assert "Run completed" 'docker exec integration_chainlink chainlink -j runs list --jobid $jid | jq ".[].status" | sed s/\"//g' completed
+  assert "Run completed" 'docker exec integration_chainlink chainlink -j runs list --jobid $jid | jq ".[].status" | sed s/\"//g | tr "\n" " "' "$(yes "completed" | head -n $4 | tr "\n" " ")"
 }
 
-event_test "$1" "$2" "$3"
+event_test "$1" "$2" "$3" "$4"

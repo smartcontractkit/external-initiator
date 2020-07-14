@@ -213,7 +213,7 @@ func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 		events = append(events, event)
 	}
 
-	return events, false
+	return events, true
 }
 
 // GetTestJson generates a JSON payload to test
