@@ -1,18 +1,20 @@
 import chalk from 'chalk'
 import 'source-map-support/register'
-import { promises as fs } from 'fs'
+import * as fs from 'fs'
+import os from 'os'
 
 import axios from 'axios'
 import path from 'path'
 
-/**
- * Default credentials for testing node
- * FIXME: duplicated
- */
-export const credentials = {
-  email: 'notreal@fakeemail.ch',
-  password: 'twochains',
-}
+const credentials = (() => {
+  const filePath = path.resolve(__dirname, '../../secrets/apicredentials')
+  const contents = fs.readFileSync(filePath, 'utf8')
+  const lines = contents.split(os.EOL)
+  return {
+    email: lines[0],
+    password: lines[1],
+  }
+})()
 
 /**
  * Sign in and store authentication cookie.
@@ -22,7 +24,7 @@ export const credentials = {
 export async function getLoginCookie(url: string): Promise<string> {
   const loginPath = path.resolve(__dirname, '../../cl_login.txt')
   try {
-    return await fs.readFile(loginPath, 'utf8')
+    return await fs.promises.readFile(loginPath, 'utf8')
   } catch (e) {
     const response = await axios.post(url, credentials, {
       withCredentials: true,
@@ -33,7 +35,7 @@ export async function getLoginCookie(url: string): Promise<string> {
       cookies.push(cookiesHeader[i].split(/[,;]/)[0])
     }
     const cookieString = cookies.join('; ') + ';'
-    await fs.writeFile(loginPath, cookieString)
+    await fs.promises.writeFile(loginPath, cookieString)
     return cookieString
   }
 }

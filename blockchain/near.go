@@ -296,7 +296,7 @@ func ParseNEAROracleRequests(msg JsonrpcMessage) ([]NEAROracleRequest, error) {
 
 // cleanNEAROracleRequestRaw transforms NEAROracleRequest.Result to a valid JSON.
 // Currently the NEARQueryResult.Result for "get_requests" fn returns an escaped JSON string
-// serialized as byte array. We are unable to unmarshal this data directly and needs to be cleaned first.
+// serialized as a byte array. We are unable to unmarshal this data directly and needs to be cleaned first.
 // This is the result of Rust contracts serializing fn results using serde_json::to_string instead of serde_json::to_vec.
 func cleanNEAROracleRequestRaw(data []byte) []byte {
 	str := string(data)
