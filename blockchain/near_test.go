@@ -116,6 +116,11 @@ func Test_nearManager_GetTriggerJson(t *testing.T) {
 			args{filter: filter, connectionType: subscriber.WS},
 			false,
 		},
+		{
+			"returns empty when using Client",
+			args{filter: filter, connectionType: subscriber.Client},
+			false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

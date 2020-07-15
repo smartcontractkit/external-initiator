@@ -24,7 +24,12 @@ run_test() {
   run_ei
 
   login_chainlink
+<<<<<<< HEAD
   
+=======
+
+  # Address based
+>>>>>>> 5c2617d... Add code polish, documentation and unit tests
   ./integration/test_ei_event "eth-mock-http" "$EVM_SUBSCRIBED_ADDRESS" "" 1
   ./integration/test_ei_event "eth-mock-ws" "$EVM_SUBSCRIBED_ADDRESS" "" 1
   ./integration/test_ei_event "hmy-mock-http" "$EVM_SUBSCRIBED_ADDRESS" "" 1
@@ -33,8 +38,8 @@ run_test() {
   ./integration/test_ei_event "ont-mock-http" "$EVM_SUBSCRIBED_ADDRESS" "" 1
   ./integration/test_ei_event "bsc-mock-http" "$EVM_SUBSCRIBED_ADDRESS" "" 1
   ./integration/test_ei_event "bsc-mock-ws" "$EVM_SUBSCRIBED_ADDRESS" "" 1
+  # Account based
   ./integration/test_ei_event "near-mock-http" "" "$NEAR_ORACLE_ACCOUNT_ID" 2
-
   ./integration/test_ei_event "substrate-mock-ws" "" "$SUBSTRATE_OPERATOR_1_ACCOUNT_ID" 1
   ./integration/test_ei_event "substrate-mock-ws" "" "$SUBSTRATE_OPERATOR_2_ACCOUNT_ID" 1
   ./integration/test_ei_event "substrate-mock-ws" "" "$SUBSTRATE_OPERATOR_3_ACCOUNT_ID" 1

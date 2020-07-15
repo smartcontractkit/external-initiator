@@ -1,7 +1,7 @@
 package blockchain
 
 import (
-	b64 "encoding/base64"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,7 +15,7 @@ import (
 const (
 	// NEAR platform name
 	NEAR = "near"
-	// maxRequests max number of requests contract returns
+	// maxRequests max number of requests contract "get_requests" fn returns
 	maxRequests = 10
 )
 
@@ -48,7 +48,7 @@ type NEARQueryResult struct {
 	BlockHash   string `json:"block_hash"`
 }
 
-// NEARVersion type contains NEAR version info
+// NEARVersion type contains NEAR build & version info
 type NEARVersion struct {
 	Build   string `json:"build"`
 	Version string `json:"version"`
@@ -96,11 +96,13 @@ type NEAROracleRequest struct {
 	Request NEAROracleRequestArgs `json:"request"`
 }
 
+// nearFilter holds the context data used to filter oracle requests for this subscription
 type nearFilter struct {
 	JobID      string
 	AccountIDs []string
 }
 
+// nearManager implements NEAR subscription management
 type nearManager struct {
 	filter         nearFilter
 	connectionType subscriber.Type
@@ -111,7 +113,7 @@ type nearManager struct {
 // connection type and store.Subscription config.
 func createNearManager(connectionType subscriber.Type, config store.Subscription) (*nearManager, error) {
 	if connectionType != subscriber.RPC {
-		return nil, errors.New("only RPC connections are allowed for NEAR")
+		return nil, errors.New("Only RPC connections are allowed for NEAR")
 	}
 
 	var accountIDs []string
@@ -133,7 +135,7 @@ func createNearManager(connectionType subscriber.Type, config store.Subscription
 //
 // If nearManager is using RPC: Returns a "query" request.
 func (m nearManager) GetTriggerJson() []byte {
-	// TODO: hardcoded client account
+	// TODO: hardcoded client account - replace with a call to "get_all_requests" when available.
 	// We are not interested to query requests for a specific client,
 	// but all requests made through a specific contract.
 	clientAccount := "client.oracle.testnet"
@@ -146,11 +148,12 @@ func (m nearManager) GetTriggerJson() []byte {
 		// How do we support query for multiple oracle accounts/contracts?
 		AccountID:  m.filter.AccountIDs[0],
 		MethodName: "get_requests",
-		ArgsBase64: b64.StdEncoding.EncodeToString([]byte(args)),
+		ArgsBase64: base64.StdEncoding.EncodeToString([]byte(args)),
 	}
 
 	queryCallBytes, err := json.Marshal(queryCall)
 	if err != nil {
+		logger.Error("Failed to marshal NEARQueryCall:", err)
 		return nil
 	}
 
@@ -169,12 +172,14 @@ func (m nearManager) GetTriggerJson() []byte {
 
 	bytes, err := json.Marshal(msg)
 	if err != nil {
+		logger.Error("Failed to marshal JsonrpcMessage:", err)
 		return nil
 	}
 
 	return bytes
 }
 
+// ParseResponse generates []subscriber.Event from JSON-RPC response, requested using the GetTriggerJson message
 func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	logger.Debugw("Parsing NEAR response", "ExpectsMock", ExpectsMock)
 
@@ -194,7 +199,7 @@ func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	for _, r := range oracleRequests {
 		request := r.Request
 
-		jobID, err := b64.StdEncoding.DecodeString(request.RequestSpec)
+		jobID, err := base64.StdEncoding.DecodeString(request.RequestSpec)
 		if err != nil {
 			logger.Error("Failed parsing NEAROracleRequestArgs.RequestSpec:", err)
 			return nil, false
@@ -207,7 +212,7 @@ func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 
 		event, err := json.Marshal(request)
 		if err != nil {
-			logger.Error("failed marshaling request:", err)
+			logger.Error("Failed marshaling request:", err)
 			continue
 		}
 		events = append(events, event)
@@ -289,6 +294,10 @@ func ParseNEAROracleRequests(msg JsonrpcMessage) ([]NEAROracleRequest, error) {
 	return oracleRequests, nil
 }
 
+// cleanNEAROracleRequestRaw transforms NEAROracleRequest.Result to a valid JSON.
+// Currently the NEARQueryResult.Result for "get_requests" fn returns an escaped JSON string
+// serialized as byte array. We are unable to unmarshal this data directly and needs to be cleaned first.
+// This is the result of Rust contracts serializing fn results using serde_json::to_string instead of serde_json::to_vec.
 func cleanNEAROracleRequestRaw(data []byte) []byte {
 	str := string(data)
 	// remove escape dashes

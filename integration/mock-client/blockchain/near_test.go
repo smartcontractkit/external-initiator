@@ -71,7 +71,7 @@ func Test_handleNEARRequest_unexpected_connection(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := handleNEARRequest(tt.args.conn, tt.args.msg)
-			expectedErrorString := fmt.Sprintf("unexpected connection: %s", tt.args.conn)
+			expectedErrorString := fmt.Sprintf("Unexpected connection: %s", tt.args.conn)
 			require.EqualError(t, err, expectedErrorString)
 		})
 	}
@@ -102,7 +102,7 @@ func Test_handleNEARRequest_unexpected_method(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := handleNEARRequest(tt.args.conn, tt.args.msg)
-			expectedErrorString := fmt.Sprintf("unexpected method: %s", tt.args.msg.Method)
+			expectedErrorString := fmt.Sprintf("Unexpected method: %s", tt.args.msg.Method)
 			require.EqualError(t, err, expectedErrorString)
 		})
 	}
@@ -137,6 +137,58 @@ func Test_handleNEARRequest_error_MethodNotFound(t *testing.T) {
 			require.Nil(t, err)
 			assert.Equal(t, len(resp), 1)
 			assert.Contains(t, string(resp[0].Result), "MethodNotFound")
+		})
+	}
+}
+
+func Test_buildResponseID(t *testing.T) {
+	type args struct {
+		msg JsonrpcMessage
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		wantErr bool
+	}{
+		{
+			"returns an error, fails to build ID from JSON-RPC message",
+			args{JsonrpcMessage{ID: []byte(`123`)}},
+			"",
+			true,
+		},
+		{
+			"returns an error, fails to parse JSON-RPC Params",
+			args{JsonrpcMessage{ID: []byte(`123`), Method: "status", Params: []byte(`!#$`)}},
+			"",
+			true,
+		},
+		{
+			"returns a 'status' as ID",
+			args{JsonrpcMessage{ID: []byte(`123`), Method: "status", Params: []byte(`{}`)}},
+			"status",
+			false,
+		},
+		{
+			"returns a 'query_get_requests' as ID",
+			args{JsonrpcMessage{ID: []byte(`123`), Method: "query", Params: []byte(`{"method_name": "get_requests"}`)}},
+			"query_get_requests",
+			false,
+		},
+		{
+			"returns a 'query_get_all_requests' as ID",
+			args{JsonrpcMessage{ID: []byte(`123`), Method: "query", Params: []byte(`{"method_name": "get_all_requests"}`)}},
+			"query_get_all_requests",
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp, err := buildResponseID(tt.args.msg)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("buildResponseID() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			assert.Equal(t, tt.want, resp)
 		})
 	}
 }
