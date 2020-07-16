@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store"
@@ -15,8 +14,10 @@ import (
 const (
 	// NEAR platform name
 	NEAR = "near"
-	// maxRequests max number of requests contract "get_requests" fn returns
-	maxRequests = 10
+	// maxNumAccounts max number of accounts "get_all_requests" contract fn returns
+	maxNumAccounts = 1000
+	// maxRequests max number of requests "get_all_requests" contract fn returns
+	maxRequests = 1000
 )
 
 // NEARQuery is a JSON-RPC Params struct for NEAR JSON-RPC query Method
@@ -90,7 +91,7 @@ type NEAROracleRequestArgs struct {
 	Expiration      uint64 `json:"expiration"` // in nanoseconds
 }
 
-// NEAROracleRequest is the request returned by the oracle get_requests function
+// NEAROracleRequest is the request returned by the oracle 'get_requests' or 'get_all_requests' function
 type NEAROracleRequest struct {
 	Nonce   string                `json:"nonce"`
 	Request NEAROracleRequestArgs `json:"request"`
@@ -135,11 +136,8 @@ func createNearManager(connectionType subscriber.Type, config store.Subscription
 //
 // If nearManager is using RPC: Returns a "query" request.
 func (m nearManager) GetTriggerJson() []byte {
-	// TODO: hardcoded client account - replace with a call to "get_all_requests" when available.
-	// We are not interested to query requests for a specific client,
-	// but all requests made through a specific contract.
-	clientAccount := "client.oracle.testnet"
-	args := fmt.Sprintf(`{"account": "%v", "max_requests": "%v"}`, clientAccount, maxRequests)
+	// We get all requests made through a contract, with some limits.
+	args := fmt.Sprintf(`{"max_num_accounts": "%v", "max_requests": "%v"}`, maxNumAccounts, maxRequests)
 
 	queryCall := NEARQueryCall{
 		RequestType: "call_function",
@@ -147,7 +145,7 @@ func (m nearManager) GetTriggerJson() []byte {
 		// TODO: hardcoded first oracle account
 		// How do we support query for multiple oracle accounts/contracts?
 		AccountID:  m.filter.AccountIDs[0],
-		MethodName: "get_requests",
+		MethodName: "get_all_requests",
 		ArgsBase64: base64.StdEncoding.EncodeToString([]byte(args)),
 	}
 
@@ -189,33 +187,35 @@ func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 		return nil, false
 	}
 
-	oracleRequests, err := ParseNEAROracleRequests(msg)
+	oracleRequestsMap, err := ParseNEAROracleRequestsMap(msg)
 	if err != nil {
 		return nil, false
 	}
 
 	var events []subscriber.Event
 
-	for _, r := range oracleRequests {
-		request := r.Request
+	for _, oracleRequests := range oracleRequestsMap {
+		for _, r := range oracleRequests {
+			request := r.Request
 
-		jobID, err := base64.StdEncoding.DecodeString(request.RequestSpec)
-		if err != nil {
-			logger.Error("Failed parsing NEAROracleRequestArgs.RequestSpec:", err)
-			return nil, false
-		}
+			jobID, err := base64.StdEncoding.DecodeString(request.RequestSpec)
+			if err != nil {
+				logger.Error("Failed parsing NEAROracleRequestArgs.RequestSpec:", err)
+				return nil, false
+			}
 
-		// Check if our jobID matches
-		if !matchesJobID(m.filter.JobID, string(jobID)) {
-			continue
-		}
+			// Check if our jobID matches
+			if !matchesJobID(m.filter.JobID, string(jobID)) {
+				continue
+			}
 
-		event, err := json.Marshal(request)
-		if err != nil {
-			logger.Error("Failed marshaling request:", err)
-			continue
+			event, err := json.Marshal(request)
+			if err != nil {
+				logger.Error("Failed marshaling request:", err)
+				continue
+			}
+			events = append(events, event)
 		}
-		events = append(events, event)
 	}
 
 	return events, true
@@ -275,18 +275,25 @@ func (m nearManager) ParseTestResponse(data []byte) error {
 	return nil
 }
 
-// ParseNEAROracleRequests will unmarshal JsonrpcMessage result.result as []NEAROracleRequest
-func ParseNEAROracleRequests(msg JsonrpcMessage) ([]NEAROracleRequest, error) {
+// ParseNEARQueryResult will unmarshal JsonrpcMessage as a NEAR standard NEARQueryResult
+func ParseNEARQueryResult(msg JsonrpcMessage) (*NEARQueryResult, error) {
 	var queryResult NEARQueryResult
 	if err := json.Unmarshal(msg.Result, &queryResult); err != nil {
 		logger.Error("Failed parsing NEARQueryResult:", err)
 		return nil, err
 	}
+	return &queryResult, nil
+}
 
-	cleanResult := cleanNEAROracleRequestRaw(queryResult.Result)
+// ParseNEAROracleRequests will unmarshal JsonrpcMessage result.result as []NEAROracleRequest
+func ParseNEAROracleRequests(msg JsonrpcMessage) ([]NEAROracleRequest, error) {
+	queryResult, err := ParseNEARQueryResult(msg)
+	if err != nil {
+		return nil, err
+	}
 
 	var oracleRequests []NEAROracleRequest
-	if err := json.Unmarshal(cleanResult, &oracleRequests); err != nil {
+	if err := json.Unmarshal(queryResult.Result, &oracleRequests); err != nil {
 		logger.Error("Failed parsing NEAROracleRequests:", err)
 		return nil, err
 	}
@@ -294,15 +301,18 @@ func ParseNEAROracleRequests(msg JsonrpcMessage) ([]NEAROracleRequest, error) {
 	return oracleRequests, nil
 }
 
-// cleanNEAROracleRequestRaw transforms NEAROracleRequest.Result to a valid JSON.
-// Currently the NEARQueryResult.Result for "get_requests" fn returns an escaped JSON string
-// serialized as a byte array. We are unable to unmarshal this data directly and needs to be cleaned first.
-// This is the result of Rust contracts serializing fn results using serde_json::to_string instead of serde_json::to_vec.
-func cleanNEAROracleRequestRaw(data []byte) []byte {
-	str := string(data)
-	// remove escape dashes
-	strNoDash := strings.Replace(str, "\\", "", -1)
-	// remove first and last doublequote
-	strNoDashNoQuotes := strNoDash[1 : len(strNoDash)-1]
-	return []byte(strNoDashNoQuotes)
+// ParseNEAROracleRequestsMap will unmarshal JsonrpcMessage result.result as map[string][]NEAROracleRequest
+func ParseNEAROracleRequestsMap(msg JsonrpcMessage) (map[string][]NEAROracleRequest, error) {
+	queryResult, err := ParseNEARQueryResult(msg)
+	if err != nil {
+		return nil, err
+	}
+
+	var oracleRequestsMap map[string][]NEAROracleRequest
+	if err := json.Unmarshal(queryResult.Result, &oracleRequestsMap); err != nil {
+		logger.Error("Failed parsing NEAROracleRequests map:", err)
+		return nil, err
+	}
+
+	return oracleRequestsMap, nil
 }

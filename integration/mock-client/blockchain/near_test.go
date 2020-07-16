@@ -200,20 +200,10 @@ func Test_handleNEARRequest_query_get_requests(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want []JsonrpcMessage
 	}{
 		{
 			"returns a get_requests query method result with the correct ID",
-			args{
-				JsonrpcMessage{ID: []byte(`123`), Method: "query", Params: []byte(`{"method_name": "get_requests"}`)},
-			},
-			[]JsonrpcMessage{
-				{
-					Version: "2.0",
-					ID:      []byte(`123`),
-					Result:  []byte(`"0x0"`),
-				},
-			},
+			args{JsonrpcMessage{ID: []byte(`123`), Method: "query", Params: []byte(`{"method_name": "get_requests"}`)}},
 		},
 	}
 	for _, tt := range tests {
@@ -229,6 +219,36 @@ func Test_handleNEARRequest_query_get_requests(t *testing.T) {
 			require.Nil(t, err)
 			assert.NotNil(t, oracleRequests)
 			assert.Equal(t, 2, len(oracleRequests))
+		})
+	}
+}
+
+func Test_handleNEARRequest_query_get_all_requests(t *testing.T) {
+	type args struct {
+		msg JsonrpcMessage
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		{
+			"returns a get_all_requests query method result with the correct ID",
+			args{JsonrpcMessage{ID: []byte(`123`), Method: "query", Params: []byte(`{"method_name": "get_all_requests"}`)}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp, err := handleNEARRequest("rpc", tt.args.msg)
+			require.NotNil(t, resp)
+			require.Nil(t, err)
+			assert.Equal(t, len(resp), 1)
+			assert.Equal(t, resp[0].ID, tt.args.msg.ID)
+
+			// Unmarshal and check result
+			oracleRequestsMap, err := blockchain.ParseNEAROracleRequestsMap(resp[0])
+			require.Nil(t, err)
+			assert.NotNil(t, oracleRequestsMap)
+			assert.Equal(t, 2, len(oracleRequestsMap))
 		})
 	}
 }
