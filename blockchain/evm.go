@@ -36,6 +36,7 @@ func createEvmFilterQuery(jobid string, strAddresses []string) *filterQuery {
 	// event emitted by the oracle contract provided.
 	topics := [][]common.Hash{{
 		models.RunLogTopic20190207withoutIndexes,
+	}, {
 		common.HexToHash(StringToBytes32(jobid)),
 	}}
 
