@@ -448,18 +448,7 @@ func getXtzKeyValues(vals []string) (map[string]string, error) {
 	// The last two values are target and timeout.
 	// We ignore these when converting to key-value arrays,
 	// then we add the necessary values with correct keys.
-	requestParams := vals[4 : len(vals)-2]
-	// Since parameters are sent with "adapter name", with key-value pairs,
-	// we can get rid of the adapter names.
-	var kvParams []string
-	for i := 0; i < len(requestParams); i++ {
-		if i%3 == 0 {
-			continue
-		}
-		kvParams = append(kvParams, requestParams[i])
-	}
-
-	kv := convertStringArrayToKV(kvParams)
+	kv := convertStringArrayToKV(vals[4 : len(vals)-2])
 	kv["payment"] = vals[1]
 	return kv, nil
 }
