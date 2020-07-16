@@ -12,34 +12,127 @@
         "contents": [
           {
             "kind": "transaction",
-            "source": "BaDc0Ff3BaDc0Ff3BaDc0Ff3BaDc0Ff3BaDc0Ff3BaDc0Ff3BaDc0Ff3",
-            "fee": "666",
-            "counter": "666",
-            "gas_limit": "6666",
-            "storage_limit": "42",
-            "amount": "66666",
-            "destination": "0x2aD9B7b9386c2f45223dDFc4A4d81C2957bAE19A",
-            "parameters": {},
+            "source": "tz1Q8dtxfG6AbAnYtaFLwcw6WPYCCntbf2Jk",
+            "fee": "100000",
+            "counter": "1469017",
+            "gas_limit": "750000",
+            "storage_limit": "1000",
+            "amount": "0",
+            "destination": "KT1EfcYSSmqcLthMH1uwYn1mDjML1gsX2SP2",
+            "parameters": {
+              "entrypoint": "default",
+              "value": {
+                "prim": "Right",
+                "args": [
+                  {
+                    "prim": "Left",
+                    "args": [
+                      {
+                        "prim": "Unit"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
             "metadata": {
-              "balance_updates": [],
+              "balance_updates": [
+                {
+                  "kind": "contract",
+                  "contract": "tz1Q8dtxfG6AbAnYtaFLwcw6WPYCCntbf2Jk",
+                  "change": "-100000"
+                },
+                {
+                  "kind": "freezer",
+                  "category": "fees",
+                  "delegate": "tz1Ke2h7sDdakHJQh8WX4Z372du1KChsksyU",
+                  "cycle": 277,
+                  "change": "100000"
+                }
+              ],
               "operation_result": {
                 "status": "applied",
-                "storage": {}
+                "storage": {
+                  "prim": "Pair",
+                  "args": [
+                    {
+                      "prim": "Pair",
+                      "args": [
+                        {
+                          "bytes": "00007539e349d38f3762a7f7ce381e6e36a986090696"
+                        },
+                        {
+                          "prim": "Pair",
+                          "args": [
+                            {
+                              "int": "2"
+                            },
+                            {
+                              "bytes": "019b1c03bed5e07b153bbff1bf216f5d621a0767d500"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "prim": "Pair",
+                      "args": [
+                        {
+                          "prim": "Pair",
+                          "args": [
+                            {
+                              "bytes": "012439cf083ae5f0f5c0a133a7fdf49976ce2432c300"
+                            },
+                            {
+                              "prim": "Some",
+                              "args": [
+                                {
+                                  "int": "1"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "prim": "Pair",
+                          "args": [
+                            {
+                              "int": "0"
+                            },
+                            {
+                              "bytes": "0001"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "balance_updates": [
+                  {
+                    "kind": "contract",
+                    "contract": "tz1Q8dtxfG6AbAnYtaFLwcw6WPYCCntbf2Jk",
+                    "change": "-2000"
+                  }
+                ],
+                "consumed_gas": "224595",
+                "storage_size": "2439",
+                "paid_storage_size_diff": "2"
               },
               "internal_operation_results": [
                 {
                   "kind": "transaction",
-                  "source": "KT1U313dYFyMiU2aQnVCLgsFYUodz3JcdAMy",
-                  "nonce": 1,
+                  "source": "KT1EfcYSSmqcLthMH1uwYn1mDjML1gsX2SP2",
+                  "nonce": 0,
                   "amount": "0",
-                  "destination": "0x2aD9B7b9386c2f45223dDFc4A4d81C2957bAE19A",
+                  "destination": "KT1BtK9HryqaQ5kXzhsJvDfUZfcpwsdFpMQN",
                   "parameters": {
-                    "entrypoint": "create_request",
+                    "entrypoint": "proxy",
                     "value": {
                       "prim": "Pair",
                       "args": [
                         {
-                          "bytes": "01aab88c820fb7068dc80ee842fad707079465898f00"
+                          "bytes": "019b1c03bed5e07b153bbff1bf216f5d621a0767d500"
                         },
                         {
                           "prim": "Pair",
@@ -54,7 +147,234 @@
                                   "prim": "Pair",
                                   "args": [
                                     {
-                                      "int": "2"
+                                      "int": "1"
+                                    },
+                                    {
+                                      "bytes": "0001"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "prim": "Pair",
+                              "args": [
+                                [
+                                  {
+                                    "prim": "Elt",
+                                    "args": [
+                                      {
+                                        "string": "from"
+                                      },
+                                      {
+                                        "prim": "Right",
+                                        "args": [
+                                          {
+                                            "prim": "Right",
+                                            "args": [
+                                              {
+                                                "string": "XTZ"
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "prim": "Elt",
+                                    "args": [
+                                      {
+                                        "string": "multiply"
+                                      },
+                                      {
+                                        "prim": "Right",
+                                        "args": [
+                                          {
+                                            "prim": "Left",
+                                            "args": [
+                                              {
+                                                "int": "10000"
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "prim": "Elt",
+                                    "args": [
+                                      {
+                                        "string": "to"
+                                      },
+                                      {
+                                        "prim": "Right",
+                                        "args": [
+                                          {
+                                            "prim": "Right",
+                                            "args": [
+                                              {
+                                                "string": "USD"
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ],
+                                {
+                                  "prim": "Pair",
+                                  "args": [
+                                    {
+                                      "bytes": "0142bb4d77aa56a4eb134be44597783636ffe2b8ae007365745f78747a757364"
+                                    },
+                                    {
+                                      "int": "1594815460"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "result": {
+                    "status": "applied",
+                    "storage": {
+                      "prim": "Pair",
+                      "args": [
+                        {
+                          "prim": "Pair",
+                          "args": [
+                            {
+                              "bytes": "000065c1192ac41c582a0492b1f2ca1cc9fee790a7f1"
+                            },
+                            {
+                              "prim": "Pair",
+                              "args": [
+                                {
+                                  "int": "1"
+                                },
+                                {
+                                  "int": "10059"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "prim": "Pair",
+                          "args": [
+                            {
+                              "prim": "Pair",
+                              "args": [
+                                {
+                                  "prim": "Unit"
+                                },
+                                {
+                                  "int": "10060"
+                                }
+                              ]
+                            },
+                            {
+                              "prim": "Pair",
+                              "args": [
+                                {
+                                  "prim": "False"
+                                },
+                                {
+                                  "int": "10061"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    "big_map_diff": [
+                      {
+                        "action": "update",
+                        "big_map": "10059",
+                        "key_hash": "exprvHAVWporVuKLxDEgnkLqcGy7sMZdRU7oJ7Wbr3YsKXLbbAATRN",
+                        "key": {
+                          "prim": "Pair",
+                          "args": [
+                            {
+                              "bytes": "0142bb4d77aa56a4eb134be44597783636ffe2b8ae00"
+                            },
+                            {
+                              "int": "0"
+                            }
+                          ]
+                        },
+                        "value": {
+                          "int": "998"
+                        }
+                      },
+                      {
+                        "action": "update",
+                        "big_map": "10059",
+                        "key_hash": "exprthGoc6NKnqtNfpHzudy3qKLTxLMTKzAaXagiqn1qL2KYNQQztR",
+                        "key": {
+                          "prim": "Pair",
+                          "args": [
+                            {
+                              "bytes": "019b1c03bed5e07b153bbff1bf216f5d621a0767d500"
+                            },
+                            {
+                              "int": "0"
+                            }
+                          ]
+                        },
+                        "value": {
+                          "int": "2"
+                        }
+                      }
+                    ],
+                    "balance_updates": [
+                      {
+                        "kind": "contract",
+                        "contract": "tz1Q8dtxfG6AbAnYtaFLwcw6WPYCCntbf2Jk",
+                        "change": "-67000"
+                      }
+                    ],
+                    "consumed_gas": "258137",
+                    "storage_size": "8903",
+                    "paid_storage_size_diff": "67"
+                  }
+                },
+                {
+                  "kind": "transaction",
+                  "source": "KT1BtK9HryqaQ5kXzhsJvDfUZfcpwsdFpMQN",
+                  "nonce": 1,
+                  "amount": "0",
+                  "destination": "0x2aD9B7b9386c2f45223dDFc4A4d81C2957bAE19A",
+                  "parameters": {
+                    "entrypoint": "create_request",
+                    "value": {
+                      "prim": "Pair",
+                      "args": [
+                        {
+                          "bytes": "0142bb4d77aa56a4eb134be44597783636ffe2b8ae00"
+                        },
+                        {
+                          "prim": "Pair",
+                          "args": [
+                            {
+                              "prim": "Pair",
+                              "args": [
+                                {
+                                  "int": "2"
+                                },
+                                {
+                                  "prim": "Pair",
+                                  "args": [
+                                    {
+                                      "int": "1"
                                     },
                                     {
                                       "bytes": "mock"
@@ -68,13 +388,65 @@
                               "args": [
                                 [
                                   {
-                                    "prim": "Pair",
+                                    "prim": "Elt",
                                     "args": [
                                       {
-                                        "string": "pair"
+                                        "string": "from"
                                       },
                                       {
-                                        "string": "XTZUSD"
+                                        "prim": "Right",
+                                        "args": [
+                                          {
+                                            "prim": "Right",
+                                            "args": [
+                                              {
+                                                "string": "XTZ"
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "prim": "Elt",
+                                    "args": [
+                                      {
+                                        "string": "multiply"
+                                      },
+                                      {
+                                        "prim": "Right",
+                                        "args": [
+                                          {
+                                            "prim": "Left",
+                                            "args": [
+                                              {
+                                                "int": "10000"
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "prim": "Elt",
+                                    "args": [
+                                      {
+                                        "string": "to"
+                                      },
+                                      {
+                                        "prim": "Right",
+                                        "args": [
+                                          {
+                                            "prim": "Right",
+                                            "args": [
+                                              {
+                                                "string": "USD"
+                                              }
+                                            ]
+                                          }
+                                        ]
                                       }
                                     ]
                                   }
@@ -83,10 +455,10 @@
                                   "prim": "Pair",
                                   "args": [
                                     {
-                                      "bytes": "01aab88c820fb7068dc80ee842fad707079465898f007365745f78747a757364"
+                                      "bytes": "0142bb4d77aa56a4eb134be44597783636ffe2b8ae007365745f78747a757364"
                                     },
                                     {
-                                      "int": "1591867271"
+                                      "int": "1594815460"
                                     }
                                   ]
                                 }
@@ -112,7 +484,7 @@
                                   "prim": "True"
                                 },
                                 {
-                                  "bytes": "0000db8fc132cf9624febe1675fbfd0c0fcdd7655f23"
+                                  "bytes": "00001257c4edc38abcdd5039e7313fcb87e0db42c743"
                                 }
                               ]
                             },
@@ -123,7 +495,7 @@
                                   "int": "0"
                                 },
                                 {
-                                  "int": "5"
+                                  "int": "0"
                                 }
                               ]
                             }
@@ -136,10 +508,10 @@
                               "prim": "Pair",
                               "args": [
                                 {
-                                  "int": "2"
+                                  "int": "1"
                                 },
                                 {
-                                  "int": "4660"
+                                  "int": "10065"
                                 }
                               ]
                             },
@@ -147,10 +519,10 @@
                               "prim": "Pair",
                               "args": [
                                 {
-                                  "int": "4661"
+                                  "int": "10066"
                                 },
                                 {
-                                  "bytes": "01d5607532739f1f42600bfe74ce16e7bc1a58fc2600"
+                                  "bytes": "012439cf083ae5f0f5c0a133a7fdf49976ce2432c300"
                                 }
                               ]
                             }
@@ -161,29 +533,29 @@
                     "big_map_diff": [
                       {
                         "action": "update",
-                        "big_map": "4661",
-                        "key_hash": "exprvQn8AzK1dNmwdFsuMGALq99fMJnVhGckhbp2eMxtvpJB9eZJML",
+                        "big_map": "10066",
+                        "key_hash": "exprua5vA8enk8gpXUGU85Q7BU5TGEk89VYcgspJtuKjHdkiFPMWZ9",
                         "key": {
                           "prim": "Pair",
                           "args": [
                             {
-                              "bytes": "01aab88c820fb7068dc80ee842fad707079465898f00"
+                              "bytes": "0142bb4d77aa56a4eb134be44597783636ffe2b8ae00"
                             },
                             {
-                              "int": "2"
+                              "int": "1"
                             }
                           ]
                         },
                         "value": {
-                          "int": "1"
+                          "int": "0"
                         }
                       },
                       {
                         "action": "update",
-                        "big_map": "4660",
-                        "key_hash": "expru2dKqDfZG8hu4wNGkiyunvq2hdSKuVYtcKta7BWP6Q18oNxKjS",
+                        "big_map": "10065",
+                        "key_hash": "exprtZBwZUeYYYfUs9B9Rg2ywHezVHnCCnmF9WsDQVrs582dSK63dC",
                         "key": {
-                          "int": "1"
+                          "int": "0"
                         },
                         "value": {
                           "prim": "Pair",
@@ -198,10 +570,10 @@
                                   "prim": "Pair",
                                   "args": [
                                     {
-                                      "bytes": "01aab88c820fb7068dc80ee842fad707079465898f00"
+                                      "bytes": "0142bb4d77aa56a4eb134be44597783636ffe2b8ae00"
                                     },
                                     {
-                                      "int": "2"
+                                      "int": "1"
                                     }
                                   ]
                                 }
@@ -214,16 +586,70 @@
                                   "prim": "Pair",
                                   "args": [
                                     {
-                                      "bytes": ""
+                                      "bytes": "0001"
                                     },
                                     [
                                       {
-                                        "prim": "Pair",
+                                        "prim": "Elt",
                                         "args": [
                                           {
-                                            "string": "XTZUSD"
+                                            "string": "from"
                                           },
-                                          []
+                                          {
+                                            "prim": "Right",
+                                            "args": [
+                                              {
+                                                "prim": "Right",
+                                                "args": [
+                                                  {
+                                                    "string": "XTZ"
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "prim": "Elt",
+                                        "args": [
+                                          {
+                                            "string": "multiply"
+                                          },
+                                          {
+                                            "prim": "Right",
+                                            "args": [
+                                              {
+                                                "prim": "Left",
+                                                "args": [
+                                                  {
+                                                    "int": "10000"
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "prim": "Elt",
+                                        "args": [
+                                          {
+                                            "string": "to"
+                                          },
+                                          {
+                                            "prim": "Right",
+                                            "args": [
+                                              {
+                                                "prim": "Right",
+                                                "args": [
+                                                  {
+                                                    "string": "USD"
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          }
                                         ]
                                       }
                                     ]
@@ -233,10 +659,10 @@
                                   "prim": "Pair",
                                   "args": [
                                     {
-                                      "bytes": "01aab88c820fb7068dc80ee842fad707079465898f007365745f78747a757364"
+                                      "bytes": "0142bb4d77aa56a4eb134be44597783636ffe2b8ae007365745f78747a757364"
                                     },
                                     {
-                                      "int": "1591867271"
+                                      "int": "1594815460"
                                     }
                                   ]
                                 }
@@ -249,13 +675,13 @@
                     "balance_updates": [
                       {
                         "kind": "contract",
-                        "contract": "tz1er9TimMNEX7GbJzPaAQX84evBiKkEE6np",
-                        "change": "-67000"
+                        "contract": "tz1Q8dtxfG6AbAnYtaFLwcw6WPYCCntbf2Jk",
+                        "change": "-297000"
                       }
                     ],
-                    "consumed_gas": "92436",
-                    "storage_size": "4446",
-                    "paid_storage_size_diff": "67"
+                    "consumed_gas": "92331",
+                    "storage_size": "4359",
+                    "paid_storage_size_diff": "297"
                   }
                 }
               ]
