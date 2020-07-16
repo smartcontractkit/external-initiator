@@ -586,7 +586,7 @@
                                   "prim": "Pair",
                                   "args": [
                                     {
-                                      "bytes": "0001"
+                                      "bytes": "test123"
                                     },
                                     [
                                       {
