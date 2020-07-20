@@ -20,20 +20,12 @@ const (
 	maxRequests = 1000
 )
 
-// NEARQuery is a JSON-RPC Params struct for NEAR JSON-RPC query Method
-type NEARQuery struct {
-	RequestType string `json:"request_type"`
-	Finality    string `json:"finality"`
-	AccountID   string `json:"account_id"`
-}
-
-// NEARQueryCall is a JSON-RPC Params struct for NEAR JSON-RPC query Method
+// NEARQueryCallFunction is a JSON-RPC Params struct for NEAR JSON-RPC query Method
 // where "request_type": "call_function".
 //
 // NEAR "call_function" request type, calls method_name in contract account_id
 // as view function with data as parameters.
-type NEARQueryCall struct {
-	// TODO: how to embed NEARQuery here?
+type NEARQueryCallFunction struct {
 	RequestType string `json:"request_type"`
 	Finality    string `json:"finality"`
 	AccountID   string `json:"account_id"`
@@ -41,7 +33,7 @@ type NEARQueryCall struct {
 	ArgsBase64  string `json:"args_base64"` // base64-encoded
 }
 
-// NEARQueryResult is a result struct for NEAR JSON-RPC NEARQueryCall response
+// NEARQueryResult is a result struct for NEAR JSON-RPC NEARQueryCallFunction response
 type NEARQueryResult struct {
 	Result      []byte `json:"result"`
 	Logs        []byte `json:"logs"`
@@ -80,6 +72,12 @@ type NEARStatus struct {
 	Validators            []NEARValidator `json:"validators"`
 }
 
+// NEAROracleFnGetAllRequestsArgs represents function arguments for NEAR oracle 'get_all_requests' function
+type NEAROracleFnGetAllRequestsArgs struct {
+	MaxNumAccounts uint16 `json:"max_num_accounts"`
+	MaxRequests    uint16 `json:"max_requests"`
+}
+
 // NEAROracleRequestArgs contains the oracle request arguments
 type NEAROracleRequestArgs struct {
 	CallerAccount   string `json:"caller_account"`
@@ -114,18 +112,13 @@ type nearManager struct {
 // connection type and store.Subscription config.
 func createNearManager(connectionType subscriber.Type, config store.Subscription) (*nearManager, error) {
 	if connectionType != subscriber.RPC {
-		return nil, errors.New("Only RPC connections are allowed for NEAR")
-	}
-
-	var accountIDs []string
-	for _, id := range config.NEAR.AccountIds {
-		accountIDs = append(accountIDs, id)
+		return nil, errors.New("only RPC connections are allowed for NEAR")
 	}
 
 	return &nearManager{
 		filter: nearFilter{
 			JobID:      config.Job,
-			AccountIDs: accountIDs,
+			AccountIDs: config.NEAR.AccountIds,
 		},
 		connectionType: connectionType,
 	}, nil
@@ -137,21 +130,30 @@ func createNearManager(connectionType subscriber.Type, config store.Subscription
 // If nearManager is using RPC: Returns a "query" request.
 func (m nearManager) GetTriggerJson() []byte {
 	// We get all requests made through a contract, with some limits.
-	args := fmt.Sprintf(`{"max_num_accounts": "%v", "max_requests": "%v"}`, maxNumAccounts, maxRequests)
+	args := NEAROracleFnGetAllRequestsArgs{
+		MaxNumAccounts: maxNumAccounts,
+		MaxRequests:    maxRequests,
+	}
 
-	queryCall := NEARQueryCall{
+	argsBytes, err := json.Marshal(args)
+	if err != nil {
+		logger.Error("Failed to marshal NEAROracleFnGetAllRequestsArgs:", err)
+		return nil
+	}
+
+	queryCall := NEARQueryCallFunction{
 		RequestType: "call_function",
 		Finality:    "final",
 		// TODO: hardcoded first oracle account
 		// How do we support query for multiple oracle accounts/contracts?
 		AccountID:  m.filter.AccountIDs[0],
 		MethodName: "get_all_requests",
-		ArgsBase64: base64.StdEncoding.EncodeToString([]byte(args)),
+		ArgsBase64: base64.StdEncoding.EncodeToString(argsBytes),
 	}
 
 	queryCallBytes, err := json.Marshal(queryCall)
 	if err != nil {
-		logger.Error("Failed to marshal NEARQueryCall:", err)
+		logger.Error("Failed to marshal NEARQueryCallFunction:", err)
 		return nil
 	}
 
@@ -163,7 +165,7 @@ func (m nearManager) GetTriggerJson() []byte {
 	switch m.connectionType {
 	case subscriber.RPC:
 		msg.Method = "query"
-		msg.Params = json.RawMessage(string(queryCallBytes))
+		msg.Params = queryCallBytes
 	default:
 		return nil
 	}
@@ -189,6 +191,7 @@ func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 
 	oracleRequestsMap, err := ParseNEAROracleRequestsMap(msg)
 	if err != nil {
+		logger.Error("Failed parsing NEAROracleRequests map:", err)
 		return nil, false
 	}
 
@@ -198,14 +201,15 @@ func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 		for _, r := range oracleRequests {
 			request := r.Request
 
-			jobID, err := base64.StdEncoding.DecodeString(request.RequestSpec)
+			requestSpecBytes, err := base64.StdEncoding.DecodeString(request.RequestSpec)
 			if err != nil {
 				logger.Error("Failed parsing NEAROracleRequestArgs.RequestSpec:", err)
 				return nil, false
 			}
+			requestSpec := fmt.Sprintf("%s", requestSpecBytes)
 
 			// Check if our jobID matches
-			if !matchesJobID(m.filter.JobID, string(jobID)) {
+			if !matchesJobID(m.filter.JobID, requestSpec) {
 				continue
 			}
 
@@ -279,7 +283,6 @@ func (m nearManager) ParseTestResponse(data []byte) error {
 func ParseNEARQueryResult(msg JsonrpcMessage) (*NEARQueryResult, error) {
 	var queryResult NEARQueryResult
 	if err := json.Unmarshal(msg.Result, &queryResult); err != nil {
-		logger.Error("Failed parsing NEARQueryResult:", err)
 		return nil, err
 	}
 	return &queryResult, nil
@@ -294,7 +297,6 @@ func ParseNEAROracleRequests(msg JsonrpcMessage) ([]NEAROracleRequest, error) {
 
 	var oracleRequests []NEAROracleRequest
 	if err := json.Unmarshal(queryResult.Result, &oracleRequests); err != nil {
-		logger.Error("Failed parsing NEAROracleRequests:", err)
 		return nil, err
 	}
 
@@ -310,7 +312,6 @@ func ParseNEAROracleRequestsMap(msg JsonrpcMessage) (map[string][]NEAROracleRequ
 
 	var oracleRequestsMap map[string][]NEAROracleRequest
 	if err := json.Unmarshal(queryResult.Result, &oracleRequestsMap); err != nil {
-		logger.Error("Failed parsing NEAROracleRequests map:", err)
 		return nil, err
 	}
 

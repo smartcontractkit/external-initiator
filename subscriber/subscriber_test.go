@@ -49,7 +49,7 @@ func TestMain(m *testing.M) {
 
 		responses[r.URL.Path] = responses[r.URL.Path] + 1
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(fmt.Sprintf("%v", responses[r.URL.Path])))
+		_, _ = w.Write([]byte(fmt.Sprint(responses[r.URL.Path])))
 	}))
 	defer ts.Close()
 

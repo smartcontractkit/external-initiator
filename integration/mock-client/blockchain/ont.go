@@ -12,7 +12,7 @@ func handleOntRequest(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 		return handleGetSmartCodeEvent(msg)
 	}
 
-	return nil, fmt.Errorf("Unexpected method: %v", msg.Method)
+	return nil, fmt.Errorf("unexpected method: %v", msg.Method)
 }
 
 type executeNotify struct {

@@ -11,7 +11,7 @@ func TestGetXtzMonitorResponse(t *testing.T) {
 	t.Run("creates mock XtzMonitorResponse",
 		func(t *testing.T) {
 			resp, err := getXtzResponse("monitor")
-			require.Nil(t, err)
+			require.NoError(t, err)
 			monitor, ok := resp.(map[string]interface{})
 			require.True(t, ok)
 			assert.Equal(t, monitor["hash"], "8BADF00D8BADF00D8BADF00D8BADF00D8BADF00D8BADF00D8BADF00D")
@@ -22,7 +22,7 @@ func TestGetXtzOperationsResponse(t *testing.T) {
 	t.Run("creates an appropriately structured mock Tezos block",
 		func(t *testing.T) {
 			resp, err := getXtzResponse("operations")
-			require.Nil(t, err)
+			require.NoError(t, err)
 			ops, ok := resp.([]interface{})
 			require.True(t, ok)
 

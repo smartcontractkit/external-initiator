@@ -203,7 +203,9 @@ func (sm *substrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool
 
 		for _, request := range events.Chainlink_OracleRequest {
 			// Check if our jobID matches
-			if !matchesJobID(string(sm.filter.JobID), string(request.SpecIndex)) {
+			jobID := fmt.Sprint(sm.filter.JobID)
+			specIndex := fmt.Sprint(request.SpecIndex)
+			if !matchesJobID(jobID, specIndex) {
 				continue
 			}
 

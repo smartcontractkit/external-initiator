@@ -39,7 +39,7 @@ func getStatus() (JsonrpcMessage, error) {
 
 	resp, ok := GetCannedResponse("near", req)
 	if !ok {
-		return JsonrpcMessage{}, errors.New("Request for canned response did not return ok")
+		return JsonrpcMessage{}, errors.New("request for canned response did not return ok")
 	}
 
 	return resp[0], nil
@@ -71,7 +71,7 @@ func Test_handleNEARRequest_unexpected_connection(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := handleNEARRequest(tt.args.conn, tt.args.msg)
-			expectedErrorString := fmt.Sprintf("Unexpected connection: %s", tt.args.conn)
+			expectedErrorString := fmt.Sprintf("unexpected connection: %s", tt.args.conn)
 			require.EqualError(t, err, expectedErrorString)
 		})
 	}
@@ -102,7 +102,7 @@ func Test_handleNEARRequest_unexpected_method(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := handleNEARRequest(tt.args.conn, tt.args.msg)
-			expectedErrorString := fmt.Sprintf("Unexpected method: %s", tt.args.msg.Method)
+			expectedErrorString := fmt.Sprintf("unexpected method: %s", tt.args.msg.Method)
 			require.EqualError(t, err, expectedErrorString)
 		})
 	}
@@ -134,7 +134,7 @@ func Test_handleNEARRequest_error_MethodNotFound(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			resp, err := handleNEARRequest(tt.args.conn, tt.args.msg)
 			require.NotNil(t, resp)
-			require.Nil(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, len(resp), 1)
 			assert.Contains(t, string(resp[0].Result), "MethodNotFound")
 		})
@@ -210,13 +210,13 @@ func Test_handleNEARRequest_query_get_requests(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			resp, err := handleNEARRequest("rpc", tt.args.msg)
 			require.NotNil(t, resp)
-			require.Nil(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, len(resp), 1)
 			assert.Equal(t, resp[0].ID, tt.args.msg.ID)
 
 			// Unmarshal and check result
 			oracleRequests, err := blockchain.ParseNEAROracleRequests(resp[0])
-			require.Nil(t, err)
+			require.NoError(t, err)
 			assert.NotNil(t, oracleRequests)
 			assert.Equal(t, 2, len(oracleRequests))
 		})
@@ -240,13 +240,13 @@ func Test_handleNEARRequest_query_get_all_requests(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			resp, err := handleNEARRequest("rpc", tt.args.msg)
 			require.NotNil(t, resp)
-			require.Nil(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, len(resp), 1)
 			assert.Equal(t, resp[0].ID, tt.args.msg.ID)
 
 			// Unmarshal and check result
 			oracleRequestsMap, err := blockchain.ParseNEAROracleRequestsMap(resp[0])
-			require.Nil(t, err)
+			require.NoError(t, err)
 			assert.NotNil(t, oracleRequestsMap)
 			assert.Equal(t, 2, len(oracleRequestsMap))
 		})

@@ -16,6 +16,11 @@ type NEARSubscription struct {
 	AccountIds     string
 }
 
+// TableName will set an explicit NEARSubscription table name, so table name isn't n_e_a_r_[...].
+func (NEARSubscription) TableName() string {
+	return "near_subscriptions"
+}
+
 type Subscription struct {
 	gorm.Model
 	ReferenceId       string `gorm:"unique;not null"`
