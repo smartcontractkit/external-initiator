@@ -307,21 +307,6 @@ func ParseNEARQueryResult(msg JsonrpcMessage) (*NEARQueryResult, error) {
 	return &queryResult, nil
 }
 
-// ParseNEAROracleRequests will unmarshal JsonrpcMessage result.result as []NEAROracleRequest
-func ParseNEAROracleRequests(msg JsonrpcMessage) ([]NEAROracleRequest, error) {
-	queryResult, err := ParseNEARQueryResult(msg)
-	if err != nil {
-		return nil, err
-	}
-
-	var oracleRequests []NEAROracleRequest
-	if err := json.Unmarshal(queryResult.Result, &oracleRequests); err != nil {
-		return nil, err
-	}
-
-	return oracleRequests, nil
-}
-
 // ParseNEAROracleRequestsMap will unmarshal JsonrpcMessage result.result as map[string][]NEAROracleRequest
 func ParseNEAROracleRequestsMap(msg JsonrpcMessage) (map[string][]NEAROracleRequest, error) {
 	queryResult, err := ParseNEARQueryResult(msg)

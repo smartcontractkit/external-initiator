@@ -193,36 +193,6 @@ func Test_buildResponseID(t *testing.T) {
 	}
 }
 
-func Test_handleNEARRequest_query_get_requests(t *testing.T) {
-	type args struct {
-		msg JsonrpcMessage
-	}
-	tests := []struct {
-		name string
-		args args
-	}{
-		{
-			"returns a get_requests query method result with the correct ID",
-			args{JsonrpcMessage{ID: []byte(`123`), Method: "query", Params: []byte(`{"method_name": "get_requests"}`)}},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			resp, err := handleNEARRequest("rpc", tt.args.msg)
-			require.NotNil(t, resp)
-			require.NoError(t, err)
-			assert.Equal(t, len(resp), 1)
-			assert.Equal(t, resp[0].ID, tt.args.msg.ID)
-
-			// Unmarshal and check result
-			oracleRequests, err := blockchain.ParseNEAROracleRequests(resp[0])
-			require.NoError(t, err)
-			assert.NotNil(t, oracleRequests)
-			assert.Equal(t, 2, len(oracleRequests))
-		})
-	}
-}
-
 func Test_handleNEARRequest_query_get_all_requests(t *testing.T) {
 	type args struct {
 		msg JsonrpcMessage
