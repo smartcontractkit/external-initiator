@@ -257,7 +257,7 @@ func extractEventsFromBlock(data []byte, addresses []string, jobid string) ([]su
 			}
 			// Set the address to the oracle address.
 			// The adapter will use this to fulfill the request.
-			params["xtzAddr"] = op.Destination
+			params["address"] = op.Destination
 			params["request_id"], err = op.Result.GetRequestId()
 			if err != nil {
 				return nil, err
@@ -450,6 +450,7 @@ func getXtzKeyValues(vals []string) (map[string]string, error) {
 	// then we add the necessary values with correct keys.
 	kv := convertStringArrayToKV(vals[4 : len(vals)-2])
 	kv["payment"] = vals[1]
+	kv["request_id"] = vals[2]
 	return kv, nil
 }
 
