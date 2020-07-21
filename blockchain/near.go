@@ -95,6 +95,16 @@ type NEAROracleRequest struct {
 	Request NEAROracleRequestArgs `json:"request"`
 }
 
+// NEAROracleRequestFulfillmentArgs contains the arguments for oracle 'fulfill_request' function
+type NEAROracleRequestFulfillmentArgs struct {
+	Account         string `json:"account"`
+	Nonce           string `json:"nonce"`
+	Payment         uint64 `json:"payment"` // in LINK tokens
+	CallbackAddress string `json:"callback_address"`
+	CallbackMethod  string `json:"callback_method"`
+	Expiration      uint64 `json:"expiration"` // in nanoseconds
+}
+
 // nearFilter holds the context data used to filter oracle requests for this subscription
 type nearFilter struct {
 	JobID      string
@@ -213,9 +223,18 @@ func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 				continue
 			}
 
-			event, err := json.Marshal(request)
+			args := NEAROracleRequestFulfillmentArgs{
+				Account:         request.CallerAccount,
+				Nonce:           r.Nonce,
+				Payment:         request.Payment,
+				CallbackAddress: request.CallbackAddress,
+				CallbackMethod:  request.CallbackMethod,
+				Expiration:      request.Expiration,
+			}
+
+			event, err := json.Marshal(args)
 			if err != nil {
-				logger.Error("Failed marshaling request:", err)
+				logger.Error("Failed marshaling fulfillment arguments:", err)
 				continue
 			}
 			events = append(events, event)
