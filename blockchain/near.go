@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store"
@@ -99,10 +100,10 @@ type NEAROracleRequest struct {
 type NEAROracleRequestFulfillmentArgs struct {
 	Account         string `json:"account"`
 	Nonce           string `json:"nonce"`
-	Payment         uint64 `json:"payment"` // in LINK tokens
+	Payment         string `json:"payment"` // in LINK tokens
 	CallbackAddress string `json:"callback_address"`
 	CallbackMethod  string `json:"callback_method"`
-	Expiration      uint64 `json:"expiration"` // in nanoseconds
+	Expiration      string `json:"expiration"` // in nanoseconds
 }
 
 // nearFilter holds the context data used to filter oracle requests for this subscription
@@ -226,10 +227,10 @@ func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 			args := NEAROracleRequestFulfillmentArgs{
 				Account:         request.CallerAccount,
 				Nonce:           r.Nonce,
-				Payment:         request.Payment,
+				Payment:         strconv.FormatUint(request.Payment, 10),
 				CallbackAddress: request.CallbackAddress,
 				CallbackMethod:  request.CallbackMethod,
-				Expiration:      request.Expiration,
+				Expiration:      strconv.FormatUint(request.Expiration, 10),
 			}
 
 			event, err := json.Marshal(args)
