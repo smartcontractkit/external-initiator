@@ -116,7 +116,7 @@ func Test_extractEventsFromBlock(t *testing.T) {
 			js := scInitiatedSampleJSON
 
 			events, err := extractEventsFromBlock(js, addresses, "test123")
-			require.Nil(t, err)
+			require.NoError(t, err)
 			require.Len(t, events, 1)
 			assert.IsType(t, []subscriber.Event{}, events)
 			assert.Equal(t, "XTZ", gjson.GetBytes(events[0], "from").Str)
