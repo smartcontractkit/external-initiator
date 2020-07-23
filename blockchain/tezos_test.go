@@ -116,26 +116,11 @@ func Test_extractEventsFromBlock(t *testing.T) {
 			js := scInitiatedSampleJSON
 
 			events, err := extractEventsFromBlock(js, addresses, "test123")
-			assert.Nil(t, err)
-			assert.Len(t, events, 1)
+			require.NoError(t, err)
+			require.Len(t, events, 1)
 			assert.IsType(t, []subscriber.Event{}, events)
-			assert.Equal(t, "XTZUSD", gjson.GetBytes(events[0], "pair").Str)
-		})
-}
-
-func Test_toEvent(t *testing.T) {
-	t.Run("marshals TzTransaction to event JSON",
-		func(t *testing.T) {
-			expected := []byte(`{"protocol":"foo","chain_id":"foo","hash":"foo","branch":"foo","contents":[]}`)
-			transaction := xtzTransaction{
-				Protocol: "foo",
-				ChainID:  "foo",
-				Hash:     "foo",
-				Branch:   "foo",
-				Contents: []xtzTransactionContent{},
-			}
-			event, err := transaction.toEvent()
-			assert.Nil(t, err)
-			assert.Equal(t, subscriber.Event(expected), event)
+			assert.Equal(t, "XTZ", gjson.GetBytes(events[0], "from").Str)
+			assert.Equal(t, "USD", gjson.GetBytes(events[0], "to").Str)
+			assert.Equal(t, "9", gjson.GetBytes(events[0], "request_id").Str)
 		})
 }
