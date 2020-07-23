@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/whisper/whisperv6"
@@ -153,4 +154,14 @@ func logDataParse(data eth.UntrustedBytes) (cborData []byte, dataPrefixBytes []b
 
 func bytesToHex(data []byte) string {
 	return utils.AddHexPrefix(hex.EncodeToString(data))
+}
+
+func unpackResultIntoBool(abi abi.ABI, method string, data []byte) (*bool, error) {
+	var b bool
+	return &b, abi.Unpack(&b, method, data)
+}
+
+func unpackResultIntoAddresses(abi abi.ABI, method string, data []byte) (*[]common.Address, error) {
+	var res []common.Address
+	return &res, abi.Unpack(&res, method, data)
 }

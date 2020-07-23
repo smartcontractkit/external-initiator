@@ -37,10 +37,14 @@ func (s storeFailer) SaveEndpoint(*store.Endpoint) error {
 
 func generateCreateSubscriptionReq(id, endpoint string, addresses, topics, accountIds []string) CreateSubscriptionReq {
 	params := struct {
-		Endpoint   string   `json:"endpoint"`
-		Addresses  []string `json:"addresses"`
-		Topics     []string `json:"topics"`
-		AccountIds []string `json:"accountIds"`
+		Endpoint    string          `json:"endpoint"`
+		Addresses   []string        `json:"addresses"`
+		Topics      []string        `json:"topics"`
+		AccountIds  []string        `json:"accountIds"`
+		Address     string          `json:"address"`
+		ABI         json.RawMessage `json:"abi"`
+		MethodName  string          `json:"methodName"`
+		ResponseKey string          `json:"responseKey"`
 	}{
 		Endpoint:   endpoint,
 		Addresses:  addresses,

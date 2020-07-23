@@ -73,6 +73,7 @@ services:
       - '{"name":"iotx-mock-grpc","type":"iotex","url":"http://mock:8090","refreshInterval":600}'
       - '{"name":"cfx-mock-http","type":"conflux","url":"http://mock:8080/rpc/cfx","refreshInterval":600}'
       - '{"name":"cfx-mock-ws","type":"conflux","url":"ws://mock:8080/ws/cfx"}'
+      - '{"name":"eth-qae-mock","type":"eth-query-and-execute","url":"http://mock:8080/rpc/eth-query-and-execute","refreshInterval":600}'
     networks:
       - integration
 volumes:
