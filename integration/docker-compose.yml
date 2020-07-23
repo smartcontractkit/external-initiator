@@ -66,6 +66,8 @@ services:
       - '{"name":"xtz-mock-http","type":"tezos","url":"http://mock:8080/http/xtz"}'
       - '{"name":"ont-mock-http","type":"ontology","url":"http://mock:8080/rpc/ont"}'
       - '{"name":"substrate-mock-ws","type":"substrate","url":"ws://mock:8080/ws/substrate"}'
+      - '{"name":"bsc-mock-http","type":"binance-smart-chain","url":"http://mock:8080/rpc/binance-smart-chain","refreshInterval":600}'
+      - '{"name":"bsc-mock-ws","type":"binance-smart-chain","url":"ws://mock:8080/ws/binance-smart-chain"}'
     networks:
       - integration
 volumes:

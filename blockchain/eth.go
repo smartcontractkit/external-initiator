@@ -2,7 +2,6 @@ package blockchain
 
 import (
 	"encoding/json"
-	"errors"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -238,49 +237,4 @@ func (e ethManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	}
 
 	return events, true
-}
-
-type filterQuery struct {
-	BlockHash *common.Hash     // used by eth_getLogs, return logs only from block with this hash
-	FromBlock string           // beginning of the queried range, nil means genesis block
-	ToBlock   string           // end of the range, nil means latest block
-	Addresses []common.Address // restricts matches to events created by specific contracts
-
-	// The Topic list restricts matches to particular event topics. Each event has a list
-	// of topics. Topics matches a prefix of that list. An empty element slice matches any
-	// topic. Non-empty elements represent an alternative that matches any of the
-	// contained topics.
-	//
-	// Examples:
-	// {} or nil          matches any topic list
-	// {{A}}              matches topic A in first position
-	// {{}, {B}}          matches any topic in first position AND B in second position
-	// {{A}, {B}}         matches topic A in first position AND B in second position
-	// {{A, B}, {C, D}}   matches topic (A OR B) in first position AND (C OR D) in second position
-	Topics [][]common.Hash
-}
-
-func (q filterQuery) toMapInterface() (interface{}, error) {
-	arg := map[string]interface{}{
-		"address": q.Addresses,
-		"topics":  q.Topics,
-	}
-	if q.BlockHash != nil {
-		arg["blockHash"] = *q.BlockHash
-		if q.FromBlock != "" || q.ToBlock != "" {
-			return nil, errors.New("cannot specify both BlockHash and FromBlock/ToBlock")
-		}
-	} else {
-		if q.FromBlock == "" {
-			arg["fromBlock"] = "0x0"
-		} else {
-			arg["fromBlock"] = q.FromBlock
-		}
-		if q.ToBlock == "" {
-			arg["toBlock"] = "latest"
-		} else {
-			arg["toBlock"] = q.ToBlock
-		}
-	}
-	return arg, nil
 }

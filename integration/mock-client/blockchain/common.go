@@ -2,7 +2,6 @@ package blockchain
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
@@ -28,8 +27,10 @@ func HandleRequest(conn, platform string, msg JsonrpcMessage) ([]JsonrpcMessage,
 		return handleEthRequest(conn, msg)
 	case "ont":
 		return handleOntRequest(msg)
+	case "binance-smart-chain":
+		return handleBscRequest(conn, msg)
 	default:
-		return nil, errors.New(fmt.Sprint("unexpected platform: ", platform))
+		return nil, fmt.Errorf("unexpected platform:  %v", platform)
 	}
 }
 

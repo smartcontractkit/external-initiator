@@ -1,69 +1,71 @@
 import chalk from 'chalk'
 import 'source-map-support/register'
-import {promises as fs} from 'fs'
+import { promises as fs } from 'fs'
 
-const axios = require('axios')
-const path = require('path')
+import axios from 'axios'
+import path from 'path'
 
 /**
  * Default credentials for testing node
  * FIXME: duplicated
  */
 export const credentials = {
-    email: 'notreal@fakeemail.ch',
-    password: 'twochains'
-};
+  email: 'notreal@fakeemail.ch',
+  password: 'twochains',
+}
 
 /**
  * Sign in and store authentication cookie.
  * If authenticated cookie already exists, returns that.
  * @param url URL of the Chainlink node
  */
-export async function getLoginCookie(url: string) {
-    const loginPath = path.resolve(__dirname, '../../cl_login.txt')
-    try {
-        return await fs.readFile(loginPath, "utf8")
-    } catch (e) {
-        const response = await axios.post(url, credentials, {withCredentials: true})
-        const cookiesHeader = response.headers['set-cookie']
-        let cookies = []
-        for (let i = 0; i < cookiesHeader.length; i++) {
-            cookies.push(cookiesHeader[i].split(/[,;]/)[0])
-        }
-        const cookieString = cookies.join("; ") + ";"
-        await fs.writeFile(loginPath, cookieString)
-        return cookieString
+export async function getLoginCookie(url: string): Promise<string> {
+  const loginPath = path.resolve(__dirname, '../../cl_login.txt')
+  try {
+    return await fs.readFile(loginPath, 'utf8')
+  } catch (e) {
+    const response = await axios.post(url, credentials, {
+      withCredentials: true,
+    })
+    const cookiesHeader = response.headers['set-cookie']
+    const cookies = []
+    for (let i = 0; i < cookiesHeader.length; i++) {
+      cookies.push(cookiesHeader[i].split(/[,;]/)[0])
     }
+    const cookieString = cookies.join('; ') + ';'
+    await fs.writeFile(loginPath, cookieString)
+    return cookieString
+  }
 }
 
 /**
  * Registers a global promise handler that will exit the currently
  * running process if an unhandled promise rejection is caught
  */
-export function registerPromiseHandler() {
-    process.on('unhandledRejection', e => {
-        console.error(e);
-        console.error(chalk.red('Exiting due to promise rejection'));
-        process.exit(1)
-    })
+export function registerPromiseHandler(): void {
+  process.on('unhandledRejection', (e) => {
+    console.error(e)
+    console.error(chalk.red('Exiting due to promise rejection'))
+    process.exit(1)
+  })
 }
 
 /**
  * MissingEnvVarError occurs when an expected environment variable does not exist.
  */
 class MissingEnvVarError extends Error {
-    constructor(envKey: string) {
-        super();
-        this.name = 'MissingEnvVarError';
-        this.message = this.formErrorMsg(envKey)
-    }
+  constructor(envKey: string) {
+    super()
+    this.name = 'MissingEnvVarError'
+    this.message = this.formErrorMsg(envKey)
+  }
 
-    private formErrorMsg(envKey: string) {
-        const errMsg = `Not enough arguments supplied. 
-      Expected "${envKey}" to be supplied as environment variable.`;
+  private formErrorMsg(envKey: string) {
+    const errMsg = `Not enough arguments supplied. 
+      Expected "${envKey}" to be supplied as environment variable.`
 
-        return errMsg
-    }
+    return errMsg
+  }
 }
 
 /**
@@ -77,12 +79,10 @@ class MissingEnvVarError extends Error {
  * @param keys The keys of the environment variables to fetch
  */
 export function getArgs<T extends string>(keys: T[]): { [K in T]: string } {
-    return keys.reduce<{ [K in T]: string }>((prev, next) => {
-        const envVar = process.env[next];
-        if (!envVar) {
-            throw new MissingEnvVarError(next)
-        }
-        prev[next] = envVar;
-        return prev
-    }, {} as { [K in T]: string })
+  return keys.reduce<{ [K in T]: string }>((prev, next) => {
+    const envVar = process.env[next]
+    if (!envVar) throw new MissingEnvVarError(next)
+    prev[next] = envVar
+    return prev
+  }, {} as { [K in T]: string })
 }
