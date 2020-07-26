@@ -25,6 +25,8 @@ func HandleRequest(conn, platform string, msg JsonrpcMessage) ([]JsonrpcMessage,
 	switch platform {
 	case "eth":
 		return handleEthRequest(conn, msg)
+	case "hmy":
+		return handleHmyRequest(conn, msg)
 	case "ont":
 		return handleOntRequest(msg)
 	case "binance-smart-chain":
