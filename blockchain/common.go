@@ -16,6 +16,7 @@ var ExpectsMock = false
 
 var blockchains = []string{
 	ETH,
+	HMY,
 	XTZ,
 	Substrate,
 	ONT,
@@ -35,6 +36,8 @@ func CreateJsonManager(t subscriber.Type, sub store.Subscription) (subscriber.Js
 	switch sub.Endpoint.Type {
 	case ETH:
 		return createEthManager(t, sub), nil
+	case HMY:
+		return createHmyManager(t, sub), nil
 	case Substrate:
 		return createSubstrateManager(t, sub)
 	case BSC:
@@ -89,7 +92,7 @@ func ValidBlockchain(name string) bool {
 
 func GetValidations(t string, params Params) []int {
 	switch t {
-	case ETH:
+	case ETH, HMY:
 		return []int{
 			len(params.Addresses) + len(params.Topics),
 		}
@@ -116,7 +119,7 @@ func GetValidations(t string, params Params) []int {
 
 func CreateSubscription(sub *store.Subscription, params Params) {
 	switch sub.Endpoint.Type {
-	case ETH:
+	case ETH, HMY:
 		sub.Ethereum = store.EthSubscription{
 			Addresses: params.Addresses,
 			Topics:    params.Topics,
