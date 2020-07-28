@@ -102,12 +102,8 @@ type NEAROracleRequest struct {
 
 // NEAROracleRequestFulfillmentArgs contains the arguments for oracle 'fulfill_request' function
 type NEAROracleRequestFulfillmentArgs struct {
-	Account         string `json:"account"`
-	Nonce           string `json:"nonce"`
-	Payment         string `json:"payment"` // in LINK tokens
-	CallbackAddress string `json:"callback_address"`
-	CallbackMethod  string `json:"callback_method"`
-	Expiration      string `json:"expiration"` // in nanoseconds
+	Account string `json:"account"`
+	Nonce   string `json:"nonce"`
 }
 
 // nearFilter holds the context data used to filter oracle requests for this subscription
@@ -241,7 +237,7 @@ func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 			// This request is targeting a specific jobID
 			requestSpecBytes, err := base64.StdEncoding.DecodeString(request.RequestSpec)
 			if err != nil {
-				logger.Error("Failed parsing NEAROracleRequestArgs.RequestSpec:", err)
+				logger.Error("Failed decoding base64 NEAROracleRequestArgs.RequestSpec:", err)
 				return nil, false
 			}
 			requestSpec := fmt.Sprintf("%s", requestSpecBytes)
@@ -251,16 +247,31 @@ func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 				continue
 			}
 
-			args := NEAROracleRequestFulfillmentArgs{
-				Account:         request.CallerAccount,
-				Nonce:           r.Nonce,
-				Payment:         strconv.FormatUint(request.Payment, 10),
-				CallbackAddress: request.CallbackAddress,
-				CallbackMethod:  request.CallbackMethod,
-				Expiration:      strconv.FormatUint(request.Expiration, 10),
+			// Check data arguments received in the request
+			dataBytes, err := base64.StdEncoding.DecodeString(request.Data)
+			if err != nil {
+				logger.Error("Failed decoding base64 NEAROracleRequestArgs.Data:", err)
+				return nil, false
 			}
 
-			event, err := json.Marshal(args)
+			var data map[string]interface{}
+			err = json.Unmarshal(dataBytes, &data)
+			if err != nil {
+				logger.Error("Failed unmarshal of NEAROracleRequestArgs.Data arguments:", err)
+				return nil, false
+			}
+
+			// Args required by NEAR adapter to fulfill the request
+			args := NEAROracleRequestFulfillmentArgs{
+				Account: request.CallerAccount,
+				Nonce:   r.Nonce,
+			}
+
+			// merge data and fulfillment args to package it as an event
+			data["account"] = args.Account
+			data["nonce"] = args.Nonce
+
+			event, err := json.Marshal(data)
 			if err != nil {
 				logger.Error("Failed marshaling fulfillment arguments:", err)
 				continue

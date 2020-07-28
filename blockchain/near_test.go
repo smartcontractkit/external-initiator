@@ -251,6 +251,21 @@ func Test_nearManager_ParseResponse(t *testing.T) {
 			if ok {
 				assert.NotNil(t, events)
 				assert.Equal(t, 3, len(events))
+
+				for _, e := range events {
+					// check that we are able to unmarshal these bytes
+					var data map[string]interface{}
+					err = json.Unmarshal(e, &data)
+					require.NoError(t, err)
+					assert.NotNil(t, data)
+					// check that every event holds five arguments
+					assert.Equal(t, 5, len(data))
+					assert.Contains(t, data, "account")
+					assert.Contains(t, data, "nonce")
+					assert.Contains(t, data, "get")
+					assert.Contains(t, data, "path")
+					assert.Contains(t, data, "times")
+				}
 			}
 		})
 	}
