@@ -55,6 +55,64 @@
       }
     }
   ],
+  "query_get_nonces": [
+    {
+      "jsonrpc": "2.0",
+      "result": {
+        "result": [
+          123,
+          34,
+          111,
+          114,
+          97,
+          99,
+          108,
+          101,
+          46,
+          116,
+          101,
+          115,
+          116,
+          110,
+          101,
+          116,
+          34,
+          58,
+          49,
+          44,
+          34,
+          99,
+          108,
+          105,
+          101,
+          110,
+          116,
+          46,
+          111,
+          114,
+          97,
+          99,
+          108,
+          101,
+          46,
+          116,
+          101,
+          115,
+          116,
+          110,
+          101,
+          116,
+          34,
+          58,
+          49,
+          125
+        ],
+        "logs": [],
+        "block_height": 9877069,
+        "block_hash": "4kB4SyEfvJQBcdXtfxAe7Km1TBYV1jgQGoJwh165Ldpz"
+      }
+    }
+  ],
   "query_get_requests": [
     {
       "jsonrpc": "2.0",
@@ -543,8 +601,7 @@
         "logs": [],
         "block_height": 9877069,
         "block_hash": "4kB4SyEfvJQBcdXtfxAe7Km1TBYV1jgQGoJwh165Ldpz"
-      },
-      "id": "chainlink"
+      }
     }
   ],
   "query_get_all_requests": [

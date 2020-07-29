@@ -170,6 +170,12 @@ func Test_buildResponseID(t *testing.T) {
 			false,
 		},
 		{
+			"returns a 'query_get_nonces' as ID",
+			args{JsonrpcMessage{ID: []byte(`123`), Method: "query", Params: []byte(`{"method_name": "get_nonces"}`)}},
+			"query_get_nonces",
+			false,
+		},
+		{
 			"returns a 'query_get_requests' as ID",
 			args{JsonrpcMessage{ID: []byte(`123`), Method: "query", Params: []byte(`{"method_name": "get_requests"}`)}},
 			"query_get_requests",
@@ -189,6 +195,81 @@ func Test_buildResponseID(t *testing.T) {
 				t.Errorf("buildResponseID() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			assert.Equal(t, tt.want, resp)
+		})
+	}
+}
+
+func Test_handleNEARRequest(t *testing.T) {
+	type args struct {
+		msg JsonrpcMessage
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			"returns an error, fails to build ID from JSON-RPC message",
+			args{JsonrpcMessage{ID: []byte(`123`)}},
+			true,
+		},
+		{
+			"returns an error, fails to parse JSON-RPC Params",
+			args{JsonrpcMessage{ID: []byte(`123`), Method: "status", Params: []byte(`!#$`)}},
+			true,
+		},
+		{
+			"returns a 'query_get_nonces' canned response",
+			args{JsonrpcMessage{ID: []byte(`123`), Method: "query", Params: []byte(`{"method_name": "get_nonces"}`)}},
+			false,
+		},
+		{
+			"returns a 'query_get_requests' canned response",
+			args{JsonrpcMessage{ID: []byte(`123`), Method: "query", Params: []byte(`{"method_name": "get_requests"}`)}},
+			false,
+		},
+		{
+			"returns a 'query_get_all_requests' canned response",
+			args{JsonrpcMessage{ID: []byte(`123`), Method: "query", Params: []byte(`{"method_name": "get_all_requests"}`)}},
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := handleNEARRequest("rpc", tt.args.msg)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("handleNEARRequest() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_handleNEARRequest_query_get_nonces(t *testing.T) {
+	type args struct {
+		msg JsonrpcMessage
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		{
+			"returns a get_nonces query method result with the correct ID",
+			args{JsonrpcMessage{ID: []byte(`123`), Method: "query", Params: []byte(`{"method_name": "get_nonces"}`)}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp, err := handleNEARRequest("rpc", tt.args.msg)
+			require.NotNil(t, resp)
+			require.NoError(t, err)
+			assert.Equal(t, len(resp), 1)
+			assert.Equal(t, resp[0].ID, tt.args.msg.ID)
+
+			// Unmarshal and check result
+			nonces, err := blockchain.ParseNEARNEAROracleNonces(resp[0])
+			require.NoError(t, err)
+			assert.NotNil(t, nonces)
+			assert.Equal(t, 2, len(nonces))
 		})
 	}
 }

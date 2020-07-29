@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 
 	"github.com/smartcontractkit/chainlink/core/logger"
@@ -73,6 +74,9 @@ type NEARStatus struct {
 	Validators            []NEARValidator `json:"validators"`
 }
 
+// NEAROracleNonces maps accounts to its latest nonce
+type NEAROracleNonces = map[string]uint64
+
 // NEAROracleFnGetAllRequestsArgs represents function arguments for NEAR oracle 'get_all_requests' function
 type NEAROracleFnGetAllRequestsArgs struct {
 	MaxNumAccounts uint16 `json:"max_num_accounts"`
@@ -110,13 +114,13 @@ type NEAROracleRequestFulfillmentArgs struct {
 type nearFilter struct {
 	JobID      string
 	AccountIDs []string
+	Nonces     NEAROracleNonces
 }
 
 // nearManager implements NEAR subscription management
 type nearManager struct {
-	filter         nearFilter
+	filter         *nearFilter
 	connectionType subscriber.Type
-	status         *NEARStatus
 }
 
 // createNearManager creates a new instance of nearManager with the provided
@@ -127,9 +131,10 @@ func createNearManager(connectionType subscriber.Type, config store.Subscription
 	}
 
 	return &nearManager{
-		filter: nearFilter{
+		filter: &nearFilter{
 			JobID:      config.Job,
 			AccountIDs: config.NEAR.AccountIds,
+			Nonces:     nil,
 		},
 		connectionType: connectionType,
 	}, nil
@@ -209,9 +214,31 @@ func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	var events []subscriber.Event
 
 	for _, oracleRequests := range oracleRequestsMap {
+		// Sort by nonce, keeping original order or equal elements.
+		sort.SliceStable(oracleRequests, func(i, j int) bool {
+			return oracleRequests[i].Nonce < oracleRequests[j].Nonce
+		})
+
 		for _, r := range oracleRequests {
 			request := r.Request
 
+			// Check if we should be processed
+			account := request.CallerAccount
+			// TODO: nonce returned by the contract should not be of type string
+			nonce, err := strconv.ParseUint(r.Nonce, 10, 64)
+			if err != nil {
+				logger.Error("Failed parsing NEAROracleRequest.Nonce:", err)
+				continue
+			}
+
+			// Check if we have already seen this nonce
+			if nonce <= m.filter.Nonces[account] {
+				continue
+			}
+			// Record nonce as seen
+			m.filter.Nonces[account] = nonce
+
+			// This request is targeting a specific jobID
 			requestSpecBytes, err := base64.StdEncoding.DecodeString(request.RequestSpec)
 			if err != nil {
 				logger.Error("Failed parsing NEAROracleRequestArgs.RequestSpec:", err)
@@ -252,17 +279,35 @@ func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 // Returns nil.
 //
 // If nearManager is using RPC:
-// Returns a request to get the network status.
+// Returns a request to get the oracle recorded client nonces.
 func (m nearManager) GetTestJson() []byte {
 	if m.connectionType == subscriber.RPC {
+		queryCall := NEARQueryCallFunction{
+			RequestType: "call_function",
+			Finality:    "final",
+			// TODO: hardcoded first oracle account
+			// How do we support query for multiple oracle accounts/contracts?
+			AccountID:  m.filter.AccountIDs[0],
+			MethodName: "get_nonces",
+			ArgsBase64: "",
+		}
+
+		queryCallBytes, err := json.Marshal(queryCall)
+		if err != nil {
+			logger.Error("Failed to marshal NEARQueryCallFunction:", err)
+			return nil
+		}
+
 		msg := JsonrpcMessage{
 			Version: "2.0",
 			ID:      json.RawMessage(`1`),
-			Method:  "status",
+			Method:  "query",
+			Params:  queryCallBytes,
 		}
 
 		bytes, err := json.Marshal(msg)
 		if err != nil {
+			logger.Error("Failed to marshal JsonrpcMessage:", err)
 			return nil
 		}
 
@@ -283,17 +328,20 @@ func (m nearManager) GetTestJson() []byte {
 // Attempts to parse the status in the response.
 // If successful, stores the status in nearManager.
 func (m nearManager) ParseTestResponse(data []byte) error {
+	logger.Debugw("Parsing NEAR test response", "ExpectsMock", ExpectsMock)
 	if m.connectionType == subscriber.RPC {
 		var msg JsonrpcMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
 			return err
 		}
 
-		var res NEARStatus
-		if err := json.Unmarshal(msg.Result, &res); err != nil {
+		nonces, err := ParseNEARNEAROracleNonces(msg)
+		if err != nil {
 			return err
 		}
-		m.status = &res
+
+		logger.Debugw("Got NEAR test response", "Nonces", nonces)
+		m.filter.Nonces = nonces
 	}
 
 	return nil
@@ -308,6 +356,21 @@ func ParseNEARQueryResult(msg JsonrpcMessage) (*NEARQueryResult, error) {
 	return &queryResult, nil
 }
 
+// ParseNEARNEAROracleNonces will unmarshal JsonrpcMessage result.result as NEAROracleNonces map
+func ParseNEARNEAROracleNonces(msg JsonrpcMessage) (NEAROracleNonces, error) {
+	queryResult, err := ParseNEARQueryResult(msg)
+	if err != nil {
+		return nil, err
+	}
+
+	var res NEAROracleNonces
+	if err := json.Unmarshal(queryResult.Result, &res); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
 // ParseNEAROracleRequestsMap will unmarshal JsonrpcMessage result.result as map[string][]NEAROracleRequest
 func ParseNEAROracleRequestsMap(msg JsonrpcMessage) (map[string][]NEAROracleRequest, error) {
 	queryResult, err := ParseNEARQueryResult(msg)
@@ -315,10 +378,10 @@ func ParseNEAROracleRequestsMap(msg JsonrpcMessage) (map[string][]NEAROracleRequ
 		return nil, err
 	}
 
-	var oracleRequestsMap map[string][]NEAROracleRequest
-	if err := json.Unmarshal(queryResult.Result, &oracleRequestsMap); err != nil {
+	var res map[string][]NEAROracleRequest
+	if err := json.Unmarshal(queryResult.Result, &res); err != nil {
 		return nil, err
 	}
 
-	return oracleRequestsMap, nil
+	return res, nil
 }

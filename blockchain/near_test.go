@@ -21,6 +21,7 @@ func Test_nearManager_GetTestJson(t *testing.T) {
 	filter := nearFilter{
 		JobID:      "job#1",
 		AccountIDs: []string{"oracle.chainlink.testnet"},
+		Nonces:     nil,
 	}
 	tests := []struct {
 		name string
@@ -30,7 +31,7 @@ func Test_nearManager_GetTestJson(t *testing.T) {
 		{
 			"returns JSON when using RPC",
 			args{filter: filter, connectionType: subscriber.RPC},
-			[]byte(`{"jsonrpc":"2.0","id":1,"method":"status"}`),
+			[]byte(`{"jsonrpc":"2.0","id":1,"method":"query","params":{"request_type":"call_function","finality":"final","account_id":"oracle.chainlink.testnet","method_name":"get_nonces","args_base64":""}}`),
 		},
 		{
 			"returns empty when using WS",
@@ -40,9 +41,9 @@ func Test_nearManager_GetTestJson(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := nearManager{filter: filter, connectionType: tt.args.connectionType}
+			m := nearManager{filter: &filter, connectionType: tt.args.connectionType}
 			if got := m.GetTestJson(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetTestJson() = %v, want %v", got, tt.want)
+				t.Errorf("GetTestJson() = %v, want %v", string(got), string(tt.want))
 			}
 		})
 	}
@@ -56,6 +57,7 @@ func Test_nearManager_ParseTestResponse(t *testing.T) {
 	filter := nearFilter{
 		JobID:      "job#1",
 		AccountIDs: []string{"oracle.chainlink.testnet"},
+		Nonces:     nil,
 	}
 	type args struct {
 		data []byte
@@ -87,7 +89,7 @@ func Test_nearManager_ParseTestResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := nearManager{filter: filter, connectionType: tt.fields.connectionType}
+			m := nearManager{filter: &filter, connectionType: tt.fields.connectionType}
 			if err := m.ParseTestResponse(tt.args.data); (err != nil) != tt.wantErr {
 				t.Errorf("ParseTestResponse() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -103,6 +105,7 @@ func Test_nearManager_GetTriggerJson(t *testing.T) {
 	filter := nearFilter{
 		JobID:      "job#1",
 		AccountIDs: []string{"oracle.chainlink.testnet"},
+		Nonces:     nil,
 	}
 	tests := []struct {
 		name string
@@ -127,7 +130,7 @@ func Test_nearManager_GetTriggerJson(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := nearManager{filter: tt.args.filter, connectionType: tt.args.connectionType}
+			m := nearManager{filter: &tt.args.filter, connectionType: tt.args.connectionType}
 			if got := m.GetTriggerJson(); (got != nil) != tt.want {
 				t.Errorf("GetTriggerJson() = %v, want %v", got, tt.want)
 			}
@@ -200,6 +203,10 @@ func Test_nearManager_ParseResponse(t *testing.T) {
 	filter := nearFilter{
 		JobID:      "mock",
 		AccountIDs: []string{"oracle.chainlink.testnet"},
+		Nonces: NEAROracleNonces{
+			"oracle.testnet":        1,
+			"client.oracle.testnet": 1,
+		},
 	}
 	type args struct {
 		data []byte
@@ -236,14 +243,14 @@ func Test_nearManager_ParseResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := nearManager{filter: filter, connectionType: tt.fields.connectionType}
+			m := nearManager{filter: &filter, connectionType: tt.fields.connectionType}
 			events, ok := m.ParseResponse(tt.args.data)
 			if ok != tt.wantOk {
 				t.Errorf("ParseResponse() ok = %v, wantOk %v", ok, tt.wantOk)
 			}
 			if ok {
 				assert.NotNil(t, events)
-				assert.Equal(t, 5, len(events))
+				assert.Equal(t, 3, len(events))
 			}
 		})
 	}
