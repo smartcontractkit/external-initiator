@@ -224,7 +224,7 @@ func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 
 			// Check if the request should be processed
 			account := request.CallerAccount
-			// TODO: nonce returned by the contract should not be of type string
+			// TODO: nonce should not be of type string (contract API issue)
 			nonce, err := strconv.ParseUint(r.Nonce, 10, 64)
 			if err != nil {
 				logger.Error("Failed parsing NEAROracleRequest.Nonce:", err)
