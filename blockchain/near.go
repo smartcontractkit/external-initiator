@@ -222,7 +222,7 @@ func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 		for _, r := range oracleRequests {
 			request := r.Request
 
-			// Check if we should be processed
+			// Check if the request should be processed
 			account := request.CallerAccount
 			// TODO: nonce returned by the contract should not be of type string
 			nonce, err := strconv.ParseUint(r.Nonce, 10, 64)
