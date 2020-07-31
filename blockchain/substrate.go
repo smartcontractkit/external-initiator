@@ -64,7 +64,7 @@ func (sm *substrateManager) GetTriggerJson() []byte {
 		sm.key = key
 	}
 
-	msg := jsonrpcMessage{
+	msg := JsonrpcMessage{
 		Version: "2.0",
 		ID:      json.RawMessage(`1`),
 		Method:  "state_subscribeStorage",
@@ -167,7 +167,7 @@ type substrateSubscribeResponse struct {
 }
 
 func (sm *substrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
-	var msg jsonrpcMessage
+	var msg JsonrpcMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
 		logger.Error("Failed parsing JSON-RPC message:", err)
@@ -202,8 +202,10 @@ func (sm *substrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool
 		}
 
 		for _, request := range events.Chainlink_OracleRequest {
-			// Check if our jobid matches
-			if !sm.matchesJobid(request.SpecIndex) {
+			// Check if our jobID matches
+			jobID := fmt.Sprint(sm.filter.JobID)
+			specIndex := fmt.Sprint(request.SpecIndex)
+			if !matchesJobID(jobID, specIndex) {
 				continue
 			}
 
@@ -236,18 +238,8 @@ func (sm *substrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool
 	return subEvents, true
 }
 
-func (sm substrateManager) matchesJobid(jobid types.Text) bool {
-	if jobid == sm.filter.JobID {
-		return true
-	} else if ExpectsMock && jobid == "mock" {
-		return true
-	}
-
-	return false
-}
-
 func (sm *substrateManager) GetTestJson() []byte {
-	msg := jsonrpcMessage{
+	msg := JsonrpcMessage{
 		Version: "2.0",
 		ID:      json.RawMessage(`1`),
 		Method:  "state_getMetadata",
@@ -257,7 +249,7 @@ func (sm *substrateManager) GetTestJson() []byte {
 }
 
 func (sm *substrateManager) ParseTestResponse(data []byte) error {
-	var msg jsonrpcMessage
+	var msg JsonrpcMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
 		return err

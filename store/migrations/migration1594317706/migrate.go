@@ -1,4 +1,4 @@
-package migration1592829052
+package migration1594317706
 
 import (
 	"github.com/jinzhu/gorm"
@@ -7,12 +7,18 @@ import (
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1576509489"
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1576783801"
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1587897988"
+	"github.com/smartcontractkit/external-initiator/store/migrations/migration1592829052"
 )
 
-type BinanceSmartChainSubscription struct {
+type NEARSubscription struct {
 	gorm.Model
 	SubscriptionId uint
-	Addresses      string
+	AccountIds     string
+}
+
+// TableName will set an explicit NEARSubscription table name, so table name isn't n_e_a_r_[...].
+func (NEARSubscription) TableName() string {
+	return "near_subscriptions"
 }
 
 type Subscription struct {
@@ -24,7 +30,8 @@ type Subscription struct {
 	Tezos             migration1576509489.TezosSubscription
 	Substrate         migration1576783801.SubstrateSubscription
 	Ontology          migration1587897988.OntSubscription
-	BinanceSmartChain BinanceSmartChainSubscription
+	BinanceSmartChain migration1592829052.BinanceSmartChainSubscription
+	NEAR              NEARSubscription
 }
 
 func Migrate(tx *gorm.DB) error {
@@ -33,14 +40,14 @@ func Migrate(tx *gorm.DB) error {
 		return errors.Wrap(err, "failed to auto migrate Subscription")
 	}
 
-	err = tx.AutoMigrate(&BinanceSmartChainSubscription{}).AddForeignKey("subscription_id", "subscriptions(id)", "CASCADE", "CASCADE").Error
+	err = tx.AutoMigrate(&NEARSubscription{}).AddForeignKey("subscription_id", "subscriptions(id)", "CASCADE", "CASCADE").Error
 	if err != nil {
-		return errors.Wrap(err, "failed to auto migrate BinanceSmartChainSubscription")
+		return errors.Wrap(err, "failed to auto migrate NEARSubscription")
 	}
 
 	return nil
 }
 
 func Rollback(tx *gorm.DB) error {
-	return tx.DropTable("bsc_subscriptions").Error
+	return tx.DropTable("near_subscriptions").Error // TODO: is this table ID correct? Where does it come from?
 }

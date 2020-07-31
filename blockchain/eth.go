@@ -70,7 +70,7 @@ func (e ethManager) GetTriggerJson() []byte {
 		return nil
 	}
 
-	msg := jsonrpcMessage{
+	msg := JsonrpcMessage{
 		Version: "2.0",
 		ID:      json.RawMessage(`1`),
 	}
@@ -102,7 +102,7 @@ func (e ethManager) GetTriggerJson() []byte {
 // Sends a request to get the latest block number.
 func (e ethManager) GetTestJson() []byte {
 	if e.p == subscriber.RPC {
-		msg := jsonrpcMessage{
+		msg := JsonrpcMessage{
 			Version: "2.0",
 			ID:      json.RawMessage(`1`),
 			Method:  "eth_blockNumber",
@@ -131,7 +131,7 @@ func (e ethManager) GetTestJson() []byte {
 // If successful, stores the block number in ethManager.
 func (e ethManager) ParseTestResponse(data []byte) error {
 	if e.p == subscriber.RPC {
-		var msg jsonrpcMessage
+		var msg JsonrpcMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
 			return err
 		}
@@ -171,7 +171,7 @@ type ethLogResponse struct {
 func (e ethManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	logger.Debugw("Parsing response", "ExpectsMock", ExpectsMock)
 
-	var msg jsonrpcMessage
+	var msg JsonrpcMessage
 	if err := json.Unmarshal(data, &msg); err != nil {
 		logger.Error("failed parsing msg: ", msg)
 		return nil, false

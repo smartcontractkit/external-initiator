@@ -1,3 +1,14 @@
-integration
+# This is required when building mock-client, and will be removed manually 
+# in external-initiator Dockerfile (not needed in that context).
+# -----------
+# integration
 README.md
 .circleci
+.git
+.github
+
+# mock-client build context is set to this folder, so it applies .dockerignore from here
+integration/external_initiator.env
+integration/tmp/
+integration/cl_login.txt
+integration/scripts

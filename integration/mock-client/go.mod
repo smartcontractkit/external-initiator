@@ -7,8 +7,11 @@ require (
 	github.com/ethereum/go-ethereum v1.9.12
 	github.com/gin-gonic/gin v1.6.0
 	github.com/gorilla/websocket v1.4.2
-	github.com/pierrec/xxHash v0.1.5 // indirect
 	github.com/smartcontractkit/chainlink v0.8.2
+	github.com/smartcontractkit/external-initiator v0.0.0-20200710101835-de7d82ec7e0c
 	github.com/stretchr/testify v1.5.1
 	go.uber.org/zap v1.14.1
 )
+
+// Useful for local development (TODO: comment out when not needed)
+replace github.com/smartcontractkit/external-initiator v0.0.0-20200710101835-de7d82ec7e0c => ../../

@@ -3,7 +3,6 @@ package blockchain
 import (
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 )
 
@@ -13,7 +12,7 @@ func handleOntRequest(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 		return handleGetSmartCodeEvent(msg)
 	}
 
-	return nil, errors.New(fmt.Sprint("unexpected method: ", msg.Method))
+	return nil, fmt.Errorf("unexpected method: %v", msg.Method)
 }
 
 type executeNotify struct {

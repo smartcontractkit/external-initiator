@@ -5,6 +5,7 @@ package blockchain
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/url"
 	"strings"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/smartcontractkit/external-initiator/subscriber"
 )
 
+// ExpectsMock variable is set when we run in a mock context
 var ExpectsMock = false
 
 var blockchains = []string{
@@ -21,6 +23,7 @@ var blockchains = []string{
 	Substrate,
 	ONT,
 	BSC,
+	NEAR,
 }
 
 type Params struct {
@@ -38,13 +41,15 @@ func CreateJsonManager(t subscriber.Type, sub store.Subscription) (subscriber.Js
 		return createEthManager(t, sub), nil
 	case HMY:
 		return createHmyManager(t, sub), nil
-	case Substrate:
-		return createSubstrateManager(t, sub)
 	case BSC:
 		return createBscManager(t, sub), nil
+	case Substrate:
+		return createSubstrateManager(t, sub)
+	case NEAR:
+		return createNearManager(t, sub)
 	}
 
-	return nil, errors.New("unknown blockchain type for JSON manager")
+	return nil, fmt.Errorf("unknown blockchain type %v for JSON manager", sub.Endpoint.Type)
 }
 
 // CreateClientManager creates a new instance of a subscriber.ISubscriber with the provided
@@ -112,6 +117,10 @@ func GetValidations(t string, params Params) []int {
 		return []int{
 			len(params.Addresses),
 		}
+	case NEAR:
+		return []int{
+			len(params.AccountIds),
+		}
 	}
 
 	return nil
@@ -140,10 +149,15 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 		sub.BinanceSmartChain = store.BinanceSmartChainSubscription{
 			Addresses: params.Addresses,
 		}
+	case NEAR:
+		sub.NEAR = store.NEARSubscription{
+			AccountIds: params.AccountIds,
+		}
 	}
 }
 
-type jsonrpcMessage struct {
+// JsonrpcMessage declares JSON-RPC message type
+type JsonrpcMessage struct {
 	Version string          `json:"jsonrpc"`
 	ID      json.RawMessage `json:"id,omitempty"`
 	Method  string          `json:"method,omitempty"`
@@ -170,4 +184,15 @@ func convertStringArrayToKV(data []string) map[string]string {
 	}
 
 	return result
+}
+
+// matchesJobID checks if expected jobID matches the actual one, or are we in a mock context.
+func matchesJobID(expected string, actual string) bool {
+	if actual == expected {
+		return true
+	} else if ExpectsMock && actual == "mock" {
+		return true
+	}
+
+	return false
 }

@@ -52,7 +52,7 @@ func (h hmyManager) GetTriggerJson() []byte {
 		return nil
 	}
 
-	msg := jsonrpcMessage{
+	msg := JsonrpcMessage{
 		Version: "2.0",
 		ID:      json.RawMessage(`1`),
 	}
@@ -84,7 +84,7 @@ func (h hmyManager) GetTriggerJson() []byte {
 // Sends a request to get the latest block number.
 func (h hmyManager) GetTestJson() []byte {
 	if h.p == subscriber.RPC {
-		msg := jsonrpcMessage{
+		msg := JsonrpcMessage{
 			Version: "2.0",
 			ID:      json.RawMessage(`1`),
 			Method:  "hmy_blockNumber",
@@ -113,7 +113,7 @@ func (h hmyManager) GetTestJson() []byte {
 // If successful, stores the block number in hmyManager.
 func (h hmyManager) ParseTestResponse(data []byte) error {
 	if h.p == subscriber.RPC {
-		var msg jsonrpcMessage
+		var msg JsonrpcMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
 			return err
 		}
@@ -137,7 +137,7 @@ func (h hmyManager) ParseTestResponse(data []byte) error {
 func (e hmyManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	logger.Debugw("Parsing response", "ExpectsMock", ExpectsMock)
 
-	var msg jsonrpcMessage
+	var msg JsonrpcMessage
 	if err := json.Unmarshal(data, &msg); err != nil {
 		logger.Error("failed parsing msg: ", msg)
 		return nil, false

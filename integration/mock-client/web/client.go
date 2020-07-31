@@ -163,7 +163,7 @@ func loggerFunc() gin.HandlerFunc {
 			"clientIP", c.ClientIP(),
 			"errors", c.Errors.String(),
 			"servedAt", end.Format("2006-01-02 15:04:05"),
-			"latency", fmt.Sprintf("%v", end.Sub(start)),
+			"latency", fmt.Sprint(end.Sub(start)),
 		)
 	}
 }

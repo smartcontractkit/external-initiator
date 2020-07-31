@@ -21,7 +21,7 @@ func handleEthRequest(conn string, msg JsonrpcMessage) ([]JsonrpcMessage, error)
 		}
 	}
 
-	return nil, errors.New(fmt.Sprint("unexpected method: ", msg.Method))
+	return nil, fmt.Errorf("unexpected method: %v", msg.Method)
 }
 
 type ethSubscribeResponse struct {
@@ -67,7 +67,7 @@ func handleEthSubscribe(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 	}
 
 	if len(contents) != 2 {
-		return nil, errors.New(fmt.Sprint("possibly incorrect length of params array:", len(contents)))
+		return nil, fmt.Errorf("possibly incorrect length of params array: %v", len(contents))
 	}
 
 	var filter map[string]json.RawMessage

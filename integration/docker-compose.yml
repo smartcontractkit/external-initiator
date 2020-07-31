@@ -36,13 +36,11 @@ services:
       - integration
   mock:
     build:
-      context: ./mock-client
-      dockerfile: Dockerfile
+      context: ../.
+      dockerfile: ./integration/mock-client/Dockerfile
     restart: on-failure
     ports:
       - "8081:8080"
-    environment:
-      - "SUBSCRIBED_ADDRESS=${SUBSCRIBED_ADDRESS}"
     networks:
       - integration
   external-initiator:
@@ -70,6 +68,7 @@ services:
       - '{"name":"substrate-mock-ws","type":"substrate","url":"ws://mock:8080/ws/substrate"}'
       - '{"name":"bsc-mock-http","type":"binance-smart-chain","url":"http://mock:8080/rpc/binance-smart-chain","refreshInterval":600}'
       - '{"name":"bsc-mock-ws","type":"binance-smart-chain","url":"ws://mock:8080/ws/binance-smart-chain"}'
+      - '{"name":"near-mock-http","type":"near","url":"http://mock:8080/rpc/near","refreshInterval":600}'
     networks:
       - integration
 volumes:
