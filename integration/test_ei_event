@@ -16,6 +16,7 @@ event_test() {
   local log=$LOG_PATH/send_event_transaction.log
 
   pushd integration/scripts >/dev/null || exit
+  # Arguments: config_name, address, account
   yarn create-job "$1" "$2" "$3" | tee "$log"
   popd >/dev/null || exit
 
@@ -37,4 +38,5 @@ event_test() {
     "$(yes "completed" | head -n $expected_job_runs)"
 }
 
+# Arguments: config_name, address, account, expected_job_runs
 event_test "$1" "$2" "$3" "$4"
