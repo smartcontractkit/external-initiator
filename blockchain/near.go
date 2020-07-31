@@ -248,30 +248,32 @@ func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 			}
 
 			// Check data arguments received in the request
-			dataBytes, err := base64.StdEncoding.DecodeString(request.Data)
+			requestArgsBytes, err := base64.StdEncoding.DecodeString(request.Data)
 			if err != nil {
 				logger.Error("Failed decoding base64 NEAROracleRequestArgs.Data:", err)
 				return nil, false
 			}
 
-			var data map[string]interface{}
-			err = json.Unmarshal(dataBytes, &data)
+			// Let's build our event from request arguments and request fulfillment arguments
+			var eventData map[string]interface{}
+			err = json.Unmarshal(requestArgsBytes, &eventData)
 			if err != nil {
 				logger.Error("Failed unmarshal of NEAROracleRequestArgs.Data arguments:", err)
 				return nil, false
 			}
 
 			// Args required by NEAR adapter to fulfill the request
-			args := NEAROracleRequestFulfillmentArgs{
+			requestFulfillmentArgs := NEAROracleRequestFulfillmentArgs{
 				Account: request.CallerAccount,
 				Nonce:   r.Nonce,
 			}
 
-			// merge data and fulfillment args to package it as an event
-			data["account"] = args.Account
-			data["nonce"] = args.Nonce
+			if err = addToMap(requestFulfillmentArgs, eventData); err != nil {
+				logger.Error("Failed processing of NEAROracleRequestFulfillmentArgs:", err)
+				return nil, false
+			}
 
-			event, err := json.Marshal(data)
+			event, err := json.Marshal(eventData)
 			if err != nil {
 				logger.Error("Failed marshaling fulfillment arguments:", err)
 				continue
@@ -281,6 +283,24 @@ func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	}
 
 	return events, true
+}
+
+func addToMap(addition interface{}, dataMap map[string]interface{}) error {
+	additionBytes, err := json.Marshal(addition)
+	if err != nil {
+		return err
+	}
+
+	var additionMap map[string]interface{}
+	if err = json.Unmarshal(additionBytes, &dataMap); err != nil {
+		return err
+	}
+
+	for k, v := range additionMap {
+		dataMap[k] = v
+	}
+
+	return nil
 }
 
 // GetTestJson generates a JSON payload to test
