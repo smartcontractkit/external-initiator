@@ -24,12 +24,8 @@ run_test() {
   run_ei
 
   login_chainlink
-<<<<<<< HEAD
-  
-=======
 
   # Address based
->>>>>>> 5c2617d... Add code polish, documentation and unit tests
   ./integration/test_ei_event "eth-mock-http" "$EVM_SUBSCRIBED_ADDRESS" "" 1
   ./integration/test_ei_event "eth-mock-ws" "$EVM_SUBSCRIBED_ADDRESS" "" 1
   ./integration/test_ei_event "hmy-mock-http" "$EVM_SUBSCRIBED_ADDRESS" "" 1
