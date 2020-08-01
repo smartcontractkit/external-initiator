@@ -204,8 +204,8 @@ func Test_nearManager_ParseResponse(t *testing.T) {
 		JobID:      "mock",
 		AccountIDs: []string{"oracle.chainlink.testnet"},
 		Nonces: NEAROracleNonces{
-			"oracle.testnet":        1,
-			"client.oracle.testnet": 1,
+			"oracle.testnet":        "1",
+			"client.oracle.testnet": "1",
 		},
 	}
 	type args struct {

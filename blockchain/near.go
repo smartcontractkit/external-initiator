@@ -75,7 +75,8 @@ type NEARStatus struct {
 }
 
 // NEAROracleNonces maps accounts to its latest nonce
-type NEAROracleNonces = map[string]uint64
+// TODO: user *big.Int for nonces (u128)
+type NEAROracleNonces = map[string]string
 
 // NEAROracleFnGetAllRequestsArgs represents function arguments for NEAR oracle 'get_all_requests' function
 type NEAROracleFnGetAllRequestsArgs struct {
@@ -220,19 +221,25 @@ func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 
 			// Check if the request should be processed
 			account := request.CallerAccount
-			// TODO: nonce should not be of type string (contract API issue)
+			// TODO: should be of type *big.Int
 			nonce, err := strconv.ParseUint(r.Nonce, 10, 64)
 			if err != nil {
 				logger.Error("Failed parsing NEAROracleRequest.Nonce:", err)
 				continue
 			}
 
+			lastNonce, err := strconv.ParseUint(m.filter.Nonces[account], 10, 64)
+			if err != nil {
+				logger.Error("Failed parsing account nonce:", err)
+				continue
+			}
+
 			// Check if we have already seen this nonce
-			if nonce <= m.filter.Nonces[account] {
+			if nonce <= lastNonce {
 				continue
 			}
 			// Record nonce as seen
-			m.filter.Nonces[account] = nonce
+			m.filter.Nonces[account] = strconv.FormatUint(nonce, 10)
 
 			// This request is targeting a specific jobID
 			requestSpecBytes, err := base64.StdEncoding.DecodeString(request.RequestSpec)
