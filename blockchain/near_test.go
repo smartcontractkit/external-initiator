@@ -183,7 +183,7 @@ func Test_NEAROracleRequest_Unmarshal(t *testing.T) {
 	err = json.Unmarshal(queryResult.Result, &oracleRequests)
 	require.NoError(t, err)
 	assert.NotNil(t, oracleRequests)
-	assert.Equal(t, 2, len(oracleRequests))
+	assert.Equal(t, 1, len(oracleRequests))
 }
 
 func Test_ParseNEAROracleRequestsMap(t *testing.T) {
@@ -192,7 +192,7 @@ func Test_ParseNEAROracleRequestsMap(t *testing.T) {
 	oracleRequestsMap, err := ParseNEAROracleRequestsMap(*msg)
 	require.NoError(t, err)
 	assert.NotNil(t, oracleRequestsMap)
-	assert.Equal(t, 2, len(oracleRequestsMap))
+	assert.Equal(t, 1, len(oracleRequestsMap))
 }
 
 func Test_nearManager_ParseResponse(t *testing.T) {
@@ -201,20 +201,18 @@ func Test_nearManager_ParseResponse(t *testing.T) {
 		connectionType subscriber.Type
 	}
 	filter := nearFilter{
-		JobID:      "mock",
-		AccountIDs: []string{"oracle.chainlink.testnet"},
+		JobID:      "4a5edec1e2c142c3981322de3709dc52",
+		AccountIDs: []string{"oracle.chainlink_dev.testnet"},
 		Nonces: NEAROracleNonces{
-			"oracle.testnet":        "1",
-			"client.oracle.testnet": "1",
+			"client.chainlink_dev.testnet": "0",
 		},
 	}
 	type args struct {
 		data []byte
 	}
 
-	msg, err := readTestJSONRPCMessage()
+	msgBytes, err := readTestGetAllRequestsResult()
 	require.NoError(t, err)
-	msgBytes, err := json.Marshal(msg)
 
 	tests := []struct {
 		name   string
@@ -235,7 +233,7 @@ func Test_nearManager_ParseResponse(t *testing.T) {
 			false,
 		},
 		{
-			"correctly generates 5 events",
+			"correctly generates 2 events",
 			fields{filter: filter, connectionType: subscriber.RPC},
 			args{msgBytes},
 			true,
@@ -250,7 +248,7 @@ func Test_nearManager_ParseResponse(t *testing.T) {
 			}
 			if ok {
 				assert.NotNil(t, events)
-				assert.Equal(t, 3, len(events))
+				assert.Equal(t, 2, len(events))
 
 				for _, e := range events {
 					// check that we are able to unmarshal these bytes

@@ -58,7 +58,7 @@ type NEARValidator struct {
 // NEARSyncInfo type contains NEAR sync info
 type NEARSyncInfo struct {
 	LatestBlockHash   string `json:"latest_block_hash"`
-	LatestBlockHeight uint32 `json:"latest_block_height"`
+	LatestBlockHeight uint64 `json:"latest_block_height"`
 	LatestBlockTime   string `json:"latest_block_time"`
 	LatestStateRoot   string `json:"latest_state_root"`
 	Syncing           bool   `json:"syncing"`
