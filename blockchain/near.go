@@ -58,7 +58,7 @@ type NEARValidator struct {
 // NEARSyncInfo type contains NEAR sync info
 type NEARSyncInfo struct {
 	LatestBlockHash   string `json:"latest_block_hash"`
-	LatestBlockHeight uint32 `json:"latest_block_height"`
+	LatestBlockHeight uint64 `json:"latest_block_height"`
 	LatestBlockTime   string `json:"latest_block_time"`
 	LatestStateRoot   string `json:"latest_state_root"`
 	Syncing           bool   `json:"syncing"`
@@ -80,8 +80,8 @@ type NEAROracleNonces = map[string]string
 
 // NEAROracleFnGetAllRequestsArgs represents function arguments for NEAR oracle 'get_all_requests' function
 type NEAROracleFnGetAllRequestsArgs struct {
-	MaxNumAccounts uint16 `json:"max_num_accounts"`
-	MaxRequests    uint16 `json:"max_requests"`
+	MaxNumAccounts string `json:"max_num_accounts"` // uint64 string
+	MaxRequests    string `json:"max_requests"`     // uint64 string
 }
 
 // NEAROracleRequestArgs contains the oracle request arguments
@@ -144,8 +144,8 @@ func createNearManager(connectionType subscriber.Type, config store.Subscription
 func (m nearManager) GetTriggerJson() []byte {
 	// We get all requests made through a contract, with some limits.
 	args := NEAROracleFnGetAllRequestsArgs{
-		MaxNumAccounts: maxNumAccounts,
-		MaxRequests:    maxRequests,
+		MaxNumAccounts: strconv.Itoa(maxNumAccounts),
+		MaxRequests:    strconv.Itoa(maxRequests),
 	}
 
 	argsBytes, err := json.Marshal(args)
@@ -201,6 +201,8 @@ func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 		logger.Error("Failed parsing JSON-RPC message: ", err)
 		return nil, false
 	}
+
+	logger.Debugw("Parsing NEAR response JSON-RPC message", "msg", msg)
 
 	oracleRequestsMap, err := ParseNEAROracleRequestsMap(msg)
 	if err != nil {
