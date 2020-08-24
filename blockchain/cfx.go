@@ -68,7 +68,7 @@ func (e cfxManager) GetTriggerJson() []byte {
 		return nil
 	}
 
-	msg := jsonrpcMessage{
+	msg := JsonrpcMessage{
 		Version: "2.0",
 		ID:      json.RawMessage(`1`),
 	}
@@ -91,7 +91,7 @@ func (e cfxManager) GetTriggerJson() []byte {
 // Sends a request to get the latest epoch number.
 func (e cfxManager) GetTestJson() []byte {
 	if e.p == subscriber.RPC {
-		msg := jsonrpcMessage{
+		msg := JsonrpcMessage{
 			Version: "2.0",
 			ID:      json.RawMessage(`1`),
 			Method:  "cfx_epochNumber",
@@ -117,7 +117,7 @@ func (e cfxManager) GetTestJson() []byte {
 // If successful, stores the block number in cfxManager.
 func (e cfxManager) ParseTestResponse(data []byte) error {
 	if e.p == subscriber.RPC {
-		var msg jsonrpcMessage
+		var msg JsonrpcMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
 			return err
 		}
@@ -152,7 +152,7 @@ type cfxLogResponse struct {
 func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	logger.Debugw("Parsing response", "ExpectsMock", ExpectsMock)
 
-	var msg jsonrpcMessage
+	var msg JsonrpcMessage
 	if err := json.Unmarshal(data, &msg); err != nil {
 		logger.Error("failed parsing msg: ", msg)
 		return nil, false
