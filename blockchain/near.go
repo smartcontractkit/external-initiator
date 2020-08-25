@@ -232,12 +232,18 @@ func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 
 			lastNonce, err := strconv.ParseUint(m.filter.Nonces[account], 10, 64)
 			if err != nil {
-				logger.Error("Failed parsing account nonce:", err)
-				continue
+				if m.filter.Nonces[account] == "" {
+					// If we have not seen this account before, set the nonce to 0
+					lastNonce = 0
+				} else {
+					logger.Error("Failed parsing account nonce:", err)
+					continue
+				}
 			}
 
 			// Check if we have already seen this nonce
 			if nonce <= lastNonce {
+				logger.Infof("Skipping request %s for account %s, because of already seen nonce %v.", r.Nonce, request.CallerAccount, lastNonce)
 				continue
 			}
 			// Record nonce as seen

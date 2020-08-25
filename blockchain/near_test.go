@@ -195,18 +195,11 @@ func Test_ParseNEAROracleRequestsMap(t *testing.T) {
 	assert.Equal(t, 2, len(oracleRequestsMap))
 }
 
-func Test_nearManager_ParseResponse(t *testing.T) {
+// Helper test function, to test ParseResponse for test JON-RPC Message using different filters
+func testParseResponse(t *testing.T, filter nearFilter, n int) {
 	type fields struct {
 		filter         nearFilter
 		connectionType subscriber.Type
-	}
-	filter := nearFilter{
-		JobID:      "mock",
-		AccountIDs: []string{"oracle.chainlink.testnet"},
-		Nonces: NEAROracleNonces{
-			"oracle.testnet":        "1",
-			"client.oracle.testnet": "1",
-		},
 	}
 	type args struct {
 		data []byte
@@ -250,7 +243,7 @@ func Test_nearManager_ParseResponse(t *testing.T) {
 			}
 			if ok {
 				assert.NotNil(t, events)
-				assert.Equal(t, 3, len(events))
+				assert.Equal(t, n, len(events))
 
 				for _, e := range events {
 					// check that we are able to unmarshal these bytes
@@ -269,4 +262,37 @@ func Test_nearManager_ParseResponse(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_nearManager_ParseResponse_NoNoncesFilter(t *testing.T) {
+	filter := nearFilter{
+		JobID:      "mock",
+		AccountIDs: []string{"oracle.chainlink.testnet"},
+		Nonces:     NEAROracleNonces{},
+	}
+	testParseResponse(t, filter, 5)
+}
+
+func Test_nearManager_ParseResponse_ZeroNoncesFilter(t *testing.T) {
+	filter := nearFilter{
+		JobID:      "mock",
+		AccountIDs: []string{"oracle.chainlink.testnet"},
+		Nonces: NEAROracleNonces{
+			"oracle.testnet":        "0",
+			"client.oracle.testnet": "0",
+		},
+	}
+	testParseResponse(t, filter, 5)
+}
+
+func Test_nearManager_ParseResponse_SomeNoncesFilter(t *testing.T) {
+	filter := nearFilter{
+		JobID:      "mock",
+		AccountIDs: []string{"oracle.chainlink.testnet"},
+		Nonces: NEAROracleNonces{
+			"oracle.testnet":        "1",
+			"client.oracle.testnet": "1",
+		},
+	}
+	testParseResponse(t, filter, 3)
 }
