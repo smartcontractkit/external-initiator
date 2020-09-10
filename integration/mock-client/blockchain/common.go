@@ -27,6 +27,8 @@ func HandleRequest(conn, platform string, msg JsonrpcMessage) ([]JsonrpcMessage,
 		return handleBscRequest(conn, msg)
 	case "near":
 		return handleNEARRequest(conn, msg)
+	case "cfx":
+		return handleCfxRequest(conn, msg)
 	default:
 		return nil, fmt.Errorf("unexpected platform: %v", platform)
 	}
