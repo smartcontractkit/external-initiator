@@ -1,4 +1,4 @@
-package migration1590000000
+package migration1599849837
 
 import (
 	"github.com/jinzhu/gorm"
@@ -7,6 +7,8 @@ import (
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1576509489"
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1576783801"
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1587897988"
+	"github.com/smartcontractkit/external-initiator/store/migrations/migration1592829052"
+	"github.com/smartcontractkit/external-initiator/store/migrations/migration1594317706"
 )
 
 type CfxSubscription struct {
@@ -21,11 +23,13 @@ type Subscription struct {
 	ReferenceId  string `gorm:"unique;not null"`
 	Job          string
 	EndpointName string
-	Ethereum     migration0.EthSubscription
-	Tezos        migration1576509489.TezosSubscription
-	Substrate    migration1576783801.SubstrateSubscription
-	Ontology     migration1587897988.OntSubscription
-	Conflux 		 CfxSubscription
+	Ethereum          migration0.EthSubscription
+	Tezos             migration1576509489.TezosSubscription
+	Substrate         migration1576783801.SubstrateSubscription
+	Ontology          migration1587897988.OntSubscription
+	BinanceSmartChain migration1592829052.BinanceSmartChainSubscription
+	NEAR              migration1594317706.NEARSubscription
+	Conflux 		 			CfxSubscription
 }
 
 func Migrate(tx *gorm.DB) error {

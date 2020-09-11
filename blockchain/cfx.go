@@ -236,7 +236,7 @@ func (q cfxFilterQuery) toMapInterface() (interface{}, error) {
 			arg["fromEpoch"] = q.fromEpoch
 		}
 		if q.toEpoch == "" {
-			arg["toEpoch"] = "latest_mined"
+			arg["toEpoch"] = "latest_state"
 		} else {
 			arg["toEpoch"] = q.toEpoch
 		}
