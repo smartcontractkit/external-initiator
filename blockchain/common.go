@@ -24,6 +24,7 @@ var blockchains = []string{
 	ONT,
 	BSC,
 	NEAR,
+	IOTX,
 }
 
 type Params struct {
@@ -60,6 +61,8 @@ func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error)
 		return createTezosSubscriber(sub), nil
 	case ONT:
 		return createOntSubscriber(sub), nil
+	case IOTX:
+		return createIoTeXSubscriber(sub), nil
 	}
 
 	return nil, errors.New("unknown blockchain type for Client subscription")
@@ -68,7 +71,7 @@ func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error)
 func GetConnectionType(endpoint store.Endpoint) (subscriber.Type, error) {
 	switch endpoint.Type {
 	// Add blockchain implementations that encapsulate entire connection here
-	case XTZ, ONT:
+	case XTZ, ONT, IOTX:
 		return subscriber.Client, nil
 	default:
 		u, err := url.Parse(endpoint.Url)
@@ -97,7 +100,7 @@ func ValidBlockchain(name string) bool {
 
 func GetValidations(t string, params Params) []int {
 	switch t {
-	case ETH, HMY:
+	case ETH, HMY, IOTX:
 		return []int{
 			len(params.Addresses) + len(params.Topics),
 		}
@@ -128,7 +131,7 @@ func GetValidations(t string, params Params) []int {
 
 func CreateSubscription(sub *store.Subscription, params Params) {
 	switch sub.Endpoint.Type {
-	case ETH, HMY:
+	case ETH, HMY, IOTX:
 		sub.Ethereum = store.EthSubscription{
 			Addresses: params.Addresses,
 			Topics:    params.Topics,
