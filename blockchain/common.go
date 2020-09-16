@@ -29,7 +29,7 @@ var blockchains = []string{
 type Params struct {
 	Endpoint   string   `json:"endpoint"`
 	Addresses  []string `json:"addresses"`
-	Topics     []string `json:"eventTopics"`
+	Topics     []string `json:"topics"`
 	AccountIds []string `json:"accountIds"`
 }
 
