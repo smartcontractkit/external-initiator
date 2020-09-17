@@ -7,9 +7,11 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/smartcontractkit/chainlink/core/eth"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
+	"github.com/smartcontractkit/chainlink/core/store/models"
 )
 
 const CFX = "conflux"
@@ -29,15 +31,13 @@ func createCfxManager(p subscriber.Type, config store.Subscription) cfxManager {
 		addresses = append(addresses, common.HexToAddress(a))
 	}
 
-	var topics [][]common.Hash
-	var t []common.Hash
-	for _, value := range config.Conflux.Topics {
-		if len(value) < 1 {
-			continue
-		}
-		t = append(t, common.HexToHash(value))
-	}
-	topics = append(topics, t)
+	// Hard-set the topics to match the OracleRequest()
+	// event emitted by the oracle contract provided.
+	topics := [][]common.Hash{{
+		models.RunLogTopic20190207withoutIndexes,
+	}, {
+		common.HexToHash(StringToBytes32(config.Job)),
+	}}
 
 	return cfxManager{
 		fq: &cfxFilterQuery{
@@ -132,14 +132,55 @@ func (e cfxManager) ParseTestResponse(data []byte) error {
 }
 
 type cfxLogResponse struct {
-	LogIndex         string   `json:"logIndex"`
-	EpochNumber      string   `json:"epochNumber"`
-	BlockHash        string   `json:"blockHash"`
-	TransactionHash  string   `json:"transactionHash"`
-	TransactionIndex string   `json:"transactionIndex"`
-	Address          string   `json:"address"`
-	Data             string   `json:"data"`
-	Topics           []string `json:"topics"`
+	LogIndex         string   			`json:"logIndex"`
+	EpochNumber      string   			`json:"epochNumber"`
+	BlockHash        common.Hash 		`json:"blockHash"`
+	TransactionHash  common.Hash 		`json:"transactionHash"`
+	TransactionIndex string   			`json:"transactionIndex"`
+	Address          common.Address `json:"address"`
+	Data             string   			`json:"data"`
+	Topics           []common.Hash 	`json:"topics"`
+}
+
+//convert cfxLogResponse type to eth.Log type
+func Cfx2EthResponse(cfx cfxLogResponse) (eth.Log, error) {
+	blockNumber, err_block := hexutil.DecodeUint64(cfx.EpochNumber)
+	txIndex, err_tx := hexutil.DecodeUint64(cfx.TransactionIndex)
+	index, err_ind := hexutil.DecodeUint64(cfx.LogIndex)
+	data, err_dat := hexutil.Decode(cfx.Data)
+
+	//conversion error handling
+	if (err_block != nil || err_tx != nil || err_ind != nil || err_dat != nil) {
+			var err_str = ""
+			if err_block != nil {
+				err_str += " blockNumber"
+			}
+
+			if err_tx != nil {
+				err_str += " txIndex"
+			}
+
+			if err_ind != nil {
+				err_str += " index"
+			}
+
+			if err_dat != nil {
+				err_str += " data"
+			}
+
+			return eth.Log{}, errors.New(err_str)
+	}
+
+	return eth.Log{
+		Address: cfx.Address,
+		Topics: cfx.Topics,
+		Data: data,
+		BlockNumber: blockNumber,
+		TxHash: cfx.TransactionHash,
+		TxIndex: uint(txIndex),
+		BlockHash: cfx.BlockHash,
+		Index: uint(index),
+	}, nil
 }
 
 // ParseResponse parses the response from the
@@ -168,7 +209,21 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 		}
 
 		for _, evt := range rawEvents {
-			event, err := json.Marshal(evt)
+
+			//filtering + error handling
+			evt_eth, err := Cfx2EthResponse(evt)
+			if err != nil {
+				logger.Error("failed to convert to ETH log type", nil)
+				return nil, false
+			}
+
+			request, err := logEventToOracleRequest(evt_eth)
+			if err != nil {
+				logger.Error("failed to get oracle request:", err)
+				return nil, false
+			}
+
+			event, err := json.Marshal(request)
 			if err != nil {
 				continue
 			}
