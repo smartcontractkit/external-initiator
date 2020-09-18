@@ -268,7 +268,7 @@ func TestIoTeXSubscriptionUnSubscribe(t *testing.T) {
 	sub.run(ctx)
 	sub.Unsubscribe()
 	ck.Add(6 * time.Second)
-	_, ok := <-channel
+	_, ok := <-ctx.Done()
 	assert.False(t, ok)
 }
 
