@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"math/big"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -73,8 +74,14 @@ func (e cfxManager) GetTriggerJson() []byte {
 		ID:      json.RawMessage(`1`),
 	}
 
-	msg.Method = "cfx_getLogs"
-	msg.Params = json.RawMessage(`[` + string(filterBytes) + `]`)
+	switch e.p {
+	case subscriber.WS:
+		msg.Method = "cfx_subscribe"
+		msg.Params = json.RawMessage(`["logs",` + string(filterBytes) + `]`)
+	case subscriber.RPC:
+		msg.Method = "cfx_getLogs"
+		msg.Params = json.RawMessage(`[` + string(filterBytes) + `]`)
+	}
 
 	bytes, err := json.Marshal(msg)
 	if err != nil {
@@ -147,10 +154,11 @@ func Cfx2EthResponse(cfx cfxLogResponse) (eth.Log, error) {
 	blockNumber, err_block := hexutil.DecodeUint64(cfx.EpochNumber)
 	txIndex, err_tx := hexutil.DecodeUint64(cfx.TransactionIndex)
 	index, err_ind := hexutil.DecodeUint64(cfx.LogIndex)
-	data, err_dat := hexutil.Decode(cfx.Data)
+	data := common.Hex2Bytes(cfx.Data[2:])
 
 	//conversion error handling
-	if (err_block != nil || err_tx != nil || err_ind != nil || err_dat != nil) {
+	// if (err_block != nil || err_tx != nil || err_ind != nil || err_dat != nil) {
+	if (err_block != nil || err_tx != nil || err_ind != nil) {
 			var err_str = ""
 			if err_block != nil {
 				err_str += " blockNumber"
@@ -164,9 +172,9 @@ func Cfx2EthResponse(cfx cfxLogResponse) (eth.Log, error) {
 				err_str += " index"
 			}
 
-			if err_dat != nil {
-				err_str += " data"
-			}
+			// if err_dat != nil {
+			// 	err_str += " data"
+			// }
 
 			return eth.Log{}, errors.New(err_str)
 	}
@@ -202,6 +210,48 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	var events []subscriber.Event
 
 	switch e.p {
+	case subscriber.WS:
+		var res ethSubscribeResponse
+		if err := json.Unmarshal(msg.Params, &res); err != nil {
+			logger.Error("unmarshal:", err)
+			return nil, false
+		}
+
+		var evt cfxLogResponse
+		if err := json.Unmarshal(res.Result, &evt); err != nil {
+			logger.Error("unmarshal:", err)
+			return nil, false
+		}
+
+		//filter out revert logs (https://developer.conflux-chain.org/docs/conflux-doc/docs/pubsub)
+		if check := strings.Contains(string(res.Result), "revertTo"); check == true {
+			logger.Debug(string(res.Result))
+			logger.Debug("Conflux revertTo log ignored")
+			return nil, false
+		}
+
+		//convert types
+		evt_eth, err := Cfx2EthResponse(evt)
+		if err != nil {
+			logger.Error(string(res.Result))
+			logger.Error("failed to convert to ETH log type: ", err)
+			return nil, false
+		}
+
+		request, err := logEventToOracleRequest(evt_eth)
+		if err != nil {
+			logger.Error("failed to get oracle request:", err)
+			return nil, false
+		}
+
+		event, err := json.Marshal(request)
+		if err != nil {
+			logger.Error("marshal:", err)
+			return nil, false
+		}
+
+		events = append(events, event)
+
 	case subscriber.RPC:
 		var rawEvents []cfxLogResponse
 		if err := json.Unmarshal(msg.Result, &rawEvents); err != nil {

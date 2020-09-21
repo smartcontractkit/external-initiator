@@ -9,12 +9,24 @@ import (
 )
 
 func handleCfxRequest(conn string, msg JsonrpcMessage) ([]JsonrpcMessage, error) {
-	switch msg.Method {
-	case "cfx_getLogs":
-		return handleCfxGetLogs(msg)
+	if conn == "ws" {
+		switch msg.Method {
+		case "cfx_subscribe":
+			return handleCfxSubscribe(msg)
+		}
+	} else {
+		switch msg.Method {
+		case "cfx_getLogs":
+			return handleCfxGetLogs(msg)
+		}
 	}
 
 	return nil, fmt.Errorf("unexpected method: %v", msg.Method)
+}
+
+type cfxSubscribeResponse struct {
+	Subscription string          `json:"subscription"`
+	Result       json.RawMessage `json:"result"`
 }
 
 func handleCfxMapStringInterface(in map[string]json.RawMessage) (cfxLogResponse, error) {
@@ -44,6 +56,60 @@ func handleCfxMapStringInterface(in map[string]json.RawMessage) (cfxLogResponse,
 		Address:          addresses[0].String(),
 		Data:             "0x0000000000000000000000007d0965224facd7156df0c9a1adf3a94118026eeb354f99e2ac319d0d1ff8975c41c72bf347fb69a4874e2641bd19c32e09eb88b80000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000007d0965224facd7156df0c9a1adf3a94118026eeb92cdaaf300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005ef1cd6b00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000005663676574783f68747470733a2f2f6d696e2d6170692e63727970746f636f6d706172652e636f6d2f646174612f70726963653f6673796d3d455448267473796d733d5553446470617468635553446574696d65731864",
 		Topics:           topicsStr,
+	}, nil
+}
+
+func handleCfxSubscribe(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
+	var contents []json.RawMessage
+	err := json.Unmarshal(msg.Params, &contents)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(contents) != 2 {
+		return nil, fmt.Errorf("possibly incorrect length of params array: %v", len(contents))
+	}
+
+	var filter map[string]json.RawMessage
+	err = json.Unmarshal(contents[1], &filter)
+	if err != nil {
+		return nil, err
+	}
+
+	log, err := handleCfxMapStringInterface(filter)
+	if err != nil {
+		return nil, err
+	}
+
+	logBz, err := json.Marshal(log)
+	if err != nil {
+		return nil, err
+	}
+
+	subResp := cfxSubscribeResponse{
+		Subscription: "test",
+		Result:       logBz,
+	}
+
+	subBz, err := json.Marshal(subResp)
+	if err != nil {
+		return nil, err
+	}
+
+	return []JsonrpcMessage{
+		// Send a confirmation message first
+		// This is currently ignored, so don't fill
+		{
+			Version: "2.0",
+			ID:      msg.ID,
+			Method:  "cfx_subscribe",
+		},
+		{
+			Version: "2.0",
+			ID:      msg.ID,
+			Method:  "cfx_subscribe",
+			Params:  subBz,
+		},
 	}, nil
 }
 

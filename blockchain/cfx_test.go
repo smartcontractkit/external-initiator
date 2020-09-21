@@ -19,6 +19,18 @@ func TestCreateCfxFilterMessage(t *testing.T) {
 		want []byte
 	}{
 		{
+			"empty",
+			store.CfxSubscription{},
+			subscriber.WS,
+			[]byte(`{"jsonrpc":"2.0","id":1,"method":"cfx_subscribe","params":["logs",{"address":null,"fromEpoch":"0x0","toEpoch":"latest_state","topics":[["0xd8d7ecc4800d25fa53ce0372f13a416d98907a7ef3d8d3bdd79cf4fe75529c65"],["0x0000000000000000000000000000000000000000000000000000000000000000"]]}]}`),
+		},
+		{
+			"address only",
+			store.CfxSubscription{Addresses: []string{"0x049Bd8C3adC3fE7d3Fc2a44541d955A537c2A484"}},
+			subscriber.WS,
+			[]byte(`{"jsonrpc":"2.0","id":1,"method":"cfx_subscribe","params":["logs",{"address":["0x049bd8c3adc3fe7d3fc2a44541d955a537c2a484"],"fromEpoch":"0x0","toEpoch":"latest_state","topics":[["0xd8d7ecc4800d25fa53ce0372f13a416d98907a7ef3d8d3bdd79cf4fe75529c65"],["0x0000000000000000000000000000000000000000000000000000000000000000"]]}]}`),
+		},
+		{
 			"empty RPC",
 			store.CfxSubscription{},
 			subscriber.RPC,
@@ -59,6 +71,13 @@ func TestCfxManager_GetTestJson(t *testing.T) {
 			},
 			[]byte(`{"jsonrpc":"2.0","id":1,"method":"cfx_epochNumber"}`),
 		},
+		{
+			"returns empty when using WS",
+			fields{
+				p: subscriber.WS,
+			},
+			nil,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -88,6 +107,13 @@ func TestCfxManager_ParseTestResponse(t *testing.T) {
 		wantErr           bool
 		expectedFromEpoch string
 	}{
+		{
+			"does nothing for WS",
+			fields{fq: &cfxFilterQuery{}, p: subscriber.WS},
+			args{},
+			false,
+			"",
+		},
 		{
 			"parses RPC responses",
 			fields{fq: &cfxFilterQuery{}, p: subscriber.RPC},
@@ -142,6 +168,38 @@ func TestCfxManager_ParseResponse(t *testing.T) {
 		want1             bool
 		expectedFromEpoch string
 	}{
+		{
+			"fails parsing invalid payload",
+			fields{fq: &cfxFilterQuery{}, p: subscriber.WS},
+			args{data: []byte(`invalid`)},
+			nil,
+			false,
+			"",
+		},
+		{
+			"fails parsing invalid WS subscribe payload",
+			fields{fq: &cfxFilterQuery{}, p: subscriber.WS},
+			args{data: []byte(`{"jsonrpc":"2.0","id":1,"params":[]}`)},
+			nil,
+			false,
+			"",
+		},
+		{
+			"fails parsing invalid WS subscribe",
+			fields{fq: &cfxFilterQuery{}, p: subscriber.WS},
+			args{data: []byte(`{"jsonrpc":"2.0","id":1,"params":{"subscription":"test","result":[]}}`)},
+			nil,
+			false,
+			"",
+		},
+		{
+			"successfully parses WS Oracle request",
+			fields{fq: &cfxFilterQuery{}, p: subscriber.WS},
+			args{data: []byte(`{"jsonrpc":"2.0","id":1,"params":{"subscription":"test","result":{"data":"0x0000000000000000000000007d0965224facd7156df0c9a1adf3a94118026eeb354f99e2ac319d0d1ff8975c41c72bf347fb69a4874e2641bd19c32e09eb88b80000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000007d0965224facd7156df0c9a1adf3a94118026eeb92cdaaf300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005ef1cd6b00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000005663676574783f68747470733a2f2f6d696e2d6170692e63727970746f636f6d706172652e636f6d2f646174612f70726963653f6673796d3d455448267473796d733d5553446470617468635553446574696d65731864","address":"0xFadfF79bA04F169386646a43869B66B39c7E0858","logIndex":"0x0","epochNumber":"0x2","blockHash":"0xabc0000000000000000000000000000000000000000000000000000000000000","transactionHash":"0xabc0000000000000000000000000000000000000000000000000000000000000","transactionIndex":"0x0","topics":["0xd8d7ecc4800d25fa53ce0372f13a416d98907a7ef3d8d3bdd79cf4fe75529c65","0x0000000000000000000000000000000000000000000000000000000000000000"]}}}`)},
+			[]subscriber.Event{subscriber.Event(`{"address":"0xFadfF79bA04F169386646a43869B66B39c7E0858","dataPrefix":"0x354f99e2ac319d0d1ff8975c41c72bf347fb69a4874e2641bd19c32e09eb88b80000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000007d0965224facd7156df0c9a1adf3a94118026eeb92cdaaf300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005ef1cd6b","functionSelector":"0x4ab0d190","get":"https://min-api.cryptocompare.com/data/price?fsym=ETH\u0026tsyms=USD","path":"USD","times":100}`)},
+			true,
+			"",
+		},
 		{
 			"fails parsing invalid RPC payload",
 			fields{fq: &cfxFilterQuery{}, p: subscriber.RPC},
