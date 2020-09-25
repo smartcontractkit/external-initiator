@@ -162,7 +162,7 @@ type EventRecords struct {
 }
 
 type substrateSubscribeResponse struct {
-	Subscription int             `json:"subscription"`
+	Subscription string          `json:"subscription"`
 	Result       json.RawMessage `json:"result"`
 }
 
