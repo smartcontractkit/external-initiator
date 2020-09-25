@@ -31,3 +31,7 @@ require (
 	gopkg.in/gormigrate.v1 v1.6.0
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
+
+replace launchpad.net/gocheck => github.com/go-check/check v0.0.0-20180628173108-788fd7840127
+
+replace github.com/centrifuge/go-substrate-rpc-client => github.com/LaurentTrk/go-substrate-rpc-client v2.0.0-alpha.6.4+incompatible
