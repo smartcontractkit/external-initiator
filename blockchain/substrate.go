@@ -202,12 +202,16 @@ func (sm *substrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool
 	var subEvents []subscriber.Event
 	for _, change := range changes.Changes {
 		if !types.Eq(change.StorageKey, sm.key) || !change.HasStorageData {
+			logger.Error("Does not match storage")
 			continue
 		}
 
 		events := EventRecords{}
 		err = types.EventRecordsRaw(change.StorageData).DecodeEventRecords(sm.meta, &events)
 		if err != nil {
+			logger.Info("change.StorageData:", change.StorageData)
+			logger.Info("sm.key:", sm.key)
+			logger.Info("types.EventRecordsRaw:", types.EventRecordsRaw(change.StorageData))
 			logger.Error("Failed parsing EventRecords:", err)
 			continue
 		}
@@ -217,6 +221,7 @@ func (sm *substrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool
 			jobID := fmt.Sprint(sm.filter.JobID)
 			specIndex := fmt.Sprint(request.SpecIndex)
 			if !matchesJobID(jobID, specIndex) {
+				logger.Error("Does not match job")
 				continue
 			}
 
@@ -230,6 +235,7 @@ func (sm *substrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool
 				}
 			}
 			if !found {
+				logger.Error("Does not match OracleAccountID")
 				continue
 			}
 
