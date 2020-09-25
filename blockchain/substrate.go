@@ -135,6 +135,16 @@ type EventChainlinkOracleRequest struct {
 	Topics             []types.Hash
 }
 
+type EventChainlinkOracleAnswer struct {
+	Phase              types.Phase
+	OracleAccountID    types.AccountID
+	RequestIdentifier  types.U64
+	RequesterAccountID types.AccountID
+	Bytes              types.Text
+	Payment            types.U32
+	Topics             []types.Hash
+}
+
 type EventChainlinkOperatorRegistered struct {
 	Phase     types.Phase
 	AccountID types.AccountID
@@ -156,6 +166,7 @@ type EventChainlinkKillRequest struct {
 type EventRecords struct {
 	types.EventRecords
 	Chainlink_OracleRequest        []EventChainlinkOracleRequest        //nolint:stylecheck,golint
+	Chainlink_OracleAnswer         []EventChainlinkOracleAnswer         //nolint:stylecheck,golint
 	Chainlink_OperatorRegistered   []EventChainlinkOperatorRegistered   //nolint:stylecheck,golint
 	Chainlink_OperatorUnregistered []EventChainlinkOperatorUnregistered //nolint:stylecheck,golint
 	Chainlink_KillRequest          []EventChainlinkKillRequest          //nolint:stylecheck,golint
