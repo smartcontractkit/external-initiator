@@ -53,14 +53,15 @@ func TestCreateIoTeXSubscriber(t *testing.T) {
 	sub := store.Subscription{
 		Job: "468bba3012fb4e43b5399f0d55f1a18e",
 		Endpoint: store.Endpoint{
-			Url: "example.com",
+			Url: "http://example.com",
 		},
 		Ethereum: store.EthSubscription{Addresses: []string{"0x049Bd8C3adC3fE7d3Fc2a44541d955A537c2A484"}},
 	}
-	s := createIoTeXSubscriber(sub)
+	s, err := createIoTeXSubscriber(sub)
+	require.NoError(t, err)
 	require.NotNil(t, s)
 	require.NotNil(t, s.conn)
-	assert.Equal(t, sub.Endpoint.Url, s.conn.endpoint)
+	assert.Equal(t, sub.Endpoint.Url, "http://"+s.conn.endpoint)
 	require.NotNil(t, s.filter)
 	assert.EqualValues(t, sub.Ethereum.Addresses, s.filter.GetAddress())
 	assert.NotZero(t, len(s.filter.GetTopics()))
@@ -77,7 +78,8 @@ func TestIoTeXSubscriberTest(t *testing.T) {
 		},
 		Ethereum: store.EthSubscription{Addresses: []string{"io1uzfy7aa920thkm7tqdf73sexcljzkhqv55kpyw"}},
 	}
-	sub := createIoTeXSubscriber(s)
+	sub, err := createIoTeXSubscriber(s)
+	require.NoError(t, err)
 
 	serv.EXPECT().
 		GetChainMeta(gomock.Any(), gomock.AssignableToTypeOf(&iotexapi.GetChainMetaRequest{})).
@@ -88,7 +90,7 @@ func TestIoTeXSubscriberTest(t *testing.T) {
 func TestIoTeXLogEventToSubscriberEvents(t *testing.T) {
 	t.Run("zero event", func(t *testing.T) {
 		out, err := iotexLogEventToSubscriberEvents(nil)
-		require.Nil(t, out)
+		require.Empty(t, out)
 		require.Nil(t, err)
 	})
 	t.Run("one event", testIoTeXLogEventToSubscriberEventsOneEvent)
@@ -149,7 +151,9 @@ func TestIoTeXSubscriptionPoll(t *testing.T) {
 		},
 		Ethereum: store.EthSubscription{Addresses: []string{"io1uzfy7aa920thkm7tqdf73sexcljzkhqv55kpyw"}},
 	}
-	sub := createIoTeXSubscriber(s).newSubscription(channel, ctxcancel, clock.New())
+	suber, err := createIoTeXSubscriber(s)
+	require.NoError(t, err)
+	sub := suber.newSubscription(channel, ctxcancel, clock.New())
 
 	// 1st poll, expect to poll 1 block data, return 1 event log
 	serv.EXPECT().
@@ -214,7 +218,7 @@ func TestIoTeXSubscriptionRun(t *testing.T) {
 
 	channel := make(chan subscriber.Event)
 	sub := &iotexSubscription{
-		conn:         &iotexConnection{endpoint: iotexMockServerEndpoint()},
+		conn:         &iotexConnection{endpoint: iotexMockServerHost()},
 		interval:     iotexScanInterval,
 		cancel:       ctxcancel,
 		eventChannel: channel,
@@ -272,12 +276,13 @@ func TestIoTeXSubscriptionUnSubscribe(t *testing.T) {
 	assert.False(t, ok)
 }
 
-func iotexMockServerEndpoint() string { return "localhost:14016" }
+func iotexMockServerEndpoint() string { return "http://" + iotexMockServerHost() }
+func iotexMockServerHost() string     { return "localhost:14016" }
 func newIoTeXMockServer(t *testing.T) (*mock_iotexapi.MockAPIServiceServer, context.CancelFunc) {
 	serv := mock_iotexapi.NewMockAPIServiceServer(gomock.NewController(t))
 	server := grpc.NewServer()
 	iotexapi.RegisterAPIServiceServer(server, serv)
-	listener, err := net.Listen("tcp", iotexMockServerEndpoint())
+	listener, err := net.Listen("tcp", iotexMockServerHost())
 	require.NoError(t, err)
 	go server.Serve(listener)
 	return serv, func() {

@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"strings"
+	"net/url"
 	"sync"
 	"time"
 
@@ -32,9 +32,10 @@ const (
 type iotexConnection struct {
 	sync.RWMutex
 
-	endpoint string
-	api      iotexapi.APIServiceClient
-	grpcConn *grpc.ClientConn
+	endpoint   string
+	secureConn bool
+	api        iotexapi.APIServiceClient
+	grpcConn   *grpc.ClientConn
 }
 
 func (io *iotexConnection) connect() error {
@@ -44,8 +45,8 @@ func (io *iotexConnection) connect() error {
 	if io.grpcConn != nil && io.grpcConn.GetState() != connectivity.Shutdown {
 		return nil
 	}
-	opts := []grpc.DialOption{}
-	if strings.HasSuffix(io.endpoint, "443") {
+	var opts []grpc.DialOption
+	if io.secureConn {
 		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
 	} else {
 		opts = append(opts, grpc.WithInsecure())
@@ -59,13 +60,19 @@ func (io *iotexConnection) connect() error {
 	return err
 }
 
-func createIoTeXSubscriber(sub store.Subscription) *iotexSubscriber {
+func createIoTeXSubscriber(sub store.Subscription) (*iotexSubscriber, error) {
+	u, err := url.Parse(sub.Endpoint.Url)
+	if err != nil {
+		return nil, err
+	}
+
 	return &iotexSubscriber{
 		conn: &iotexConnection{
-			endpoint: sub.Endpoint.Url,
+			endpoint:   u.Host,
+			secureConn: u.Scheme == "https",
 		},
 		filter: createIoTeXLogFilter(sub.Job, sub.Ethereum.Addresses),
-	}
+	}, nil
 }
 
 type iotexSubscriber struct {
@@ -181,7 +188,7 @@ func createIoTeXLogFilter(jobid string, addresses []string) *iotexapi.LogsFilter
 	return &iotexapi.LogsFilter{
 		Address: addresses,
 		Topics: []*iotexapi.Topics{
-			&iotexapi.Topics{
+			{
 				Topic: [][]byte{
 					models.RunLogTopic20190207withoutIndexes[:],
 					topic[:],
@@ -192,9 +199,6 @@ func createIoTeXLogFilter(jobid string, addresses []string) *iotexapi.LogsFilter
 }
 
 func iotexLogEventToSubscriberEvents(logs []*iotextypes.Log) ([]subscriber.Event, error) {
-	if len(logs) == 0 {
-		return nil, nil
-	}
 	events := make([]subscriber.Event, 0, len(logs))
 	for _, log := range logs {
 		cborData, dataPrefixBytes, err := logDataParse(log.GetData())
