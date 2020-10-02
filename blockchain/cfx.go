@@ -55,8 +55,8 @@ func createCfxManager(p subscriber.Type, config store.Subscription) cfxManager {
 // cfxManager is using RPC:
 // Sends a "cfx_getLogs" request.
 func (e cfxManager) GetTriggerJson() []byte {
-	if e.p == subscriber.RPC && e.fq.fromEpoch == "" {
-		e.fq.fromEpoch = "latest_state"
+	if e.p == subscriber.RPC && e.fq.FromEpoch == "" {
+		e.fq.FromEpoch = "latest_state"
 	}
 
 	filter, err := e.fq.toMapInterface()
@@ -132,52 +132,41 @@ func (e cfxManager) ParseTestResponse(data []byte) error {
 		if err := json.Unmarshal(msg.Result, &res); err != nil {
 			return err
 		}
-		e.fq.fromEpoch = res
+		e.fq.FromEpoch = res
 	}
 
 	return nil
 }
 
 type cfxLogResponse struct {
-	LogIndex         string   			`json:"logIndex"`
-	EpochNumber      string   			`json:"epochNumber"`
-	BlockHash        common.Hash 		`json:"blockHash"`
-	TransactionHash  common.Hash 		`json:"transactionHash"`
-	TransactionIndex string   			`json:"transactionIndex"`
+	LogIndex         string         `json:"logIndex"`
+	EpochNumber      string         `json:"epochNumber"`
+	BlockHash        common.Hash    `json:"blockHash"`
+	TransactionHash  common.Hash    `json:"transactionHash"`
+	TransactionIndex string         `json:"transactionIndex"`
 	Address          common.Address `json:"address"`
-	Data             string   			`json:"data"`
-	Topics           []common.Hash 	`json:"topics"`
+	Data             string         `json:"data"`
+	Topics           []common.Hash  `json:"topics"`
 }
 
 //convert cfxLogResponse type to eth.Log type
 func Cfx2EthResponse(cfx cfxLogResponse) (eth.Log, error) {
-	blockNumber, err_block := hexutil.DecodeUint64(cfx.EpochNumber)
-	txIndex, err_tx := hexutil.DecodeUint64(cfx.TransactionIndex)
-	index, err_ind := hexutil.DecodeUint64(cfx.LogIndex)
-	data := common.Hex2Bytes(cfx.Data[2:])
-
-	//conversion error handling
-	// if (err_block != nil || err_tx != nil || err_ind != nil || err_dat != nil) {
-	if (err_block != nil || err_tx != nil || err_ind != nil) {
-			var err_str = ""
-			if err_block != nil {
-				err_str += " blockNumber"
-			}
-
-			if err_tx != nil {
-				err_str += " txIndex"
-			}
-
-			if err_ind != nil {
-				err_str += " index"
-			}
-
-			// if err_dat != nil {
-			// 	err_str += " data"
-			// }
-
-			return eth.Log{}, errors.New(err_str)
+	blockNumber, err := hexutil.DecodeUint64(cfx.EpochNumber)
+	if err != nil {
+		return eth.Log{}, err
 	}
+
+	txIndex, err := hexutil.DecodeUint64(cfx.TransactionIndex)
+	if err != nil {
+		return eth.Log{}, err
+	}
+
+	index, err := hexutil.DecodeUint64(cfx.LogIndex)
+	if err != nil {
+		return eth.Log{}, err
+	}
+
+	data := common.Hex2Bytes(cfx.Data[2:])
 
 	return eth.Log{
 		Address: cfx.Address,
@@ -225,7 +214,6 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 
 		//filter out revert logs (https://developer.conflux-chain.org/docs/conflux-doc/docs/pubsub)
 		if check := strings.Contains(string(res.Result), "revertTo"); check == true {
-			logger.Debug(string(res.Result))
 			logger.Debug("Conflux revertTo log ignored")
 			return nil, false
 		}
@@ -233,7 +221,6 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 		//convert types
 		evt_eth, err := Cfx2EthResponse(evt)
 		if err != nil {
-			logger.Error(string(res.Result))
 			logger.Error("failed to convert to ETH log type: ", err)
 			return nil, false
 		}
@@ -279,7 +266,7 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 			}
 			events = append(events, event)
 
-			// Check if we can update the "fromEpoch" in the query,
+			// Check if we can update the "FromEpoch" in the query,
 			// so we only get new events from blocks we haven't queried yet
 			curBlkn, err := hexutil.DecodeBig(evt.EpochNumber)
 			if err != nil {
@@ -288,15 +275,15 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 			// Increment the block number by 1, since we want events from *after* this block number
 			curBlkn.Add(curBlkn, big.NewInt(1))
 
-			fromBlkn, err := hexutil.DecodeBig(e.fq.fromEpoch)
-			if err != nil && !(e.fq.fromEpoch == "latest_mined" || e.fq.fromEpoch == "") {
+			fromBlkn, err := hexutil.DecodeBig(e.fq.FromEpoch)
+			if err != nil && !(e.fq.FromEpoch == "latest_mined" || e.fq.FromEpoch == "") {
 				continue
 			}
 
-			// If our query "fromEpoch" is "latest_mined", or our current "fromEpoch" is in the past compared to
+			// If our query "FromEpoch" is "latest_mined", or our current "FromEpoch" is in the past compared to
 			// the last event we received, we want to update the query
-			if e.fq.fromEpoch == "latest_mined" || e.fq.fromEpoch == "" || curBlkn.Cmp(fromBlkn) > 0 {
-				e.fq.fromEpoch = hexutil.EncodeBig(curBlkn)
+			if e.fq.FromEpoch == "latest_mined" || e.fq.FromEpoch == "" || curBlkn.Cmp(fromBlkn) > 0 {
+				e.fq.FromEpoch = hexutil.EncodeBig(curBlkn)
 			}
 		}
 	}
@@ -306,8 +293,8 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 
 type cfxFilterQuery struct {
 	BlockHash *common.Hash     // used by cfx_getLogs, return logs only from block with this hash
-	fromEpoch string           // beginning of the queried range, nil means genesis block
-	toEpoch   string           // end of the range, nil means latest block
+	FromEpoch string           // beginning of the queried range, nil means genesis block
+	ToEpoch   string           // end of the range, nil means latest block
 	Addresses []common.Address // restricts matches to events created by specific contracts
 
 	// The Topic list restricts matches to particular event topics. Each event has a list
@@ -331,19 +318,19 @@ func (q cfxFilterQuery) toMapInterface() (interface{}, error) {
 	}
 	if q.BlockHash != nil {
 		arg["blockHash"] = *q.BlockHash
-		if q.fromEpoch != "" || q.toEpoch != "" {
-			return nil, errors.New("cannot specify both BlockHash and fromEpoch/toEpoch")
+		if q.FromEpoch != "" || q.ToEpoch != "" {
+			return nil, errors.New("cannot specify both BlockHash and FromEpoch/ToEpoch")
 		}
 	} else {
-		if q.fromEpoch == "" {
+		if q.FromEpoch == "" {
 			arg["fromEpoch"] = "0x0"
 		} else {
-			arg["fromEpoch"] = q.fromEpoch
+			arg["fromEpoch"] = q.FromEpoch
 		}
-		if q.toEpoch == "" {
+		if q.ToEpoch == "" {
 			arg["toEpoch"] = "latest_state"
 		} else {
-			arg["toEpoch"] = q.toEpoch
+			arg["toEpoch"] = q.ToEpoch
 		}
 	}
 	return arg, nil
