@@ -61,6 +61,26 @@ The configs are stored the same was as with HTTP, and the configs will persist i
 $ ./external-initiator "{\"name\":\"eth-mainnet\",\"type\":\"ethereum\",\"url\":\"ws://localhost:8546/\"}" --chainlink "http://localhost:6688/"
 ```
 
+## Adding to Chainlink
+
+In order to use external initiators in your Chainlink node, first enable the following config in your Chainlink node's environment:
+
+```
+FEATURE_EXTERNAL_INITIATORS=true
+```
+
+This unlocks the ability to run `chainlink initiators` commands. To add an initiator run:
+
+```bash
+chainlink initiators create NAME URL
+```
+
+Where NAME is the name that you can to assign the initiator (ex: chain-init), and URL is the URL of the `/jobs` endpoint of this external-initiator service (ex: http://localhost:8080/jobs).
+
+Once created, the output will provide the authentication necessary to add to the [environment](#environment-variables) of this external-initiator service.
+
+Once the initiator is created, you will be able to add jobs to your Chainlink node with the type of external, and the name in the param with the name that you assigned the initiator.
+
 ## Integration testing
 
 The External Initiator has an integrated mock blockchain client that can be used to test blockchain implementations.
