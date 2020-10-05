@@ -103,47 +103,52 @@ func StringToBytes32(jobid string) string {
 }
 
 func logEventToOracleRequest(log eth.Log) (models.JSON, error) {
-	data := log.Data
+	cborData, dataPrefixBytes, err := logDataParse(log.Data)
+	if err != nil {
+		return models.JSON{}, err
+	}
+	js, err := models.ParseCBOR(cborData)
+	if err != nil {
+		return js, fmt.Errorf("error parsing CBOR: %v", err)
+	}
+	return js.MultiAdd(models.KV{
+		"address":          log.Address.String(),
+		"dataPrefix":       bytesToHex(dataPrefixBytes),
+		"functionSelector": models.OracleFulfillmentFunctionID20190128withoutCast,
+	})
+}
+
+func logDataParse(data eth.UntrustedBytes) (cborData []byte, dataPrefixBytes []byte, rerr error) {
 	idStart := requesterSize
 	expirationEnd := idStart + idSize + paymentSize + callbackAddrSize + callbackFuncSize + expirationSize
 
 	dataLengthStart := expirationEnd + versionSize + dataLocationSize
 	cborStart := dataLengthStart + dataLengthSize
 
-	if len(log.Data) < dataLengthStart+evmWordSize {
-		return models.JSON{}, errors.New("malformed data")
+	if len(data) < dataLengthStart+evmWordSize {
+		return nil, nil, errors.New("malformed data")
 	}
 
 	dataLengthBytes, err := data.SafeByteSlice(dataLengthStart, dataLengthStart+evmWordSize)
 	if err != nil {
-		return models.JSON{}, err
+		return nil, nil, err
 	}
 	dataLength := whisperv6.BytesToUintBigEndian(dataLengthBytes)
 
-	if len(log.Data) < cborStart+int(dataLength) {
-		return models.JSON{}, errors.New("cbor too short")
+	if len(data) < cborStart+int(dataLength) {
+		return nil, nil, errors.New("cbor too short")
 	}
 
-	cborData, err := data.SafeByteSlice(cborStart, cborStart+int(dataLength))
+	cborData, err = data.SafeByteSlice(cborStart, cborStart+int(dataLength))
 	if err != nil {
-		return models.JSON{}, err
+		return nil, nil, err
 	}
 
-	js, err := models.ParseCBOR(cborData)
+	dataPrefixBytes, err = data.SafeByteSlice(idStart, expirationEnd)
 	if err != nil {
-		return js, fmt.Errorf("error parsing CBOR: %v", err)
+		return nil, nil, err
 	}
-
-	dataPrefixBytes, err := data.SafeByteSlice(idStart, expirationEnd)
-	if err != nil {
-		return models.JSON{}, err
-	}
-
-	return js.MultiAdd(models.KV{
-		"address":          log.Address.String(),
-		"dataPrefix":       bytesToHex(dataPrefixBytes),
-		"functionSelector": models.OracleFulfillmentFunctionID20190128withoutCast,
-	})
+	return cborData, dataPrefixBytes, nil
 }
 
 func bytesToHex(data []byte) string {
