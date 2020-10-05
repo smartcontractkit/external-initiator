@@ -156,12 +156,12 @@ func bytesToHex(data []byte) string {
 	return utils.AddHexPrefix(hex.EncodeToString(data))
 }
 
-func unpackResultIntoBool(abi abi.ABI, method string, data []byte) (*bool, error) {
+func abiUnpackBool(abi abi.ABI, method string, data []byte) (*bool, error) {
 	var b bool
 	return &b, abi.Unpack(&b, method, data)
 }
 
-func unpackResultIntoAddresses(abi abi.ABI, method string, data []byte) (*[]common.Address, error) {
+func abiUnpackAddresses(abi abi.ABI, method string, data []byte) (*[]common.Address, error) {
 	var res []common.Address
 	return &res, abi.Unpack(&res, method, data)
 }

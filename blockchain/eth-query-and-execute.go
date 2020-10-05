@@ -30,7 +30,7 @@ type ethQaeSubscriber struct {
 	Address     common.Address
 	ABI         abi.ABI
 	MethodName  string
-	Job         string
+	JobID       string
 	ResponseKey string
 	Connection  subscriber.Type
 }
@@ -61,7 +61,7 @@ func createEthQaeSubscriber(sub store.Subscription) (ethQaeSubscriber, error) {
 		Endpoint:    strings.TrimSuffix(sub.Endpoint.Url, "/"),
 		Address:     common.HexToAddress(sub.EthQae.Address),
 		ABI:         contractAbi,
-		Job:         sub.Job,
+		JobID:       sub.Job,
 		ResponseKey: sub.EthQae.ResponseKey,
 		MethodName:  sub.EthQae.MethodName,
 		Connection:  t,
@@ -75,7 +75,7 @@ type ethQaeSubscription struct {
 	abi      abi.ABI
 	method   string
 	isDone   bool
-	jobid    string
+	jobID    string
 	key      string
 }
 
@@ -83,7 +83,7 @@ func (ethQae ethQaeSubscriber) SubscribeToEvents(channel chan<- subscriber.Event
 	sub := ethQaeSubscription{
 		endpoint: ethQae.Endpoint,
 		events:   channel,
-		jobid:    ethQae.Job,
+		jobID:    ethQae.JobID,
 		address:  ethQae.Address,
 		abi:      ethQae.ABI,
 		method:   ethQae.MethodName,
@@ -92,7 +92,7 @@ func (ethQae ethQaeSubscriber) SubscribeToEvents(channel chan<- subscriber.Event
 
 	switch ethQae.Connection {
 	case subscriber.RPC:
-		go sub.readMessagesWithRetry()
+		go sub.readMessagesUntilDone(monitorRetryInterval)
 	case subscriber.WS:
 		sub.subscribeToNewHeads()
 	}
@@ -219,13 +219,13 @@ func (ethQae ethQaeSubscription) getSubscribePayload() ([]byte, error) {
 	return json.Marshal(msg)
 }
 
-func (ethQae ethQaeSubscription) readMessagesWithRetry() {
+func (ethQae ethQaeSubscription) readMessagesUntilDone(retryInterval time.Duration) {
 	for {
 		if ethQae.isDone {
 			return
 		}
 		ethQae.readMessages()
-		time.Sleep(monitorRetryInterval)
+		time.Sleep(retryInterval)
 	}
 }
 
