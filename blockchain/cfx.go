@@ -10,9 +10,9 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/smartcontractkit/chainlink/core/eth"
 	"github.com/smartcontractkit/chainlink/core/logger"
+	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
-	"github.com/smartcontractkit/chainlink/core/store/models"
 )
 
 const CFX = "conflux"
@@ -169,14 +169,14 @@ func Cfx2EthResponse(cfx cfxLogResponse) (eth.Log, error) {
 	data := common.Hex2Bytes(cfx.Data[2:])
 
 	return eth.Log{
-		Address: cfx.Address,
-		Topics: cfx.Topics,
-		Data: data,
+		Address:     cfx.Address,
+		Topics:      cfx.Topics,
+		Data:        data,
 		BlockNumber: blockNumber,
-		TxHash: cfx.TransactionHash,
-		TxIndex: uint(txIndex),
-		BlockHash: cfx.BlockHash,
-		Index: uint(index),
+		TxHash:      cfx.TransactionHash,
+		TxIndex:     uint(txIndex),
+		BlockHash:   cfx.BlockHash,
+		Index:       uint(index),
 	}, nil
 }
 

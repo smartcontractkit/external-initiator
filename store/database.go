@@ -262,7 +262,7 @@ type Subscription struct {
 	Ontology          OntSubscription
 	BinanceSmartChain BinanceSmartChainSubscription
 	NEAR              NEARSubscription
-	Conflux			 CfxSubscription
+	Conflux           CfxSubscription
 }
 
 type EthSubscription struct {

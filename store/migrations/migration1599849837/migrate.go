@@ -20,16 +20,16 @@ type CfxSubscription struct {
 
 type Subscription struct {
 	gorm.Model
-	ReferenceId  string `gorm:"unique;not null"`
-	Job          string
-	EndpointName string
+	ReferenceId       string `gorm:"unique;not null"`
+	Job               string
+	EndpointName      string
 	Ethereum          migration0.EthSubscription
 	Tezos             migration1576509489.TezosSubscription
 	Substrate         migration1576783801.SubstrateSubscription
 	Ontology          migration1587897988.OntSubscription
 	BinanceSmartChain migration1592829052.BinanceSmartChainSubscription
 	NEAR              migration1594317706.NEARSubscription
-	Conflux 		 			CfxSubscription
+	Conflux           CfxSubscription
 }
 
 func Migrate(tx *gorm.DB) error {
