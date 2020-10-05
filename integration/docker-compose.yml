@@ -71,6 +71,8 @@ services:
       - '{"name":"bsc-mock-ws","type":"binance-smart-chain","url":"ws://mock:8080/ws/binance-smart-chain"}'
       - '{"name":"near-mock-http","type":"near","url":"http://mock:8080/rpc/near","refreshInterval":600}'
       - '{"name":"iotx-mock-grpc","type":"iotex","url":"http://mock:8090","refreshInterval":600}'
+      - '{"name":"cfx-mock-http","type":"conflux","url":"http://mock:8080/rpc/cfx","refreshInterval":600}'
+      - '{"name":"cfx-mock-ws","type":"conflux","url":"ws://mock:8080/ws/cfx"}'
     networks:
       - integration
 volumes:
