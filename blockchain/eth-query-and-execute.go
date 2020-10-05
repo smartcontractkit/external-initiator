@@ -368,21 +368,23 @@ func (ethQae ethQaeSubscription) parseResponse(response JsonrpcMessage) {
 	}
 
 	resultData := hexutils.HexToBytes(result)
-	b, err := unpackResultIntoBool(ethQae.abi, ethQae.method, resultData)
+	var b bool
+	err = ethQae.abi.Unpack(&b, ethQae.method, resultData)
 	if err == nil {
-		if *b == true {
+		if b == true {
 			ethQae.events <- subscriber.Event{}
 		}
 		return
 	}
 
-	res, err := unpackResultIntoAddresses(ethQae.abi, ethQae.method, resultData)
+	var addresses []common.Address
+	err = ethQae.abi.Unpack(&addresses, ethQae.method, resultData)
 	if err != nil {
 		logger.Error(err)
 		return
 	}
 
-	for _, r := range *res {
+	for _, r := range addresses {
 		event := map[string]interface{}{
 			ethQae.key: r,
 		}
