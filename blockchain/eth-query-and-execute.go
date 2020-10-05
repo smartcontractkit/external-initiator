@@ -35,7 +35,7 @@ type ethQaeSubscriber struct {
 	Connection  subscriber.Type
 }
 
-func createEthQaeSubscriber(sub store.Subscription) (ethQaeSubscriber, error) {
+func createEthQaeSubscriber(sub store.Subscription) (*ethQaeSubscriber, error) {
 	abiBytes := sub.EthQae.ABI
 	// Add a check to convert stringified JSON to JSON object
 	var s string
@@ -45,7 +45,7 @@ func createEthQaeSubscriber(sub store.Subscription) (ethQaeSubscriber, error) {
 
 	contractAbi, err := abi.JSON(bytes.NewReader(abiBytes))
 	if err != nil {
-		return ethQaeSubscriber{}, err
+		return nil, err
 	}
 
 	var t subscriber.Type
@@ -54,10 +54,10 @@ func createEthQaeSubscriber(sub store.Subscription) (ethQaeSubscriber, error) {
 	} else if strings.HasPrefix(sub.Endpoint.Url, "http") {
 		t = subscriber.RPC
 	} else {
-		return ethQaeSubscriber{}, fmt.Errorf("unknown endpoint protocol: %+v", sub.Endpoint.Url)
+		return nil, fmt.Errorf("unknown endpoint protocol: %+v", sub.Endpoint.Url)
 	}
 
-	return ethQaeSubscriber{
+	return &ethQaeSubscriber{
 		Endpoint:    strings.TrimSuffix(sub.Endpoint.Url, "/"),
 		Address:     common.HexToAddress(sub.EthQae.Address),
 		ABI:         contractAbi,
