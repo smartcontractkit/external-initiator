@@ -221,7 +221,7 @@ func (sm *substrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool
 			jobID := fmt.Sprint(sm.filter.JobID)
 			specIndex := fmt.Sprint(request.SpecIndex)
 			if !matchesJobID(jobID, specIndex) {
-				logger.Error("Does not match job")
+				logger.Errorf("Does not match job : expected %s, requested %s", jobID, specIndex)
 				continue
 			}
 
@@ -235,7 +235,7 @@ func (sm *substrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool
 				}
 			}
 			if !found {
-				logger.Error("Does not match OracleAccountID")
+				logger.Errorf("Does not match OracleAccountID, requested is %s", request.OracleAccountID)
 				continue
 			}
 
