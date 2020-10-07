@@ -6,7 +6,7 @@ require (
 	github.com/FactomProject/basen v0.0.0-20150613233007-fe3947df716e // indirect
 	github.com/OneOfOne/xxhash v1.2.5 // indirect
 	github.com/avast/retry-go v2.6.0+incompatible
-	github.com/centrifuge/go-substrate-rpc-client v1.1.0
+	github.com/centrifuge/go-substrate-rpc-client v2.0.0+incompatible
 	github.com/cmars/basen v0.0.0-20150613233007-fe3947df716e // indirect
 	github.com/ethereum/go-ethereum v1.9.22
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a
@@ -33,5 +33,3 @@ require (
 )
 
 replace launchpad.net/gocheck => github.com/go-check/check v0.0.0-20180628173108-788fd7840127
-
-replace github.com/centrifuge/go-substrate-rpc-client => github.com/LaurentTrk/go-substrate-rpc-client v2.0.0-alpha.6.4+incompatible
