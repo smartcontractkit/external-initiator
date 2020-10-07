@@ -97,7 +97,7 @@ func (client Client) prepareSubscription(rawSub *Subscription) (*Subscription, e
 	}
 
 	switch endpoint.Type {
-	case "ethereum":
+	case "ethereum", "iotex":
 		if err := client.db.Model(&sub).Related(&sub.Ethereum).Error; err != nil {
 			return nil, err
 		}
@@ -115,6 +115,10 @@ func (client Client) prepareSubscription(rawSub *Subscription) (*Subscription, e
 		}
 	case "binance-smart-chain":
 		if err := client.db.Model(&sub).Related(&sub.BinanceSmartChain).Error; err != nil {
+			return nil, err
+		}
+	case "conflux":
+		if err := client.db.Model(&sub).Related(&sub.Conflux).Error; err != nil {
 			return nil, err
 		}
 	case "near":
@@ -258,6 +262,7 @@ type Subscription struct {
 	Ontology          OntSubscription
 	BinanceSmartChain BinanceSmartChainSubscription
 	NEAR              NEARSubscription
+	Conflux           CfxSubscription
 }
 
 type EthSubscription struct {
@@ -295,4 +300,11 @@ type NEARSubscription struct {
 	gorm.Model
 	SubscriptionId uint
 	AccountIds     SQLStringArray
+}
+
+type CfxSubscription struct {
+	gorm.Model
+	SubscriptionId uint
+	Addresses      SQLStringArray
+	Topics         SQLStringArray
 }

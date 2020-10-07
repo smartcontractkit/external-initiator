@@ -8,9 +8,12 @@ require (
 	github.com/centrifuge/go-substrate-rpc-client v0.0.4-0.20200117100327-4dc63dc6b2e6
 	github.com/cmars/basen v0.0.0-20150613233007-fe3947df716e // indirect
 	github.com/ethereum/go-ethereum v1.9.12
+	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a
 	github.com/gin-gonic/gin v1.6.0
+	github.com/golang/mock v1.4.4
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/websocket v1.4.2
+	github.com/iotexproject/iotex-proto v0.4.3
 	github.com/jinzhu/gorm v1.9.11
 	github.com/magiconair/properties v1.8.1
 	github.com/ontio/ontology-go-sdk v1.11.1
@@ -23,6 +26,7 @@ require (
 	github.com/tidwall/gjson v1.6.0
 	go.uber.org/zap v1.14.1
 	golang.org/x/tools v0.0.0-20200513201620-d5fe73897c97 // indirect
+	google.golang.org/grpc v1.27.0
 	gopkg.in/gormigrate.v1 v1.6.0
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )

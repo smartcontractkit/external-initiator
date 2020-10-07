@@ -24,12 +24,14 @@ var blockchains = []string{
 	ONT,
 	BSC,
 	NEAR,
+	IOTX,
+	CFX,
 }
 
 type Params struct {
 	Endpoint   string   `json:"endpoint"`
 	Addresses  []string `json:"addresses"`
-	Topics     []string `json:"eventTopics"`
+	Topics     []string `json:"topics"`
 	AccountIds []string `json:"accountIds"`
 }
 
@@ -47,6 +49,8 @@ func CreateJsonManager(t subscriber.Type, sub store.Subscription) (subscriber.Js
 		return createSubstrateManager(t, sub)
 	case NEAR:
 		return createNearManager(t, sub)
+	case CFX:
+		return createCfxManager(t, sub), nil
 	}
 
 	return nil, fmt.Errorf("unknown blockchain type %v for JSON manager", sub.Endpoint.Type)
@@ -60,6 +64,8 @@ func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error)
 		return createTezosSubscriber(sub), nil
 	case ONT:
 		return createOntSubscriber(sub), nil
+	case IOTX:
+		return createIoTeXSubscriber(sub)
 	}
 
 	return nil, errors.New("unknown blockchain type for Client subscription")
@@ -68,7 +74,7 @@ func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error)
 func GetConnectionType(endpoint store.Endpoint) (subscriber.Type, error) {
 	switch endpoint.Type {
 	// Add blockchain implementations that encapsulate entire connection here
-	case XTZ, ONT:
+	case XTZ, ONT, IOTX:
 		return subscriber.Client, nil
 	default:
 		u, err := url.Parse(endpoint.Url)
@@ -97,7 +103,7 @@ func ValidBlockchain(name string) bool {
 
 func GetValidations(t string, params Params) []int {
 	switch t {
-	case ETH, HMY:
+	case ETH, HMY, IOTX:
 		return []int{
 			len(params.Addresses) + len(params.Topics),
 		}
@@ -121,6 +127,10 @@ func GetValidations(t string, params Params) []int {
 		return []int{
 			len(params.AccountIds),
 		}
+	case CFX:
+		return []int{
+			len(params.Addresses) + len(params.Topics),
+		}
 	}
 
 	return nil
@@ -128,7 +138,7 @@ func GetValidations(t string, params Params) []int {
 
 func CreateSubscription(sub *store.Subscription, params Params) {
 	switch sub.Endpoint.Type {
-	case ETH, HMY:
+	case ETH, HMY, IOTX:
 		sub.Ethereum = store.EthSubscription{
 			Addresses: params.Addresses,
 			Topics:    params.Topics,
@@ -152,6 +162,11 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 	case NEAR:
 		sub.NEAR = store.NEARSubscription{
 			AccountIds: params.AccountIds,
+		}
+	case CFX:
+		sub.Conflux = store.CfxSubscription{
+			Addresses: params.Addresses,
+			Topics:    params.Topics,
 		}
 	}
 }

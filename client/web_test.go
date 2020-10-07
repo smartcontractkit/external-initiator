@@ -39,7 +39,7 @@ func generateCreateSubscriptionReq(id, endpoint string, addresses, topics, accou
 	params := struct {
 		Endpoint   string   `json:"endpoint"`
 		Addresses  []string `json:"addresses"`
-		Topics     []string `json:"eventTopics"`
+		Topics     []string `json:"topics"`
 		AccountIds []string `json:"accountIds"`
 	}{
 		Endpoint:   endpoint,
