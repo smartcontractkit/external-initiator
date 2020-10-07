@@ -1,7 +1,6 @@
 package blockchain
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -54,8 +53,8 @@ func getMetadata() (*types.Metadata, error) {
 }
 
 type subscribeResponseParams struct {
-	Subscription string `json:"subscription"`
-	Result       string `json:"result"`
+	Subscription string          `json:"subscription"`
+	Result       json.RawMessage `json:"result"`
 }
 
 func TestSubstrateMock_state_subscribeStorage(t *testing.T) {
@@ -91,9 +90,7 @@ func TestSubstrateMock_state_subscribeStorage(t *testing.T) {
 
 			// assert that the response is for an expected StorageKey
 			var changeSet types.StorageChangeSet
-			var result []byte
-			result, err = hex.DecodeString(params.Result)
-			err = json.Unmarshal(result, &changeSet)
+			err = json.Unmarshal(params.Result, &changeSet)
 			require.NoError(t, err)
 			assert.GreaterOrEqual(t, len(changeSet.Changes), 1)
 			assert.True(t, includesKeyInChanges(expectedStorageKey, changeSet.Changes))
