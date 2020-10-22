@@ -115,7 +115,7 @@ func (sm *agoricManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	} else {
 		requestParams = query.Params
 	}
-	requestParams["agoric_oracle_query_id"] = fmt.Sprint(onQueryData.QueryID)
+	requestParams["request_id"] = fmt.Sprint(onQueryData.QueryID)
 	requestParams["payment"] = fmt.Sprint(onQueryData.Fee) +
 		strings.Repeat("0", linkDecimals-linkAgoricDecimals)
 
