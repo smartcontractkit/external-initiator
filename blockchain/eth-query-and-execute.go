@@ -33,6 +33,7 @@ type ethQaeSubscriber struct {
 	JobID       string
 	ResponseKey string
 	Connection  subscriber.Type
+	Interval    time.Duration
 }
 
 func createEthQaeSubscriber(sub store.Subscription) (*ethQaeSubscriber, error) {
@@ -65,6 +66,7 @@ func createEthQaeSubscriber(sub store.Subscription) (*ethQaeSubscriber, error) {
 		ResponseKey: sub.EthQae.ResponseKey,
 		MethodName:  sub.EthQae.MethodName,
 		Connection:  t,
+		Interval:    time.Duration(sub.Endpoint.RefreshInt) * time.Second,
 	}, nil
 }
 
@@ -92,7 +94,7 @@ func (ethQae ethQaeSubscriber) SubscribeToEvents(channel chan<- subscriber.Event
 
 	switch ethQae.Connection {
 	case subscriber.RPC:
-		go sub.readMessagesUntilDone(monitorRetryInterval)
+		go sub.queryUntilDone(ethQae.Interval)
 	case subscriber.WS:
 		sub.subscribeToNewHeads()
 	}
@@ -195,7 +197,10 @@ func (ethQae ethQaeSubscription) getCallPayload() ([]byte, error) {
 		Data: hexutil.Encode(data[:]),
 	}
 
-	callBz, err := json.Marshal(call)
+	var params []interface{}
+	params = append(params, call)
+	params = append(params, "latest")
+	paramsBz, err := json.Marshal(params)
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +209,7 @@ func (ethQae ethQaeSubscription) getCallPayload() ([]byte, error) {
 		Version: "2.0",
 		ID:      json.RawMessage(`1`),
 		Method:  "eth_call",
-		Params:  json.RawMessage(`[` + string(callBz) + `,"latest"]`),
+		Params:  paramsBz, // json.RawMessage(`[` + string(callBz) + `,"latest"]`),
 	}
 	return json.Marshal(msg)
 }
@@ -219,17 +224,17 @@ func (ethQae ethQaeSubscription) getSubscribePayload() ([]byte, error) {
 	return json.Marshal(msg)
 }
 
-func (ethQae ethQaeSubscription) readMessagesUntilDone(retryInterval time.Duration) {
+func (ethQae ethQaeSubscription) queryUntilDone(interval time.Duration) {
 	for {
 		if ethQae.isDone {
 			return
 		}
-		ethQae.readMessages()
-		time.Sleep(retryInterval)
+		ethQae.query()
+		time.Sleep(interval)
 	}
 }
 
-func (ethQae ethQaeSubscription) readMessages() {
+func (ethQae ethQaeSubscription) query() {
 	payload, err := ethQae.getCallPayload()
 	if err != nil {
 		logger.Error("Unable to get ETH QAE payload:", err)
@@ -256,7 +261,15 @@ func (ethQae ethQaeSubscription) readMessages() {
 		return
 	}
 
-	ethQae.parseResponse(response)
+	events, err := ethQae.parseResponse(response)
+	if err != nil {
+		logger.Error("failed parseResponse:", err)
+		return
+	}
+
+	for _, event := range events {
+		ethQae.events <- event
+	}
 }
 
 func sendEthQaePost(endpoint string, payload []byte) (*http.Response, error) {
@@ -270,7 +283,7 @@ func sendEthQaePost(endpoint string, payload []byte) (*http.Response, error) {
 	}
 	if resp.StatusCode != 200 {
 		resp.Body.Close()
-		return nil, fmt.Errorf("Unexpected status code %v from endpoint %s", resp.StatusCode, endpoint)
+		return nil, fmt.Errorf("unexpected status code %v from endpoint %s", resp.StatusCode, endpoint)
 	}
 	return resp, nil
 }
@@ -306,7 +319,14 @@ func (ethQae ethQaeSubscription) messageReader(conn *websocket.Conn, callPayload
 			}
 			requestedEthCall = true
 		} else if requestedEthCall {
-			ethQae.parseResponse(msg)
+			events, err := ethQae.parseResponse(msg)
+			if err != nil {
+				logger.Error("Failed parsing response:", err)
+				continue
+			}
+			for _, event := range events {
+				ethQae.events <- event
+			}
 			requestedEthCall = false
 		}
 	}
@@ -336,8 +356,6 @@ func (ethQae ethQaeSubscription) subscribeToNewHeads() {
 
 	go ethQae.messageReader(c, callPayload)
 
-	logger.Debug(string(subscribePayload))
-
 	err = c.WriteMessage(websocket.TextMessage, subscribePayload)
 	if err != nil {
 		logger.Error(err)
@@ -354,12 +372,11 @@ func (ethQae ethQaeSubscription) Unsubscribe() {
 	ethQae.isDone = true
 }
 
-func (ethQae ethQaeSubscription) parseResponse(response JsonrpcMessage) {
+func (ethQae ethQaeSubscription) parseResponse(response JsonrpcMessage) ([]subscriber.Event, error) {
 	var result string
 	err := json.Unmarshal(response.Result, &result)
 	if err != nil {
-		logger.Error(err)
-		return
+		return nil, err
 	}
 
 	// Remove 0x prefix
@@ -368,21 +385,22 @@ func (ethQae ethQaeSubscription) parseResponse(response JsonrpcMessage) {
 	}
 
 	resultData := hexutils.HexToBytes(result)
-	var b bool
-	err = ethQae.abi.Unpack(&b, ethQae.method, resultData)
+	var boolValue bool
+	err = ethQae.abi.Unpack(&boolValue, ethQae.method, resultData)
 	if err == nil {
-		if b == true {
-			ethQae.events <- subscriber.Event{}
+		if boolValue {
+			return []subscriber.Event{{}}, nil
 		}
-		return
+		return nil, nil
 	}
 
 	var addresses []common.Address
 	err = ethQae.abi.Unpack(&addresses, ethQae.method, resultData)
 	if err != nil {
-		logger.Error(err)
-		return
+		return nil, err
 	}
+
+	var events []subscriber.Event
 
 	for _, r := range addresses {
 		event := map[string]interface{}{
@@ -390,9 +408,10 @@ func (ethQae ethQaeSubscription) parseResponse(response JsonrpcMessage) {
 		}
 		bz, err := json.Marshal(event)
 		if err != nil {
-			logger.Error(err)
-			continue
+			return nil, err
 		}
-		ethQae.events <- bz
+		events = append(events, bz)
 	}
+
+	return events, nil
 }
