@@ -209,10 +209,11 @@ func (sm *substrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool
 		events := EventRecords{}
 		err = types.EventRecordsRaw(change.StorageData).DecodeEventRecords(sm.meta, &events)
 		if err != nil {
-			logger.Info("change.StorageData:", change.StorageData)
-			logger.Info("sm.key:", sm.key)
-			logger.Info("types.EventRecordsRaw:", types.EventRecordsRaw(change.StorageData))
-			logger.Error("Failed parsing EventRecords:", err)
+			logger.Errorw("Failed parsing EventRecords:",
+				"err", err,
+				"change.StorageData", change.StorageData,
+				"sm.key", sm.key,
+				"types.EventRecordsRaw", types.EventRecordsRaw(change.StorageData))
 			continue
 		}
 
