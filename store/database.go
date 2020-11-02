@@ -148,8 +148,8 @@ func (client Client) prepareSubscription(rawSub *Subscription) (*Subscription, e
 		if err := client.db.Model(&sub).Related(&sub.NEAR).Error; err != nil {
 			return nil, err
 		}
-	case "eth-query-and-execute":
-		if err := client.db.Model(&sub).Related(&sub.EthQae).Error; err != nil {
+	case "eth-call":
+		if err := client.db.Model(&sub).Related(&sub.EthCall).Error; err != nil {
 			return nil, err
 		}
 	}
@@ -290,7 +290,7 @@ type Subscription struct {
 	BinanceSmartChain BinanceSmartChainSubscription
 	NEAR              NEARSubscription
 	Conflux           CfxSubscription
-	EthQae            EthQaeSubscription
+	EthCall           EthCallSubscription
 }
 
 type EthSubscription struct {
@@ -337,7 +337,7 @@ type CfxSubscription struct {
 	Topics         SQLStringArray
 }
 
-type EthQaeSubscription struct {
+type EthCallSubscription struct {
 	gorm.Model
 	SubscriptionId uint
 	Address        string

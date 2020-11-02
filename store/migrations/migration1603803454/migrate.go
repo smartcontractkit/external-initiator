@@ -10,7 +10,7 @@ import (
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1592829052"
 )
 
-type EthQaeSubscription struct {
+type EthCallSubscription struct {
 	gorm.Model
 	SubscriptionId uint `gorm:"index"`
 	Address        string
@@ -29,7 +29,7 @@ type Subscription struct {
 	Substrate         migration1576783801.SubstrateSubscription
 	Ontology          migration1587897988.OntSubscription
 	BinanceSmartChain migration1592829052.BinanceSmartChainSubscription
-	EthQae            EthQaeSubscription
+	EthQae            EthCallSubscription
 }
 
 func Migrate(tx *gorm.DB) error {
@@ -38,7 +38,7 @@ func Migrate(tx *gorm.DB) error {
 		return errors.Wrap(err, "failed to auto migrate Subscription")
 	}
 
-	err = tx.AutoMigrate(&EthQaeSubscription{}).AddForeignKey("subscription_id", "subscriptions(id)", "CASCADE", "CASCADE").Error
+	err = tx.AutoMigrate(&EthCallSubscription{}).AddForeignKey("subscription_id", "subscriptions(id)", "CASCADE", "CASCADE").Error
 	if err != nil {
 		return errors.Wrap(err, "failed to auto migrate EthQaeSubscription")
 	}

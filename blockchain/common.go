@@ -26,7 +26,7 @@ var blockchains = []string{
 	NEAR,
 	IOTX,
 	CFX,
-	ETH_QAE,
+	ETH_CALL,
 }
 
 type Params struct {
@@ -71,8 +71,8 @@ func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error)
 		return createOntSubscriber(sub), nil
 	case IOTX:
 		return createIoTeXSubscriber(sub)
-	case ETH_QAE:
-		return createEthQaeSubscriber(sub)
+	case ETH_CALL:
+		return createEthCallSubscriber(sub)
 	}
 
 	return nil, errors.New("unknown blockchain type for Client subscription")
@@ -81,7 +81,7 @@ func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error)
 func GetConnectionType(endpoint store.Endpoint) (subscriber.Type, error) {
 	switch endpoint.Type {
 	// Add blockchain implementations that encapsulate entire connection here
-	case XTZ, ONT, IOTX, ETH_QAE:
+	case XTZ, ONT, IOTX, ETH_CALL:
 		return subscriber.Client, nil
 	default:
 		u, err := url.Parse(endpoint.Url)
@@ -138,7 +138,7 @@ func GetValidations(t string, params Params) []int {
 		return []int{
 			len(params.Addresses) + len(params.Topics),
 		}
-	case ETH_QAE:
+	case ETH_CALL:
 		return []int{
 			len(params.Address),
 			len(params.ABI),
@@ -181,12 +181,12 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 			Addresses: params.Addresses,
 			Topics:    params.Topics,
 		}
-	case ETH_QAE:
+	case ETH_CALL:
 		key := params.ResponseKey
 		if key == "" {
 			key = defaultResponseKey
 		}
-		sub.EthQae = store.EthQaeSubscription{
+		sub.EthCall = store.EthCallSubscription{
 			Address:     params.Address,
 			ABI:         store.SQLBytes(params.ABI),
 			ResponseKey: key,
