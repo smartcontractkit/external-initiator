@@ -79,16 +79,16 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
-func Test_ethQaeSubscriber_GetTestJson(t *testing.T) {
-	ethQae := ethQaeSubscriber{}
-	got := ethQae.GetTestJson()
+func Test_ethCallSubscriber_GetTestJson(t *testing.T) {
+	ethCall := ethCallSubscriber{}
+	got := ethCall.GetTestJson()
 	want := []byte(`{"jsonrpc":"2.0","id":1,"method":"eth_blockNumber"}`)
 	if !bytes.Equal(got, want) {
 		t.Errorf("GetTestJson() got = %s, want %s", got, want)
 	}
 }
 
-func Test_ethQaeSubscriber_ParseTestResponse(t *testing.T) {
+func Test_ethCallSubscriber_ParseTestResponse(t *testing.T) {
 	tests := []struct {
 		name    string
 		resp    []byte
@@ -107,15 +107,15 @@ func Test_ethQaeSubscriber_ParseTestResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ethQae := ethQaeSubscriber{}
-			if err := ethQae.ParseTestResponse(tt.resp); (err != nil) != tt.wantErr {
+			ethCall := ethCallSubscriber{}
+			if err := ethCall.ParseTestResponse(tt.resp); (err != nil) != tt.wantErr {
 				t.Errorf("ParseTestResponse() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-func Test_ethQaeSubscription_getCallPayload(t *testing.T) {
+func Test_ethCallSubscription_getCallPayload(t *testing.T) {
 	address := common.HexToAddress("0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE")
 	emptyFuncSelect, err := testAbi.Pack("empty")
 	require.NoError(t, err)
@@ -168,12 +168,12 @@ func Test_ethQaeSubscription_getCallPayload(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ethQae := ethQaeSubscription{
+			ethCall := ethCallSubscription{
 				address: tt.fields.address,
 				abi:     tt.fields.abi,
 				method:  tt.fields.method,
 			}
-			got, err := ethQae.getCallPayload()
+			got, err := ethCall.getCallPayload()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getCallPayload() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -185,7 +185,7 @@ func Test_ethQaeSubscription_getCallPayload(t *testing.T) {
 	}
 }
 
-func Test_ethQaeSubscription_getSubscribePayload(t *testing.T) {
+func Test_ethCallSubscription_getSubscribePayload(t *testing.T) {
 	tests := []struct {
 		name    string
 		want    []byte
@@ -199,8 +199,8 @@ func Test_ethQaeSubscription_getSubscribePayload(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ethQae := ethQaeSubscription{}
-			got, err := ethQae.getSubscribePayload()
+			ethCall := ethCallSubscription{}
+			got, err := ethCall.getSubscribePayload()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getSubscribePayload() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -212,7 +212,7 @@ func Test_ethQaeSubscription_getSubscribePayload(t *testing.T) {
 	}
 }
 
-func Test_ethQaeSubscription_parseResponse(t *testing.T) {
+func Test_ethCallSubscription_parseResponse(t *testing.T) {
 	type fields struct {
 		abi    abi.ABI
 		method string
@@ -302,12 +302,12 @@ func Test_ethQaeSubscription_parseResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ethQae := ethQaeSubscription{
+			ethCall := ethCallSubscription{
 				abi:    tt.fields.abi,
 				method: tt.fields.method,
 				key:    defaultResponseKey,
 			}
-			got, err := ethQae.parseResponse(tt.response)
+			got, err := ethCall.parseResponse(tt.response)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("parseResponse() error = %v, wantErr %v", err, tt.wantErr)
 				return

@@ -21,11 +21,11 @@ import (
 )
 
 const (
-	ETH_QAE            = "eth-query-and-execute"
+	ETH_CALL           = "eth-call"
 	defaultResponseKey = "result"
 )
 
-type ethQaeSubscriber struct {
+type ethCallSubscriber struct {
 	Endpoint    string
 	Address     common.Address
 	ABI         abi.ABI
@@ -36,8 +36,8 @@ type ethQaeSubscriber struct {
 	Interval    time.Duration
 }
 
-func createEthQaeSubscriber(sub store.Subscription) (*ethQaeSubscriber, error) {
-	abiBytes := sub.EthQae.ABI
+func createEthCallSubscriber(sub store.Subscription) (*ethCallSubscriber, error) {
+	abiBytes := sub.EthCall.ABI
 	// Add a check to convert stringified JSON to JSON object
 	var s string
 	if json.Unmarshal(abiBytes, &s) == nil {
@@ -58,19 +58,19 @@ func createEthQaeSubscriber(sub store.Subscription) (*ethQaeSubscriber, error) {
 		return nil, fmt.Errorf("unknown endpoint protocol: %+v", sub.Endpoint.Url)
 	}
 
-	return &ethQaeSubscriber{
+	return &ethCallSubscriber{
 		Endpoint:    strings.TrimSuffix(sub.Endpoint.Url, "/"),
-		Address:     common.HexToAddress(sub.EthQae.Address),
+		Address:     common.HexToAddress(sub.EthCall.Address),
 		ABI:         contractAbi,
 		JobID:       sub.Job,
-		ResponseKey: sub.EthQae.ResponseKey,
-		MethodName:  sub.EthQae.MethodName,
+		ResponseKey: sub.EthCall.ResponseKey,
+		MethodName:  sub.EthCall.MethodName,
 		Connection:  t,
 		Interval:    time.Duration(sub.Endpoint.RefreshInt) * time.Second,
 	}, nil
 }
 
-type ethQaeSubscription struct {
+type ethCallSubscription struct {
 	endpoint string
 	events   chan<- subscriber.Event
 	address  common.Address
@@ -81,20 +81,20 @@ type ethQaeSubscription struct {
 	key      string
 }
 
-func (ethQae ethQaeSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ ...interface{}) (subscriber.ISubscription, error) {
-	sub := ethQaeSubscription{
-		endpoint: ethQae.Endpoint,
+func (ethCall ethCallSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ ...interface{}) (subscriber.ISubscription, error) {
+	sub := ethCallSubscription{
+		endpoint: ethCall.Endpoint,
 		events:   channel,
-		jobID:    ethQae.JobID,
-		address:  ethQae.Address,
-		abi:      ethQae.ABI,
-		method:   ethQae.MethodName,
-		key:      ethQae.ResponseKey,
+		jobID:    ethCall.JobID,
+		address:  ethCall.Address,
+		abi:      ethCall.ABI,
+		method:   ethCall.MethodName,
+		key:      ethCall.ResponseKey,
 	}
 
-	switch ethQae.Connection {
+	switch ethCall.Connection {
 	case subscriber.RPC:
-		go sub.queryUntilDone(ethQae.Interval)
+		go sub.queryUntilDone(ethCall.Interval)
 	case subscriber.WS:
 		sub.subscribeToNewHeads()
 	}
@@ -102,18 +102,18 @@ func (ethQae ethQaeSubscriber) SubscribeToEvents(channel chan<- subscriber.Event
 	return sub, nil
 }
 
-func (ethQae ethQaeSubscriber) Test() error {
-	switch ethQae.Connection {
+func (ethCall ethCallSubscriber) Test() error {
+	switch ethCall.Connection {
 	case subscriber.RPC:
-		return ethQae.TestRPC()
+		return ethCall.TestRPC()
 	case subscriber.WS:
-		return ethQae.TestWS()
+		return ethCall.TestWS()
 	}
 	return errors.New("unknown connection type")
 }
 
-func (ethQae ethQaeSubscriber) TestRPC() error {
-	resp, err := sendEthQaePost(ethQae.Endpoint, ethQae.GetTestJson())
+func (ethCall ethCallSubscriber) TestRPC() error {
+	resp, err := sendEthCallPost(ethCall.Endpoint, ethCall.GetTestJson())
 	if err != nil {
 		return err
 	}
@@ -121,8 +121,8 @@ func (ethQae ethQaeSubscriber) TestRPC() error {
 	return nil
 }
 
-func (ethQae ethQaeSubscriber) TestWS() error {
-	c, _, err := websocket.DefaultDialer.Dial(ethQae.Endpoint, nil)
+func (ethCall ethCallSubscriber) TestWS() error {
+	c, _, err := websocket.DefaultDialer.Dial(ethCall.Endpoint, nil)
 	if err != nil {
 		return err
 	}
@@ -139,7 +139,7 @@ func (ethQae ethQaeSubscriber) TestWS() error {
 		resp <- body
 	}()
 
-	err = c.WriteMessage(websocket.BinaryMessage, ethQae.GetTestJson())
+	err = c.WriteMessage(websocket.BinaryMessage, ethCall.GetTestJson())
 	if err != nil {
 		return err
 	}
@@ -155,11 +155,11 @@ func (ethQae ethQaeSubscriber) TestWS() error {
 		if !ok {
 			return errors.New("failed reading test response from WS endpoint")
 		}
-		return ethQae.ParseTestResponse(body)
+		return ethCall.ParseTestResponse(body)
 	}
 }
 
-func (ethQae ethQaeSubscriber) GetTestJson() []byte {
+func (ethCall ethCallSubscriber) GetTestJson() []byte {
 	msg := JsonrpcMessage{
 		Version: "2.0",
 		ID:      json.RawMessage(`1`),
@@ -169,7 +169,7 @@ func (ethQae ethQaeSubscriber) GetTestJson() []byte {
 	return payload
 }
 
-func (ethQae ethQaeSubscriber) ParseTestResponse(resp []byte) error {
+func (ethCall ethCallSubscriber) ParseTestResponse(resp []byte) error {
 	if len(resp) == 0 {
 		return errors.New("unexpected empty response")
 	}
@@ -177,7 +177,7 @@ func (ethQae ethQaeSubscriber) ParseTestResponse(resp []byte) error {
 	return nil
 }
 
-type ethCall struct {
+type ethCallMessage struct {
 	From     string `json:"from,omitempty"`
 	To       string `json:"to"`
 	Gas      string `json:"gas,omitempty"`
@@ -186,14 +186,14 @@ type ethCall struct {
 	Data     string `json:"data,omitempty"`
 }
 
-func (ethQae ethQaeSubscription) getCallPayload() ([]byte, error) {
-	data, err := ethQae.abi.Pack(ethQae.method)
+func (ethCall ethCallSubscription) getCallPayload() ([]byte, error) {
+	data, err := ethCall.abi.Pack(ethCall.method)
 	if err != nil {
 		return nil, err
 	}
 
-	call := ethCall{
-		To:   ethQae.address.Hex(),
+	call := ethCallMessage{
+		To:   ethCall.address.Hex(),
 		Data: hexutil.Encode(data[:]),
 	}
 
@@ -214,7 +214,7 @@ func (ethQae ethQaeSubscription) getCallPayload() ([]byte, error) {
 	return json.Marshal(msg)
 }
 
-func (ethQae ethQaeSubscription) getSubscribePayload() ([]byte, error) {
+func (ethCall ethCallSubscription) getSubscribePayload() ([]byte, error) {
 	msg := JsonrpcMessage{
 		Version: "2.0",
 		ID:      json.RawMessage(`2`),
@@ -224,24 +224,24 @@ func (ethQae ethQaeSubscription) getSubscribePayload() ([]byte, error) {
 	return json.Marshal(msg)
 }
 
-func (ethQae ethQaeSubscription) queryUntilDone(interval time.Duration) {
+func (ethCall ethCallSubscription) queryUntilDone(interval time.Duration) {
 	for {
-		if ethQae.isDone {
+		if ethCall.isDone {
 			return
 		}
-		ethQae.query()
+		ethCall.query()
 		time.Sleep(interval)
 	}
 }
 
-func (ethQae ethQaeSubscription) query() {
-	payload, err := ethQae.getCallPayload()
+func (ethCall ethCallSubscription) query() {
+	payload, err := ethCall.getCallPayload()
 	if err != nil {
 		logger.Error("Unable to get ETH QAE payload:", err)
 		return
 	}
 
-	resp, err := sendEthQaePost(ethQae.endpoint, payload)
+	resp, err := sendEthCallPost(ethCall.endpoint, payload)
 	if err != nil {
 		logger.Error(err)
 		return
@@ -261,18 +261,18 @@ func (ethQae ethQaeSubscription) query() {
 		return
 	}
 
-	events, err := ethQae.parseResponse(response)
+	events, err := ethCall.parseResponse(response)
 	if err != nil {
 		logger.Error("failed parseResponse:", err)
 		return
 	}
 
 	for _, event := range events {
-		ethQae.events <- event
+		ethCall.events <- event
 	}
 }
 
-func sendEthQaePost(endpoint string, payload []byte) (*http.Response, error) {
+func sendEthCallPost(endpoint string, payload []byte) (*http.Response, error) {
 	resp, err := http.Post(endpoint, "application/json", bytes.NewReader(payload))
 	if err != nil {
 		return nil, err
@@ -288,9 +288,9 @@ func sendEthQaePost(endpoint string, payload []byte) (*http.Response, error) {
 	return resp, nil
 }
 
-func (ethQae ethQaeSubscription) messageReader(conn *websocket.Conn, callPayload []byte) {
+func (ethCall ethCallSubscription) messageReader(conn *websocket.Conn, callPayload []byte) {
 	defer func() {
-		ethQae.isDone = true
+		ethCall.isDone = true
 		_ = conn.Close()
 		logger.Debug("closing WS subscription")
 	}()
@@ -319,60 +319,60 @@ func (ethQae ethQaeSubscription) messageReader(conn *websocket.Conn, callPayload
 			}
 			requestedEthCall = true
 		} else if requestedEthCall {
-			events, err := ethQae.parseResponse(msg)
+			events, err := ethCall.parseResponse(msg)
 			if err != nil {
 				logger.Error("Failed parsing response:", err)
 				continue
 			}
 			for _, event := range events {
-				ethQae.events <- event
+				ethCall.events <- event
 			}
 			requestedEthCall = false
 		}
 	}
 }
 
-func (ethQae ethQaeSubscription) subscribeToNewHeads() {
-	logger.Infof("Connecting to WS endpoint: %s", ethQae.endpoint)
+func (ethCall ethCallSubscription) subscribeToNewHeads() {
+	logger.Infof("Connecting to WS endpoint: %s", ethCall.endpoint)
 
-	callPayload, err := ethQae.getCallPayload()
+	callPayload, err := ethCall.getCallPayload()
 	if err != nil {
 		logger.Error(err)
 		return
 	}
 
-	subscribePayload, err := ethQae.getSubscribePayload()
+	subscribePayload, err := ethCall.getSubscribePayload()
 	if err != nil {
 		logger.Error(err)
 		return
 	}
 
-	c, _, err := websocket.DefaultDialer.Dial(ethQae.endpoint, nil)
+	c, _, err := websocket.DefaultDialer.Dial(ethCall.endpoint, nil)
 	if err != nil {
 		logger.Error(err)
-		ethQae.isDone = true
+		ethCall.isDone = true
 		return
 	}
 
-	go ethQae.messageReader(c, callPayload)
+	go ethCall.messageReader(c, callPayload)
 
 	err = c.WriteMessage(websocket.TextMessage, subscribePayload)
 	if err != nil {
 		logger.Error(err)
-		ethQae.isDone = true
+		ethCall.isDone = true
 		c.Close()
 		return
 	}
 
-	logger.Infof("Connected to %s", ethQae.endpoint)
+	logger.Infof("Connected to %s", ethCall.endpoint)
 }
 
-func (ethQae ethQaeSubscription) Unsubscribe() {
-	logger.Info("Unsubscribing from ETH QAE endpoint", ethQae.endpoint)
-	ethQae.isDone = true
+func (ethCall ethCallSubscription) Unsubscribe() {
+	logger.Info("Unsubscribing from ETH QAE endpoint", ethCall.endpoint)
+	ethCall.isDone = true
 }
 
-func (ethQae ethQaeSubscription) parseResponse(response JsonrpcMessage) ([]subscriber.Event, error) {
+func (ethCall ethCallSubscription) parseResponse(response JsonrpcMessage) ([]subscriber.Event, error) {
 	var result string
 	err := json.Unmarshal(response.Result, &result)
 	if err != nil {
@@ -386,7 +386,7 @@ func (ethQae ethQaeSubscription) parseResponse(response JsonrpcMessage) ([]subsc
 
 	resultData := hexutils.HexToBytes(result)
 	var boolValue bool
-	err = ethQae.abi.Unpack(&boolValue, ethQae.method, resultData)
+	err = ethCall.abi.Unpack(&boolValue, ethCall.method, resultData)
 	if err == nil {
 		if boolValue {
 			return []subscriber.Event{{}}, nil
@@ -395,7 +395,7 @@ func (ethQae ethQaeSubscription) parseResponse(response JsonrpcMessage) ([]subsc
 	}
 
 	var addresses []common.Address
-	err = ethQae.abi.Unpack(&addresses, ethQae.method, resultData)
+	err = ethCall.abi.Unpack(&addresses, ethCall.method, resultData)
 	if err != nil {
 		return nil, err
 	}
@@ -404,7 +404,7 @@ func (ethQae ethQaeSubscription) parseResponse(response JsonrpcMessage) ([]subsc
 
 	for _, r := range addresses {
 		event := map[string]interface{}{
-			ethQae.key: r,
+			ethCall.key: r,
 		}
 		bz, err := json.Marshal(event)
 		if err != nil {

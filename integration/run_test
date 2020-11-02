@@ -37,7 +37,7 @@ run_test() {
   ./integration/test_ei_event "iotx-mock-grpc" "$EVM_SUBSCRIBED_ADDRESS" "" 1
   ./integration/test_ei_event "cfx-mock-http" "$EVM_SUBSCRIBED_ADDRESS" "" 1
   ./integration/test_ei_event "cfx-mock-ws" "$EVM_SUBSCRIBED_ADDRESS" "" 1
-  ./integration/test_ei_event "eth-qae-mock" "$EVM_SUBSCRIBED_ADDRESS" "" 1 "getFlag" '[{"inputs":[],"name":"getFlag","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"}]'
+  ./integration/test_ei_event "eth-call-mock" "$EVM_SUBSCRIBED_ADDRESS" "" 1 "getFlag" '[{"inputs":[],"name":"getFlag","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"}]'
 
   # Account based
   ./integration/test_ei_event "near-mock-http" "" "$NEAR_ORACLE_ACCOUNT_ID" 3
