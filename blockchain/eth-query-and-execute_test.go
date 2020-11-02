@@ -305,7 +305,7 @@ func Test_ethQaeSubscription_parseResponse(t *testing.T) {
 			ethQae := ethQaeSubscription{
 				abi:    tt.fields.abi,
 				method: tt.fields.method,
-				key:    "result",
+				key:    defaultResponseKey,
 			}
 			got, err := ethQae.parseResponse(tt.response)
 			if (err != nil) != tt.wantErr {
@@ -313,7 +313,7 @@ func Test_ethQaeSubscription_parseResponse(t *testing.T) {
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("parseResponse() got = %v, want %v", got, tt.want)
+				t.Errorf("parseResponse() got = %s, want %s", got, tt.want)
 			}
 		})
 	}

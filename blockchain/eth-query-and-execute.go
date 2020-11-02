@@ -22,7 +22,7 @@ import (
 
 const (
 	ETH_QAE            = "eth-query-and-execute"
-	defaultResponseKey = "value"
+	defaultResponseKey = "result"
 )
 
 type ethQaeSubscriber struct {
