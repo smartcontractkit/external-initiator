@@ -58,7 +58,7 @@ type agoricEvent struct {
 }
 
 type agoricOnQueryData struct {
-	QueryID int64           `json:"queryId"`
+	QueryID string          `json:"queryId"`
 	Query   json.RawMessage `json:"query"`
 	Fee     int64           `json:"fee"`
 }
@@ -86,7 +86,8 @@ func (sm *agoricManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	case "oracleServer/onReply":
 		return subEvents, true
 	default:
-		logger.Error("Unimplemented message type:", agEvent.Type)
+		// We don't need something so noisy.
+		// logger.Error("Unimplemented message type:", agEvent.Type)
 		return nil, false
 	}
 
@@ -115,7 +116,7 @@ func (sm *agoricManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	} else {
 		requestParams = query.Params
 	}
-	requestParams["request_id"] = fmt.Sprint(onQueryData.QueryID)
+	requestParams["request_id"] = onQueryData.QueryID
 	requestParams["payment"] = fmt.Sprint(onQueryData.Fee) +
 		strings.Repeat("0", linkDecimals-linkAgoricDecimals)
 
