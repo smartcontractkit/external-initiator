@@ -125,6 +125,10 @@ func (client Client) prepareSubscription(rawSub *Subscription) (*Subscription, e
 		if err := client.db.Model(&sub).Related(&sub.NEAR).Error; err != nil {
 			return nil, err
 		}
+	case "bsn-irita":
+		if err := client.db.Model(&sub).Related(&sub.BSNIrita).Error; err != nil {
+			return nil, err
+		}
 	}
 
 	return &sub, nil
@@ -263,6 +267,7 @@ type Subscription struct {
 	BinanceSmartChain BinanceSmartChainSubscription
 	NEAR              NEARSubscription
 	Conflux           CfxSubscription
+	BSNIrita          BSNIritaSubscription
 }
 
 type EthSubscription struct {
@@ -307,4 +312,11 @@ type CfxSubscription struct {
 	SubscriptionId uint
 	Addresses      SQLStringArray
 	Topics         SQLStringArray
+}
+
+type BSNIritaSubscription struct {
+	gorm.Model
+	SubscriptionId uint
+	ServiceName    string
+	ProviderAddr   string
 }

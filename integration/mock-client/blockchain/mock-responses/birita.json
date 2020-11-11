@@ -1,0 +1,21 @@
+{
+    "query_status": [
+      {
+        "jsonrpc": "2.0",
+        "result": {}
+      }
+    ],
+    "query_blockResults": [
+      {
+        "jsonrpc": "2.0",
+        "result": {}
+      }
+    ],
+    "query_serviceRequest": [
+      {
+        "jsonrpc": "2.0",
+        "result": {}
+      }
+    ]
+}
+  

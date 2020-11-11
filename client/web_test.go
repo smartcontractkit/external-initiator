@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
+	"github.com/smartcontractkit/external-initiator/blockchain"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -36,12 +37,7 @@ func (s storeFailer) SaveEndpoint(*store.Endpoint) error {
 }
 
 func generateCreateSubscriptionReq(id, endpoint string, addresses, topics, accountIds []string) CreateSubscriptionReq {
-	params := struct {
-		Endpoint   string   `json:"endpoint"`
-		Addresses  []string `json:"addresses"`
-		Topics     []string `json:"topics"`
-		AccountIds []string `json:"accountIds"`
-	}{
+	params := blockchain.Params{
 		Endpoint:   endpoint,
 		Addresses:  addresses,
 		Topics:     topics,
