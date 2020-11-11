@@ -20,7 +20,7 @@ func TestCreateBSNIritaSubscriber(t *testing.T) {
 				Job: "test",
 				BSNIrita: store.BSNIritaSubscription{
 					ServiceName:  "oracle",
-					ProviderAddr: "test-Provider-address",
+					ProviderAddr: "test-provider-address",
 				},
 			}
 			biritaSubscriber := createBSNIritaSubscriber(sub)
@@ -30,6 +30,8 @@ func TestCreateBSNIritaSubscriber(t *testing.T) {
 }
 
 func TestBuildTriggerEvent(t *testing.T) {
+	providerAddrBech32 := "iaa1cq3xx80jym3jshlxmwnfwu840jxta032aa4jss"
+	providerAddr, _ := types.AccAddressFromBech32(providerAddrBech32)
 	requestID, _ := hex.DecodeString("FFB2EA8819BAF485C49DEBC08A4431E4BA5707945F8B33C8E777110BE62491240000000000000000000000000000007900000000000017F70000")
 
 	tests := []struct {
@@ -44,18 +46,17 @@ func TestBuildTriggerEvent(t *testing.T) {
 				Id:          requestID,
 				Input:       `{"body":{"id":"test"}}`,
 				ServiceName: "oracle",
-				Provider:    types.AccAddress([]byte("test-provider")),
+				Provider:    providerAddr,
 			},
 			true,
-			[]byte(`{"request_body":{"id":"test"},"request_id":"FFB2EA8819BAF485C49DEBC08A4431E4BA5707945F8B33C8E777110BE62491240000000000000000000000000000007900000000000017F70000"}`),
+			[]byte(`{"request_id":"FFB2EA8819BAF485C49DEBC08A4431E4BA5707945F8B33C8E777110BE62491240000000000000000000000000000007900000000000017F70000","request_body":"{\"id\":\"test\"}"}`),
 		},
 		{
 			"missing request id",
 			service.Request{
-				Id:          []byte{},
 				Input:       `{"body":{"id":"test"}}`,
 				ServiceName: "oracle",
-				Provider:    types.AccAddress([]byte("test-provider")),
+				Provider:    providerAddr,
 			},
 			false,
 			nil,
@@ -66,7 +67,7 @@ func TestBuildTriggerEvent(t *testing.T) {
 				Id:          requestID,
 				Input:       "",
 				ServiceName: "oracle",
-				Provider:    types.AccAddress([]byte("test-provider")),
+				Provider:    providerAddr,
 			},
 			false,
 			nil,
@@ -77,7 +78,7 @@ func TestBuildTriggerEvent(t *testing.T) {
 				Id:          requestID,
 				Input:       `{"body":{"id":"test"}}`,
 				ServiceName: "incorrect-service-name",
-				Provider:    types.AccAddress([]byte("test-provider")),
+				Provider:    providerAddr,
 			},
 			false,
 			nil,
@@ -99,7 +100,7 @@ func TestBuildTriggerEvent(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			sub := &biritaSubscription{
 				serviceName:  "oracle",
-				providerAddr: "test-provider",
+				providerAddr: providerAddrBech32,
 			}
 
 			event, err := sub.buildTriggerEvent(tt.args)
