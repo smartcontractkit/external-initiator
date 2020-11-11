@@ -23,7 +23,7 @@ func TestHandleQueryStatus(t *testing.T) {
 	var status tmtypes.SyncInfo
 	err = json.Unmarshal(rsp[0].Result, &status)
 	assert.NoError(t, err)
-	assert.Equal(t, status.LatestBlockHeight, 1)
+	assert.Equal(t, status.LatestBlockHeight, 7753)
 }
 
 func TestHandleQueryBlockResults(t *testing.T) {
@@ -39,7 +39,7 @@ func TestHandleQueryBlockResults(t *testing.T) {
 	var blockResult tmtypes.ResultBlockResults
 	err = json.Unmarshal(rsp[0].Result, &blockResult)
 	assert.NoError(t, err)
-	assert.Equal(t, blockResult.Height, 1)
+	assert.Equal(t, blockResult.Height, 7819)
 }
 
 func TestHandleQueryServiceRequest(t *testing.T) {
