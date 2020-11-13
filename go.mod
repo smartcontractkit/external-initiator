@@ -24,6 +24,7 @@ require (
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.6.1
+	github.com/tendermint/tendermint v0.33.4
 	github.com/tidwall/gjson v1.6.0
 	go.uber.org/zap v1.14.1
 	golang.org/x/tools v0.0.0-20200513201620-d5fe73897c97 // indirect
@@ -34,6 +35,6 @@ require (
 
 replace (
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
-	github.com/tendermint/tendermint => github.com/bianjieai/tendermint v0.33.4-irita-200703.0.20200920152706-f907f8a9ab6c
+	github.com/tendermint/tendermint => github.com/bianjieai/tendermint v0.34.0-irita-200930
 	launchpad.net/gocheck => github.com/go-check/check v0.0.0-20180628173108-788fd7840127
 )
