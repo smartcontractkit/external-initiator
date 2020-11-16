@@ -12,6 +12,7 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink/core/logger"
+	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/store/migrations"
 )
 
@@ -339,9 +340,11 @@ type CfxSubscription struct {
 
 type EthCallSubscription struct {
 	gorm.Model
-	SubscriptionId uint
-	Address        string
-	ABI            SQLBytes
-	ResponseKey    string
-	MethodName     string
+	SubscriptionId   uint
+	Address          string
+	ABI              SQLBytes
+	ResponseKey      string
+	MethodName       string
+	FunctionSelector models.FunctionSelector
+	ReturnType       string
 }

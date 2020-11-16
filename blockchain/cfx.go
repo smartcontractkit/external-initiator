@@ -8,7 +8,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/smartcontractkit/chainlink/core/eth"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/store"
@@ -37,7 +36,7 @@ func createCfxManager(p subscriber.Type, config store.Subscription) cfxManager {
 	topics := [][]common.Hash{{
 		models.RunLogTopic20190207withoutIndexes,
 	}, {
-		common.HexToHash(StringToBytes32(config.Job)),
+		StringToBytes32(config.Job),
 	}}
 
 	return cfxManager{
@@ -150,25 +149,25 @@ type cfxLogResponse struct {
 }
 
 //convert cfxLogResponse type to eth.Log type
-func Cfx2EthResponse(cfx cfxLogResponse) (eth.Log, error) {
+func Cfx2EthResponse(cfx cfxLogResponse) (models.Log, error) {
 	blockNumber, err := hexutil.DecodeUint64(cfx.EpochNumber)
 	if err != nil {
-		return eth.Log{}, err
+		return models.Log{}, err
 	}
 
 	txIndex, err := hexutil.DecodeUint64(cfx.TransactionIndex)
 	if err != nil {
-		return eth.Log{}, err
+		return models.Log{}, err
 	}
 
 	index, err := hexutil.DecodeUint64(cfx.LogIndex)
 	if err != nil {
-		return eth.Log{}, err
+		return models.Log{}, err
 	}
 
 	data := common.Hex2Bytes(cfx.Data[2:])
 
-	return eth.Log{
+	return models.Log{
 		Address:     cfx.Address,
 		Topics:      cfx.Topics,
 		Data:        data,
