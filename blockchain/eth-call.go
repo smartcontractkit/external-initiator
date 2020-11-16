@@ -11,10 +11,10 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink/core/logger"
+	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/status-im/keycard-go/hexutils"
@@ -25,15 +25,90 @@ const (
 	defaultResponseKey = "result"
 )
 
+var emptyFunctionSelector = [4]byte{0, 0, 0, 0}
+
+type solFunctionHelper struct {
+	abi              abi.ABI
+	functionSelector models.FunctionSelector
+	methodName       string
+}
+
+func NewSolFunctionHelper(abiJson json.RawMessage, methodName string, funcSelector models.FunctionSelector, returnType string) (*solFunctionHelper, error) {
+	if (len(abiJson) == 0 || methodName == "") && (len(funcSelector.Bytes()) == 0 || returnType == "") {
+		return nil, errors.New("missing ABI & methodName or functionSelector & returnType")
+	}
+
+	helper := solFunctionHelper{}
+
+	var err error
+	// If ABI is included, we set up the helper based on ABI + methodName
+	if len(abiJson) > 0 {
+		helper.abi, err = abi.JSON(bytes.NewReader(abiJson))
+		if err != nil {
+			return nil, err
+		}
+		helper.methodName = methodName
+
+		var funcSelectorBytes []byte
+		funcSelectorBytes, err = helper.abi.Pack(methodName)
+		if err != nil {
+			return nil, err
+		}
+
+		helper.functionSelector = models.BytesToFunctionSelector(funcSelectorBytes)
+
+		return &helper, nil
+	}
+
+	// With no ABI included, we set up the helper based on funcSelector + returnType
+	t, err := abi.NewType(returnType, "", nil)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	helper.functionSelector = funcSelector
+	helper.methodName = "arbitrary"
+	helper.abi.Methods = map[string]abi.Method{
+		helper.methodName: {
+			Name:    helper.methodName,
+			RawName: helper.methodName,
+			Type:    abi.Function,
+			Outputs: abi.Arguments{
+				{
+					Type: t,
+				},
+			},
+		},
+	}
+
+	return &helper, nil
+}
+
+func (helper solFunctionHelper) FunctionSelector() string {
+	if helper.functionSelector == emptyFunctionSelector {
+		return "0x"
+	}
+	return helper.functionSelector.String()
+}
+
+func (helper solFunctionHelper) Unpack(str string, v interface{}) error {
+	// Remove 0x prefix
+	if strings.HasPrefix(str, "0x") {
+		str = str[2:]
+	}
+	data := hexutils.HexToBytes(str)
+	return helper.abi.Unpack(v, helper.methodName, data)
+}
+
 type ethCallSubscriber struct {
-	Endpoint    string
-	Address     common.Address
-	ABI         abi.ABI
-	MethodName  string
-	JobID       string
-	ResponseKey string
-	Connection  subscriber.Type
-	Interval    time.Duration
+	Endpoint       string
+	Address        common.Address
+	FunctionHelper solFunctionHelper
+	JobID          string
+	ResponseKey    string
+	Connection     subscriber.Type
+	Interval       time.Duration
 }
 
 func createEthCallSubscriber(sub store.Subscription) (*ethCallSubscriber, error) {
@@ -44,9 +119,9 @@ func createEthCallSubscriber(sub store.Subscription) (*ethCallSubscriber, error)
 		abiBytes = []byte(s)
 	}
 
-	contractAbi, err := abi.JSON(bytes.NewReader(abiBytes))
+	helper, err := NewSolFunctionHelper([]byte(abiBytes), sub.EthCall.MethodName, sub.EthCall.FunctionSelector, sub.EthCall.ReturnType)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed creating solidity function helper")
 	}
 
 	var t subscriber.Type
@@ -59,14 +134,13 @@ func createEthCallSubscriber(sub store.Subscription) (*ethCallSubscriber, error)
 	}
 
 	return &ethCallSubscriber{
-		Endpoint:    strings.TrimSuffix(sub.Endpoint.Url, "/"),
-		Address:     common.HexToAddress(sub.EthCall.Address),
-		ABI:         contractAbi,
-		JobID:       sub.Job,
-		ResponseKey: sub.EthCall.ResponseKey,
-		MethodName:  sub.EthCall.MethodName,
-		Connection:  t,
-		Interval:    time.Duration(sub.Endpoint.RefreshInt) * time.Second,
+		Endpoint:       strings.TrimSuffix(sub.Endpoint.Url, "/"),
+		Address:        common.HexToAddress(sub.EthCall.Address),
+		FunctionHelper: *helper,
+		JobID:          sub.Job,
+		ResponseKey:    sub.EthCall.ResponseKey,
+		Connection:     t,
+		Interval:       time.Duration(sub.Endpoint.RefreshInt) * time.Second,
 	}, nil
 }
 
@@ -74,8 +148,7 @@ type ethCallSubscription struct {
 	endpoint string
 	events   chan<- subscriber.Event
 	address  common.Address
-	abi      abi.ABI
-	method   string
+	helper   solFunctionHelper
 	isDone   bool
 	jobID    string
 	key      string
@@ -87,8 +160,7 @@ func (ethCall ethCallSubscriber) SubscribeToEvents(channel chan<- subscriber.Eve
 		events:   channel,
 		jobID:    ethCall.JobID,
 		address:  ethCall.Address,
-		abi:      ethCall.ABI,
-		method:   ethCall.MethodName,
+		helper:   ethCall.FunctionHelper,
 		key:      ethCall.ResponseKey,
 	}
 
@@ -187,14 +259,9 @@ type ethCallMessage struct {
 }
 
 func (ethCall ethCallSubscription) getCallPayload() ([]byte, error) {
-	data, err := ethCall.abi.Pack(ethCall.method)
-	if err != nil {
-		return nil, err
-	}
-
 	call := ethCallMessage{
 		To:   ethCall.address.Hex(),
-		Data: hexutil.Encode(data[:]),
+		Data: ethCall.helper.FunctionSelector(),
 	}
 
 	var params []interface{}
@@ -209,7 +276,7 @@ func (ethCall ethCallSubscription) getCallPayload() ([]byte, error) {
 		Version: "2.0",
 		ID:      json.RawMessage(`1`),
 		Method:  "eth_call",
-		Params:  paramsBz, // json.RawMessage(`[` + string(callBz) + `,"latest"]`),
+		Params:  paramsBz,
 	}
 	return json.Marshal(msg)
 }
@@ -373,45 +440,71 @@ func (ethCall ethCallSubscription) Unsubscribe() {
 }
 
 func (ethCall ethCallSubscription) parseResponse(response JsonrpcMessage) ([]subscriber.Event, error) {
-	var result string
-	err := json.Unmarshal(response.Result, &result)
+	var data string
+	err := json.Unmarshal(response.Result, &data)
 	if err != nil {
 		return nil, err
 	}
 
-	// Remove 0x prefix
-	if strings.HasPrefix(result, "0x") {
-		result = result[2:]
+	var result interface{}
+	err = ethCall.helper.Unpack(data, &result)
+	if err != nil {
+		return nil, err
 	}
 
-	resultData := hexutils.HexToBytes(result)
-	var boolValue bool
-	err = ethCall.abi.Unpack(&boolValue, ethCall.method, resultData)
-	if err == nil {
-		if boolValue {
-			return []subscriber.Event{{}}, nil
-		}
+	// If there is no data returned, we have no jobs to initiate
+	if result == nil {
 		return nil, nil
 	}
 
-	var addresses []common.Address
-	err = ethCall.abi.Unpack(&addresses, ethCall.method, resultData)
+	var events []subscriber.Event
+	switch result.(type) {
+	// Add cases for special types
+	case bool:
+		if result.(bool) == true {
+			events = append(events, subscriber.Event{})
+		}
+	// For any other types, figure out if we have an array or a single value
+	default:
+		slice, err := interfaceToSlice(result)
+		// bytes32 is an array, but we don't want to initiate a job run for each byte
+		_, isbytes := result.([32]byte)
+		if err == nil && !isbytes {
+			for _, r := range slice {
+				event := map[string]interface{}{
+					ethCall.key: r,
+				}
+				bz, err := json.Marshal(event)
+				if err != nil {
+					return nil, err
+				}
+				events = append(events, bz)
+			}
+		} else {
+			// If we have bytes32, we want the raw bytes32 instead of decoding it
+			if isbytes {
+				result = fmt.Sprintf("%s", data)
+			}
+			event := map[string]interface{}{
+				ethCall.key: result,
+			}
+			bz, err := json.Marshal(event)
+			if err != nil {
+				return nil, err
+			}
+			events = append(events, bz)
+		}
+	}
+
+	return events, nil
+}
+
+func interfaceToSlice(data interface{}) ([]interface{}, error) {
+	bz, err := json.Marshal(data)
 	if err != nil {
 		return nil, err
 	}
 
-	var events []subscriber.Event
-
-	for _, r := range addresses {
-		event := map[string]interface{}{
-			ethCall.key: r,
-		}
-		bz, err := json.Marshal(event)
-		if err != nil {
-			return nil, err
-		}
-		events = append(events, bz)
-	}
-
-	return events, nil
+	var slice []interface{}
+	return slice, json.Unmarshal(bz, &slice)
 }

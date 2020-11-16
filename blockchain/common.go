@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 )
@@ -30,14 +31,16 @@ var blockchains = []string{
 }
 
 type Params struct {
-	Endpoint    string          `json:"endpoint"`
-	Addresses   []string        `json:"addresses"`
-	Topics      []string        `json:"topics"`
-	AccountIds  []string        `json:"accountIds"`
-	Address     string          `json:"address"`
-	ABI         json.RawMessage `json:"abi"`
-	MethodName  string          `json:"methodName"`
-	ResponseKey string          `json:"responseKey"`
+	Endpoint         string                  `json:"endpoint"`
+	Addresses        []string                `json:"addresses"`
+	Topics           []string                `json:"topics"`
+	AccountIds       []string                `json:"accountIds"`
+	Address          string                  `json:"address"`
+	ABI              json.RawMessage         `json:"abi"`
+	MethodName       string                  `json:"methodName"`
+	ResponseKey      string                  `json:"responseKey"`
+	FunctionSelector models.FunctionSelector `json:"functionSelector"`
+	ReturnType       string                  `json:"returnType"`
 }
 
 // CreateJsonManager creates a new instance of a JSON blockchain manager with the provided
@@ -141,8 +144,8 @@ func GetValidations(t string, params Params) []int {
 	case ETH_CALL:
 		return []int{
 			len(params.Address),
-			len(params.ABI),
-			len(params.MethodName),
+			len(params.ABI) + len(params.ReturnType),
+			len(params.MethodName) + len(params.FunctionSelector.Bytes()),
 		}
 	}
 
@@ -187,10 +190,12 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 			key = defaultResponseKey
 		}
 		sub.EthCall = store.EthCallSubscription{
-			Address:     params.Address,
-			ABI:         store.SQLBytes(params.ABI),
-			ResponseKey: key,
-			MethodName:  params.MethodName,
+			Address:          params.Address,
+			ABI:              store.SQLBytes(params.ABI),
+			ResponseKey:      key,
+			MethodName:       params.MethodName,
+			FunctionSelector: params.FunctionSelector,
+			ReturnType:       params.ReturnType,
 		}
 	}
 }
@@ -234,8 +239,4 @@ func matchesJobID(expected string, actual string) bool {
 	}
 
 	return false
-}
-
-func bytesHave0xPrefix(input []byte) bool {
-	return len(input) >= 2 && input[0] == '0' && (input[1] == 'x' || input[1] == 'X')
 }
