@@ -11,9 +11,9 @@ import (
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1592829052"
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1594317706"
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1599849837"
-	"github.com/smartcontractkit/external-initiator/store/migrations/migration1603294353"
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1603803454"
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1605288480"
+	"github.com/smartcontractkit/external-initiator/store/migrations/migration1606327145"
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1608026935"
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1610281978"
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1611169747"
@@ -95,6 +95,11 @@ func Migrate(db *gorm.DB) error {
 			ID:       "1603294353",
 			Migrate:  migration1603294353.Migrate,
 			Rollback: migration1603294353.Rollback,
+		},
+		{
+			ID:       "1606327145",
+			Migrate:  migration1606327145.Migrate,
+			Rollback: migration1606327145.Rollback,
 		},
 	}
 
