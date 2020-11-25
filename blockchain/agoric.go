@@ -48,7 +48,7 @@ func createAgoricManager(t subscriber.Type, conf store.Subscription) (*agoricMan
 	}, nil
 }
 
-func (sm *agoricManager) GetTriggerJson() []byte {
+func (sm agoricManager) GetTriggerJson() []byte {
 	return nil
 }
 
@@ -84,7 +84,7 @@ func (sm *agoricManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 		break
 	case "oracleServer/onError":
 	case "oracleServer/onReply":
-		return subEvents, true
+		return nil, false
 	default:
 		// We don't need something so noisy.
 		// logger.Error("Unimplemented message type:", agEvent.Type)
