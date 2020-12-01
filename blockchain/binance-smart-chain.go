@@ -5,8 +5,8 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/smartcontractkit/chainlink/core/eth"
 	"github.com/smartcontractkit/chainlink/core/logger"
+	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 )
@@ -94,7 +94,7 @@ func (e bscManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 			return nil, false
 		}
 
-		var evt eth.Log
+		var evt models.Log
 		if err := json.Unmarshal(res.Result, &evt); err != nil {
 			logger.Error("unmarshal:", err)
 			return nil, false
@@ -119,7 +119,7 @@ func (e bscManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 		events = append(events, event)
 
 	case subscriber.RPC:
-		var rawEvents []eth.Log
+		var rawEvents []models.Log
 		if err := json.Unmarshal(msg.Result, &rawEvents); err != nil {
 			logger.Error("unmarshal:", err)
 			return nil, false

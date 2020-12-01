@@ -7,8 +7,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/whisper/whisperv6"
-	"github.com/smartcontractkit/chainlink/core/eth"
 	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/chainlink/core/utils"
 )
@@ -37,7 +35,7 @@ func createEvmFilterQuery(jobid string, strAddresses []string) *filterQuery {
 	topics := [][]common.Hash{{
 		models.RunLogTopic20190207withoutIndexes,
 	}, {
-		common.HexToHash(StringToBytes32(jobid)),
+		StringToBytes32(jobid),
 	}}
 
 	return &filterQuery{
@@ -91,18 +89,19 @@ func (q filterQuery) toMapInterface() (interface{}, error) {
 	return arg, nil
 }
 
-func StringToBytes32(jobid string) string {
-	value := common.RightPadBytes([]byte(jobid), evmWordSize)
+func StringToBytes32(str string) common.Hash {
+	value := common.RightPadBytes([]byte(str), utils.EVMWordByteLen)
 	hx := utils.RemoveHexPrefix(hexutil.Encode(value))
 
 	if len(hx) > utils.EVMWordHexLen {
 		hx = hx[:utils.EVMWordHexLen]
 	}
 
-	return utils.AddHexPrefix(hx)
+	hxStr := utils.AddHexPrefix(hx)
+	return common.HexToHash(hxStr)
 }
 
-func logEventToOracleRequest(log eth.Log) (models.JSON, error) {
+func logEventToOracleRequest(log models.Log) (models.JSON, error) {
 	cborData, dataPrefixBytes, err := logDataParse(log.Data)
 	if err != nil {
 		return models.JSON{}, err
@@ -118,33 +117,33 @@ func logEventToOracleRequest(log eth.Log) (models.JSON, error) {
 	})
 }
 
-func logDataParse(data eth.UntrustedBytes) (cborData []byte, dataPrefixBytes []byte, rerr error) {
+func logDataParse(data []byte) (cborData []byte, dataPrefixBytes []byte, rerr error) {
 	idStart := requesterSize
 	expirationEnd := idStart + idSize + paymentSize + callbackAddrSize + callbackFuncSize + expirationSize
 
 	dataLengthStart := expirationEnd + versionSize + dataLocationSize
 	cborStart := dataLengthStart + dataLengthSize
 
-	if len(data) < dataLengthStart+evmWordSize {
+	if len(data) < dataLengthStart+32 {
 		return nil, nil, errors.New("malformed data")
 	}
 
-	dataLengthBytes, err := data.SafeByteSlice(dataLengthStart, dataLengthStart+evmWordSize)
+	dataLengthBytes, err := models.UntrustedBytes(data).SafeByteSlice(dataLengthStart, dataLengthStart+32)
 	if err != nil {
 		return nil, nil, err
 	}
-	dataLength := whisperv6.BytesToUintBigEndian(dataLengthBytes)
+	dataLength := utils.EVMBytesToUint64(dataLengthBytes)
 
 	if len(data) < cborStart+int(dataLength) {
 		return nil, nil, errors.New("cbor too short")
 	}
 
-	cborData, err = data.SafeByteSlice(cborStart, cborStart+int(dataLength))
+	cborData, err = models.UntrustedBytes(data).SafeByteSlice(cborStart, cborStart+int(dataLength))
 	if err != nil {
 		return nil, nil, err
 	}
 
-	dataPrefixBytes, err = data.SafeByteSlice(idStart, expirationEnd)
+	dataPrefixBytes, err = models.UntrustedBytes(data).SafeByteSlice(idStart, expirationEnd)
 	if err != nil {
 		return nil, nil, err
 	}

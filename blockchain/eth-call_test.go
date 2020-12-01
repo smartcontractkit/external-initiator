@@ -9,15 +9,13 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/stretchr/testify/require"
 )
 
 var testAbi abi.ABI
-
-func TestMain(m *testing.M) {
-	var err error
-	abiJson := []byte(`[
+var abiJson = []byte(`[
 	{
 		"inputs":[],
 		"name": "empty",
@@ -36,6 +34,45 @@ func TestMain(m *testing.M) {
 			}
 		],
 		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs":[],
+		"name": "bytes32",
+		"outputs": [
+			{
+				"internalType": "bytes32",
+				"name": "_value",
+				"type": "bytes32"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs":[],
+		"name": "int256",
+		"outputs": [
+			{
+				"internalType": "int256",
+				"name": "_value",
+				"type": "int256"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs":[],
+		"name": "address",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{
@@ -71,12 +108,27 @@ func TestMain(m *testing.M) {
 		"type": "function"
 	}
 ]`)
+
+func TestMain(m *testing.M) {
+	var err error
 	testAbi, err = abi.JSON(bytes.NewReader(abiJson))
 	if err != nil {
 		panic(err)
 	}
 
 	m.Run()
+}
+
+func newAbiFunctionHelper(t *testing.T, method string) solFunctionHelper {
+	helper, err := NewSolFunctionHelper(abiJson, method, models.FunctionSelector{}, "")
+	require.NoError(t, err)
+	return *helper
+}
+
+func newFunctionHelper(t *testing.T, functionSelector models.FunctionSelector, returnType string) solFunctionHelper {
+	helper, err := NewSolFunctionHelper(nil, "", functionSelector, returnType)
+	require.NoError(t, err)
+	return *helper
 }
 
 func Test_ethCallSubscriber_GetTestJson(t *testing.T) {
@@ -122,8 +174,7 @@ func Test_ethCallSubscription_getCallPayload(t *testing.T) {
 
 	type fields struct {
 		address common.Address
-		abi     abi.ABI
-		method  string
+		helper  solFunctionHelper
 	}
 	tests := []struct {
 		name    string
@@ -146,32 +197,29 @@ func Test_ethCallSubscription_getCallPayload(t *testing.T) {
 			false,
 		},
 		{
-			"With address and function selector",
+			"Address and function selector from ABI and method name",
 			fields{
 				address: common.HexToAddress("0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"),
-				abi:     testAbi,
-				method:  "empty",
+				helper:  newAbiFunctionHelper(t, "empty"),
 			},
 			[]byte(fmt.Sprintf(`{"jsonrpc":"2.0","id":1,"method":"eth_call","params":[{"to":"%s","data":"%s"},"latest"]}`, address.String(), hexutil.Encode(emptyFuncSelect[:]))),
 			false,
 		},
 		{
-			"Fails on unknown method",
+			"Address and function selector without ABI",
 			fields{
-				address: address,
-				abi:     testAbi,
-				method:  "doesNotExist",
+				address: common.HexToAddress("0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"),
+				helper:  newFunctionHelper(t, models.HexToFunctionSelector(hexutil.Encode(emptyFuncSelect[:])), "bool"),
 			},
-			nil,
-			true,
+			[]byte(fmt.Sprintf(`{"jsonrpc":"2.0","id":1,"method":"eth_call","params":[{"to":"%s","data":"%s"},"latest"]}`, address.String(), hexutil.Encode(emptyFuncSelect[:]))),
+			false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ethCall := ethCallSubscription{
 				address: tt.fields.address,
-				abi:     tt.fields.abi,
-				method:  tt.fields.method,
+				helper:  tt.fields.helper,
 			}
 			got, err := ethCall.getCallPayload()
 			if (err != nil) != tt.wantErr {
@@ -213,9 +261,10 @@ func Test_ethCallSubscription_getSubscribePayload(t *testing.T) {
 }
 
 func Test_ethCallSubscription_parseResponse(t *testing.T) {
+	bytes32 := StringToBytes32("9adf89a689154509a053d6e3383304b5")
+
 	type fields struct {
-		abi    abi.ABI
-		method string
+		helper solFunctionHelper
 	}
 	tests := []struct {
 		name     string
@@ -227,8 +276,7 @@ func Test_ethCallSubscription_parseResponse(t *testing.T) {
 		{
 			"No events",
 			fields{
-				abi:    testAbi,
-				method: "empty",
+				helper: newAbiFunctionHelper(t, "empty"),
 			},
 			JsonrpcMessage{
 				Result: []byte(`"0x"`),
@@ -239,8 +287,7 @@ func Test_ethCallSubscription_parseResponse(t *testing.T) {
 		{
 			"Bool false",
 			fields{
-				abi:    testAbi,
-				method: "boolean",
+				helper: newAbiFunctionHelper(t, "boolean"),
 			},
 			JsonrpcMessage{
 				Result: []byte(fmt.Sprintf(`"%s"`, common.HexToHash("0").String())),
@@ -251,8 +298,7 @@ func Test_ethCallSubscription_parseResponse(t *testing.T) {
 		{
 			"Bool true",
 			fields{
-				abi:    testAbi,
-				method: "boolean",
+				helper: newAbiFunctionHelper(t, "boolean"),
 			},
 			JsonrpcMessage{
 				Result: []byte(fmt.Sprintf(`"%s"`, common.HexToHash("1").String())),
@@ -263,8 +309,7 @@ func Test_ethCallSubscription_parseResponse(t *testing.T) {
 		{
 			"Empty address set",
 			fields{
-				abi:    testAbi,
-				method: "addresses",
+				helper: newAbiFunctionHelper(t, "addresses"),
 			},
 			JsonrpcMessage{
 				Result: []byte(fmt.Sprintf(`"%s"`, common.HexToHash("0").String())),
@@ -275,8 +320,7 @@ func Test_ethCallSubscription_parseResponse(t *testing.T) {
 		{
 			"Filled address set",
 			fields{
-				abi:    testAbi,
-				method: "addresses",
+				helper: newAbiFunctionHelper(t, "addresses"),
 			},
 			JsonrpcMessage{
 				Result: []byte(`"0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"`),
@@ -290,8 +334,7 @@ func Test_ethCallSubscription_parseResponse(t *testing.T) {
 		{
 			"Invalid ABI unpack",
 			fields{
-				abi:    testAbi,
-				method: "addresses",
+				helper: newAbiFunctionHelper(t, "addresses"),
 			},
 			JsonrpcMessage{
 				Result: []byte(`"0x"`),
@@ -299,12 +342,90 @@ func Test_ethCallSubscription_parseResponse(t *testing.T) {
 			nil,
 			true,
 		},
+		{
+			"An address value",
+			fields{
+				helper: newAbiFunctionHelper(t, "address"),
+			},
+			JsonrpcMessage{
+				Result: []byte(`"0x0000000000000000000000000000000000000000000000000000000000000000"`),
+			},
+			[]subscriber.Event{
+				[]byte(fmt.Sprintf(`{"result":"%s"}`, common.HexToAddress("0").String())),
+			},
+			false,
+		},
+		{
+			"A bytes32 value",
+			fields{
+				helper: newAbiFunctionHelper(t, "bytes32"),
+			},
+			JsonrpcMessage{
+				Result: []byte(fmt.Sprintf(`"%s"`, bytes32.Hex())),
+			},
+			[]subscriber.Event{
+				[]byte(fmt.Sprintf(`{"result":"%s"}`, bytes32.Hex())),
+			},
+			false,
+		},
+		{
+			"An address value without ABI",
+			fields{
+				helper: newFunctionHelper(t, models.FunctionSelector{}, "address"),
+			},
+			JsonrpcMessage{
+				Result: []byte(`"0x0000000000000000000000000000000000000000000000000000000000000000"`),
+			},
+			[]subscriber.Event{
+				[]byte(fmt.Sprintf(`{"result":"%s"}`, common.HexToAddress("0").String())),
+			},
+			false,
+		},
+		{
+			"A bytes32 value without ABI",
+			fields{
+				helper: newFunctionHelper(t, models.FunctionSelector{}, "bytes32"),
+			},
+			JsonrpcMessage{
+				Result: []byte(fmt.Sprintf(`"%s"`, bytes32.Hex())),
+			},
+			[]subscriber.Event{
+				[]byte(fmt.Sprintf(`{"result":"%s"}`, bytes32.Hex())),
+			},
+			false,
+		},
+		{
+			"Filled address set without ABI",
+			fields{
+				helper: newFunctionHelper(t, models.FunctionSelector{}, "address[]"),
+			},
+			JsonrpcMessage{
+				Result: []byte(`"0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"`),
+			},
+			[]subscriber.Event{
+				[]byte(fmt.Sprintf(`{"result":"%s"}`, common.HexToAddress("0").String())),
+				[]byte(fmt.Sprintf(`{"result":"%s"}`, common.HexToAddress("1").String())),
+			},
+			false,
+		},
+		{
+			"An int256 value without ABI",
+			fields{
+				helper: newFunctionHelper(t, models.FunctionSelector{}, "int256"),
+			},
+			JsonrpcMessage{
+				Result: []byte(`"0x0000000000000000000000000000000000000000000000000000000a9d93b118"`),
+			},
+			[]subscriber.Event{
+				[]byte(`{"result":45593375000}`),
+			},
+			false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ethCall := ethCallSubscription{
-				abi:    tt.fields.abi,
-				method: tt.fields.method,
+				helper: tt.fields.helper,
 				key:    defaultResponseKey,
 			}
 			got, err := ethCall.parseResponse(tt.response)

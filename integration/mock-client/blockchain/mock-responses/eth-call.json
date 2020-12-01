@@ -5,10 +5,11 @@
       "result": "0x0"
     }
   ],
-  "eth_call": [
+  "eth_subscribe": [
     {
       "jsonrpc": "2.0",
-      "result": "0x0000000000000000000000000000000000000000000000000000000000000001"
+      "method": "eth_subscription",
+      "result": "0x0"
     }
   ]
 }
