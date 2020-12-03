@@ -30,12 +30,11 @@ var blockchains = []string{
 }
 
 type Params struct {
-	Endpoint     string   `json:"endpoint"`
-	Addresses    []string `json:"addresses"`
-	Topics       []string `json:"topics"`
-	AccountIds   []string `json:"accountIds"`
-	ServiceName  string   `json:"serviceName"`
-	ProviderAddr string   `json:"providerAddr"`
+	Endpoint    string   `json:"endpoint"`
+	Addresses   []string `json:"addresses"`
+	Topics      []string `json:"topics"`
+	AccountIds  []string `json:"accountIds"`
+	ServiceName string   `json:"serviceName"`
 }
 
 // CreateJsonManager creates a new instance of a JSON blockchain manager with the provided
@@ -138,7 +137,7 @@ func GetValidations(t string, params Params) []int {
 		}
 	case BIRITA:
 		return []int{
-			len(params.ServiceName) + len(params.ProviderAddr),
+			len(params.Addresses),
 		}
 	}
 
@@ -179,8 +178,8 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 		}
 	case BIRITA:
 		sub.BSNIrita = store.BSNIritaSubscription{
-			ServiceName:  params.ServiceName,
-			ProviderAddr: params.ProviderAddr,
+			Addresses:   params.Addresses,
+			ServiceName: params.ServiceName,
 		}
 	}
 }

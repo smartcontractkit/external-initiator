@@ -317,6 +317,6 @@ type CfxSubscription struct {
 type BSNIritaSubscription struct {
 	gorm.Model
 	SubscriptionId uint
+	Addresses      SQLStringArray
 	ServiceName    string
-	ProviderAddr   string
 }

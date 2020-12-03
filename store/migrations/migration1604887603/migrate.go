@@ -15,8 +15,8 @@ import (
 type BSNIritaSubscription struct {
 	gorm.Model
 	SubscriptionId uint
+	Addresses      string
 	ServiceName    string
-	ProviderAddr   string
 }
 
 type Subscription struct {

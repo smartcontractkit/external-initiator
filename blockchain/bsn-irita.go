@@ -32,22 +32,22 @@ var (
 )
 
 type biritaSubscriber struct {
-	Client       servicesdk.ServiceClient
-	Interval     time.Duration
-	JobID        string
-	ServiceName  string
-	ProviderAddr string
+	Client      servicesdk.ServiceClient
+	Interval    time.Duration
+	JobID       string
+	Addresses   []string
+	ServiceName string
 }
 
 type biritaSubscription struct {
-	client       servicesdk.ServiceClient
-	events       chan<- subscriber.Event
-	interval     time.Duration
-	jobID        string
-	serviceName  string
-	providerAddr string
-	lastHeight   int64
-	done         bool
+	client      servicesdk.ServiceClient
+	events      chan<- subscriber.Event
+	interval    time.Duration
+	jobID       string
+	addresses   map[string]bool
+	serviceName string
+	lastHeight  int64
+	done        bool
 }
 
 type biritaTriggerEvent struct {
@@ -71,24 +71,29 @@ func createBSNIritaSubscriber(sub store.Subscription) *biritaSubscriber {
 	}
 
 	return &biritaSubscriber{
-		Client:       serviceClient,
-		Interval:     interval,
-		JobID:        sub.Job,
-		ServiceName:  sub.BSNIrita.ServiceName,
-		ProviderAddr: sub.BSNIrita.ProviderAddr,
+		Client:      serviceClient,
+		Interval:    interval,
+		JobID:       sub.Job,
+		Addresses:   sub.BSNIrita.Addresses,
+		ServiceName: sub.BSNIrita.ServiceName,
 	}
 }
 
 func (bs *biritaSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ ...interface{}) (subscriber.ISubscription, error) {
-	logger.Infof("Subscribe to BSN-IRITA service requests, service name: %s, provider address: %s\n", bs.ServiceName, bs.ProviderAddr)
+	logger.Infof("Subscribe to BSN-IRITA service requests, service name: %s, provider addresses: %v\n", bs.ServiceName, bs.Addresses)
+
+	addressMap := make(map[string]bool)
+	for _, addr := range bs.Addresses {
+		addressMap[addr] = true
+	}
 
 	biritaSubscription := &biritaSubscription{
-		client:       bs.Client,
-		events:       channel,
-		interval:     bs.Interval,
-		jobID:        bs.JobID,
-		serviceName:  bs.ServiceName,
-		providerAddr: bs.ProviderAddr,
+		client:      bs.Client,
+		events:      channel,
+		interval:    bs.Interval,
+		jobID:       bs.JobID,
+		addresses:   addressMap,
+		serviceName: bs.ServiceName,
 	}
 
 	go biritaSubscription.start()
@@ -146,7 +151,7 @@ func (bs biritaSubscription) getLatestHeight() (int64, error) {
 }
 
 func (bs *biritaSubscription) scanByRange(startHeight int64, endHeight int64) {
-	for h := startHeight; h <= endHeight; h++ {
+	for h := startHeight; h <= endHeight; {
 		blockResult, err := bs.client.BlockResults(&h)
 		if err != nil {
 			logger.Errorf("BSN-IRITA: failed to retrieve the block result, height: %d, err: %s", h, err)
@@ -154,9 +159,10 @@ func (bs *biritaSubscription) scanByRange(startHeight int64, endHeight int64) {
 		}
 
 		bs.parseServiceRequests(blockResult.EndBlockEvents)
-	}
 
-	bs.lastHeight = endHeight
+		bs.lastHeight = h
+		h++
+	}
 }
 
 func (bs *biritaSubscription) parseServiceRequests(events []abci.Event) {
@@ -193,13 +199,19 @@ func (bs *biritaSubscription) validServiceRequestEvent(event abci.Event) bool {
 		return false
 	}
 
-	serviceName, err := getAttributeValue(event, "service_name")
-	if err != nil || serviceName != bs.serviceName {
-		return false
+	if len(bs.serviceName) > 0 {
+		serviceName, err := getAttributeValue(event, "service_name")
+		if err != nil || serviceName != bs.serviceName {
+			return false
+		}
 	}
 
 	providerAddr, err := getAttributeValue(event, "provider")
-	if err != nil || providerAddr != bs.providerAddr {
+	if err != nil {
+		return false
+	}
+
+	if _, ok := bs.addresses[providerAddr]; !ok {
 		return false
 	}
 
@@ -272,11 +284,11 @@ func (bs *biritaSubscription) checkServiceRequest(request service.Request) error
 		return fmt.Errorf("missing request input")
 	}
 
-	if request.ServiceName != bs.serviceName {
+	if len(bs.serviceName) > 0 && request.ServiceName != bs.serviceName {
 		return fmt.Errorf("service name does not match")
 	}
 
-	if request.Provider.String() != bs.providerAddr {
+	if _, ok := bs.addresses[request.Provider.String()]; !ok {
 		return fmt.Errorf("provider address does not match")
 	}
 
