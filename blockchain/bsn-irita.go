@@ -21,8 +21,8 @@ import (
 )
 
 const (
-	BIRITA          = "bsn-irita"
-	ScannerInterval = 5 * time.Second
+	BIRITA                 = "bsn-irita"
+	DefaultScannerInterval = 5 * time.Second
 
 	ServiceRequestEventType = "new_batch_request_provider"
 )
@@ -33,6 +33,7 @@ var (
 
 type biritaSubscriber struct {
 	Client       servicesdk.ServiceClient
+	Interval     time.Duration
 	JobID        string
 	ServiceName  string
 	ProviderAddr string
@@ -64,8 +65,14 @@ func createBSNIritaSubscriber(sub store.Subscription) *biritaSubscriber {
 	}
 	serviceClient := servicesdk.NewServiceClient(cfg)
 
+	interval := time.Duration(sub.Endpoint.RefreshInt) * time.Second
+	if interval == 0 {
+		interval = DefaultScannerInterval
+	}
+
 	return &biritaSubscriber{
 		Client:       serviceClient,
+		Interval:     interval,
 		JobID:        sub.Job,
 		ServiceName:  sub.BSNIrita.ServiceName,
 		ProviderAddr: sub.BSNIrita.ProviderAddr,
@@ -78,7 +85,7 @@ func (bs *biritaSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _
 	biritaSubscription := &biritaSubscription{
 		client:       bs.Client,
 		events:       channel,
-		interval:     ScannerInterval,
+		interval:     bs.Interval,
 		jobID:        bs.JobID,
 		serviceName:  bs.ServiceName,
 		providerAddr: bs.ProviderAddr,
@@ -120,6 +127,10 @@ func (bs *biritaSubscription) scan() {
 
 	if bs.lastHeight == 0 {
 		bs.lastHeight = currentHeight - 1
+	}
+
+	if currentHeight <= bs.lastHeight {
+		return
 	}
 
 	bs.scanByRange(bs.lastHeight+1, currentHeight)
