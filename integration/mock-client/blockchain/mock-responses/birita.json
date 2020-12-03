@@ -46,10 +46,31 @@
       {
         "jsonrpc": "2.0",
         "result": {
-          "height": "7819",
+          "height": "7753",
 		      "txs_results": null,
 		      "begin_block_events": null,
-		      "end_block_events": null,
+		      "end_block_events": [
+            {
+              "type": "new_batch_request_provider",
+              "attributes": [
+                {
+                  "key": "c2VydmljZV9uYW1l",
+                  "value": "b3JhY2xl",
+                  "index": true
+                },
+                {
+                  "key": "cHJvdmlkZXI=",
+                  "value": "aWFhMWw0dnA2OWp0OGdoeHR5cmg2am04anAwMjJrbTUwc2czNWVxY2Fl",
+                  "index": true
+                },
+                {
+                  "key": "cmVxdWVzdHM=",
+                  "value": "WyJERjUzNEIxQTU5QjhDQTlGNDZDNTg4OTkyODAxQjBFMUQ3RkY1MUM3NTc4OEY4NkEyNjM0NzkyNzIzREFGQ0Y0MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDEwMDAwMDAwMDAwMDAwN0UwMDAwMCJd",
+                  "index": true
+                }
+              ]
+            }
+          ],
 		      "validator_updates": null,
 		      "consensus_param_updates": {
 			      "block": {
@@ -75,10 +96,9 @@
         "jsonrpc": "2.0",
         "result": {
           "service_name": "oracle",
-          "provider": "test-provider",
+          "provider": "iaa1l4vp69jt8ghxtyrh6jm8jp022km50sg35eqcae",
           "input": "{\"id\":\"1\"}"
         }
       }
     ]
 }
-  

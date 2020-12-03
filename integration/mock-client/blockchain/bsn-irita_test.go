@@ -39,7 +39,7 @@ func TestHandleQueryBlockResults(t *testing.T) {
 	var blockResult tmtypes.ResultBlockResults
 	err = json.Unmarshal(rsp[0].Result, &blockResult)
 	assert.NoError(t, err)
-	assert.Equal(t, blockResult.Height, 7819)
+	assert.Equal(t, blockResult.Height, 7753)
 }
 
 func TestHandleQueryServiceRequest(t *testing.T) {
@@ -56,4 +56,5 @@ func TestHandleQueryServiceRequest(t *testing.T) {
 	err = json.Unmarshal(rsp[0].Result, &request)
 	assert.NoError(t, err)
 	assert.Equal(t, request.ServiceName, "oracle")
+	assert.Equal(t, request.Provider, "iaa1l4vp69jt8ghxtyrh6jm8jp022km50sg35eqcae")
 }
