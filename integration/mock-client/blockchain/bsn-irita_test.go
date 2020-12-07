@@ -14,47 +14,48 @@ func TestHandleQueryStatus(t *testing.T) {
 	req := JsonrpcMessage{
 		Version: "2.0",
 		ID:      []byte("1"),
-		Method:  "query_status",
+		Method:  "status",
 	}
 
 	rsp, ok := GetCannedResponse("birita", req)
 	assert.True(t, ok)
 
-	var status tmtypes.SyncInfo
-	err = json.Unmarshal(rsp[0].Result, &status)
+	var status tmtypes.ResultStatus
+	err := json.Unmarshal(rsp[0].Result, &status)
 	assert.NoError(t, err)
-	assert.Equal(t, status.LatestBlockHeight, 7753)
+	assert.Equal(t, int64(7753), status.SyncInfo.LatestBlockHeight)
 }
 
 func TestHandleQueryBlockResults(t *testing.T) {
 	req := JsonrpcMessage{
 		Version: "2.0",
 		ID:      []byte("1"),
-		Method:  "query_blockResults",
+		Method:  "block_results",
 	}
 
 	rsp, ok := GetCannedResponse("birita", req)
 	assert.True(t, ok)
 
 	var blockResult tmtypes.ResultBlockResults
-	err = json.Unmarshal(rsp[0].Result, &blockResult)
+	err := json.Unmarshal(rsp[0].Result, &blockResult)
 	assert.NoError(t, err)
-	assert.Equal(t, blockResult.Height, 7753)
+	assert.Equal(t, int64(7753), blockResult.Height)
 }
 
 func TestHandleQueryServiceRequest(t *testing.T) {
 	req := JsonrpcMessage{
 		Version: "2.0",
 		ID:      []byte("1"),
-		Method:  "query_serviceRequest",
+		Method:  "abci_query",
+		Params:  []byte(`["/custom/service/request",{"request_id":"1"},"0",false]`),
 	}
 
-	rsp, ok := GetCannedResponse("birita", req)
-	assert.True(t, ok)
+	rsp, err := handleQueryABCI(req)
+	assert.NoError(t, err)
 
 	var request service.Request
 	err = json.Unmarshal(rsp[0].Result, &request)
 	assert.NoError(t, err)
 	assert.Equal(t, "oracle", request.ServiceName)
-	assert.Equal(t, "iaa1l4vp69jt8ghxtyrh6jm8jp022km50sg35eqcae", request.Provider)
+	assert.Equal(t, "iaa1l4vp69jt8ghxtyrh6jm8jp022km50sg35eqcae", request.Provider.String())
 }
