@@ -29,6 +29,8 @@ func HandleRequest(conn, platform string, msg JsonrpcMessage) ([]JsonrpcMessage,
 		return handleNEARRequest(conn, msg)
 	case "cfx":
 		return handleCfxRequest(conn, msg)
+	case "eth-call":
+		return handleEthCallRequest(conn, msg)
 	case "birita":
 		return handleBSNIritaRequest(msg)
 	default:

@@ -19,13 +19,13 @@ func TestCreateBSNIritaSubscriber(t *testing.T) {
 			sub := store.Subscription{
 				Job: "test",
 				BSNIrita: store.BSNIritaSubscription{
-					ServiceName:  "oracle",
-					ProviderAddr: "test-provider-address",
+					Addresses:   []string{"test-provider-address"},
+					ServiceName: "oracle",
 				},
 			}
 			biritaSubscriber := createBSNIritaSubscriber(sub)
 			assert.Equal(t, "oracle", biritaSubscriber.ServiceName)
-			assert.Equal(t, "test-provider-address", biritaSubscriber.ProviderAddr)
+			assert.Equal(t, []string{"test-provider-address"}, biritaSubscriber.Addresses)
 		})
 }
 
@@ -99,8 +99,8 @@ func TestBuildTriggerEvent(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sub := &biritaSubscription{
-				serviceName:  "oracle",
-				providerAddr: providerAddrBech32,
+				addresses:   map[string]bool{providerAddrBech32: true},
+				serviceName: "oracle",
 			}
 
 			event, err := sub.buildTriggerEvent(tt.args)

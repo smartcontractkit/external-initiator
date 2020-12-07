@@ -14,7 +14,6 @@ import (
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/iotexproject/iotex-proto/golang/iotexapi"
 	"github.com/iotexproject/iotex-proto/golang/iotextypes"
 
@@ -184,7 +183,7 @@ func (io *iotexSubscription) poll(ctx context.Context) {
 }
 
 func createIoTeXLogFilter(jobid string, addresses []string) *iotexapi.LogsFilter {
-	topic := common.HexToHash(StringToBytes32(jobid))
+	topic := StringToBytes32(jobid)
 	return &iotexapi.LogsFilter{
 		Address: addresses,
 		Topics: []*iotexapi.Topics{

@@ -12,6 +12,7 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink/core/logger"
+	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/store/migrations"
 )
 
@@ -54,6 +55,29 @@ func (arr SQLStringArray) Value() (driver.Value, error) {
 	}
 	w.Flush()
 	return buf.String(), nil
+}
+
+// SQLBytes is a byte slice stored in the database as a string.
+type SQLBytes []byte
+
+// Scan implements the sql Scanner interface.
+func (bytes *SQLBytes) Scan(src interface{}) error {
+	if src == nil {
+		*bytes = nil
+	}
+
+	str, ok := src.(string)
+	if !ok {
+		return errors.New("failed to scan string")
+	}
+
+	*bytes = []byte(str)
+	return nil
+}
+
+// Value implements the driver Valuer interface.
+func (bytes SQLBytes) Value() (driver.Value, error) {
+	return string(bytes), nil
 }
 
 // Client holds a connection to the database.
@@ -123,6 +147,10 @@ func (client Client) prepareSubscription(rawSub *Subscription) (*Subscription, e
 		}
 	case "near":
 		if err := client.db.Model(&sub).Related(&sub.NEAR).Error; err != nil {
+			return nil, err
+		}
+	case "eth-call":
+		if err := client.db.Model(&sub).Related(&sub.EthCall).Error; err != nil {
 			return nil, err
 		}
 	case "bsn-irita":
@@ -267,6 +295,7 @@ type Subscription struct {
 	BinanceSmartChain BinanceSmartChainSubscription
 	NEAR              NEARSubscription
 	Conflux           CfxSubscription
+	EthCall           EthCallSubscription
 	BSNIrita          BSNIritaSubscription
 }
 
@@ -312,6 +341,17 @@ type CfxSubscription struct {
 	SubscriptionId uint
 	Addresses      SQLStringArray
 	Topics         SQLStringArray
+}
+
+type EthCallSubscription struct {
+	gorm.Model
+	SubscriptionId   uint
+	Address          string
+	ABI              SQLBytes
+	ResponseKey      string
+	MethodName       string
+	FunctionSelector models.FunctionSelector
+	ReturnType       string
 }
 
 type BSNIritaSubscription struct {

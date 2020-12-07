@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 )
@@ -26,15 +27,22 @@ var blockchains = []string{
 	NEAR,
 	IOTX,
 	CFX,
+	ETH_CALL,
 	BIRITA,
 }
 
 type Params struct {
-	Endpoint    string   `json:"endpoint"`
-	Addresses   []string `json:"addresses"`
-	Topics      []string `json:"topics"`
-	AccountIds  []string `json:"accountIds"`
-	ServiceName string   `json:"serviceName"`
+	Endpoint         string                  `json:"endpoint"`
+	Addresses        []string                `json:"addresses"`
+	Topics           []string                `json:"topics"`
+	AccountIds       []string                `json:"accountIds"`
+	Address          string                  `json:"address"`
+	ABI              json.RawMessage         `json:"abi"`
+	MethodName       string                  `json:"methodName"`
+	ResponseKey      string                  `json:"responseKey"`
+	FunctionSelector models.FunctionSelector `json:"functionSelector"`
+	ReturnType       string                  `json:"returnType"`
+	ServiceName      string                  `json:"serviceName"`
 }
 
 // CreateJsonManager creates a new instance of a JSON blockchain manager with the provided
@@ -68,6 +76,8 @@ func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error)
 		return createOntSubscriber(sub), nil
 	case IOTX:
 		return createIoTeXSubscriber(sub)
+	case ETH_CALL:
+		return createEthCallSubscriber(sub)
 	case BIRITA:
 		return createBSNIritaSubscriber(sub), nil
 	}
@@ -78,7 +88,7 @@ func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error)
 func GetConnectionType(endpoint store.Endpoint) (subscriber.Type, error) {
 	switch endpoint.Type {
 	// Add blockchain implementations that encapsulate entire connection here
-	case XTZ, ONT, IOTX, BIRITA:
+	case XTZ, ONT, IOTX, ETH_CALL, BIRITA:
 		return subscriber.Client, nil
 	default:
 		u, err := url.Parse(endpoint.Url)
@@ -135,6 +145,12 @@ func GetValidations(t string, params Params) []int {
 		return []int{
 			len(params.Addresses) + len(params.Topics),
 		}
+	case ETH_CALL:
+		return []int{
+			len(params.Address),
+			len(params.ABI) + len(params.ReturnType),
+			len(params.MethodName) + len(params.FunctionSelector.Bytes()),
+		}
 	case BIRITA:
 		return []int{
 			len(params.Addresses),
@@ -175,6 +191,19 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 		sub.Conflux = store.CfxSubscription{
 			Addresses: params.Addresses,
 			Topics:    params.Topics,
+		}
+	case ETH_CALL:
+		key := params.ResponseKey
+		if key == "" {
+			key = defaultResponseKey
+		}
+		sub.EthCall = store.EthCallSubscription{
+			Address:          params.Address,
+			ABI:              store.SQLBytes(params.ABI),
+			ResponseKey:      key,
+			MethodName:       params.MethodName,
+			FunctionSelector: params.FunctionSelector,
+			ReturnType:       params.ReturnType,
 		}
 	case BIRITA:
 		sub.BSNIrita = store.BSNIritaSubscription{
