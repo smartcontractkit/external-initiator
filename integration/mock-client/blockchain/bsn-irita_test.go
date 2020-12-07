@@ -17,8 +17,8 @@ func TestHandleQueryStatus(t *testing.T) {
 		Method:  "query_status",
 	}
 
-	rsp, err := handleBSNIritaRequest(req)
-	assert.NoError(t, err)
+	rsp, ok := GetCannedResponse("birita", req)
+	assert.True(t, ok)
 
 	var status tmtypes.SyncInfo
 	err = json.Unmarshal(rsp[0].Result, &status)
@@ -33,8 +33,8 @@ func TestHandleQueryBlockResults(t *testing.T) {
 		Method:  "query_blockResults",
 	}
 
-	rsp, err := handleBSNIritaRequest(req)
-	assert.NoError(t, err)
+	rsp, ok := GetCannedResponse("birita", req)
+	assert.True(t, ok)
 
 	var blockResult tmtypes.ResultBlockResults
 	err = json.Unmarshal(rsp[0].Result, &blockResult)
@@ -49,12 +49,12 @@ func TestHandleQueryServiceRequest(t *testing.T) {
 		Method:  "query_serviceRequest",
 	}
 
-	rsp, err := handleBSNIritaRequest(req)
-	assert.NoError(t, err)
+	rsp, ok := GetCannedResponse("birita", req)
+	assert.True(t, ok)
 
 	var request service.Request
 	err = json.Unmarshal(rsp[0].Result, &request)
 	assert.NoError(t, err)
-	assert.Equal(t, request.ServiceName, "oracle")
-	assert.Equal(t, request.Provider, "iaa1l4vp69jt8ghxtyrh6jm8jp022km50sg35eqcae")
+	assert.Equal(t, "oracle", request.ServiceName)
+	assert.Equal(t, "iaa1l4vp69jt8ghxtyrh6jm8jp022km50sg35eqcae", request.Provider)
 }
