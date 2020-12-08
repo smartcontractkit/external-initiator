@@ -10,6 +10,7 @@ import (
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1592829052"
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1594317706"
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1599849837"
+	"github.com/smartcontractkit/external-initiator/store/migrations/migration1603803454"
 )
 
 type AgoricSubscription struct {
@@ -29,6 +30,7 @@ type Subscription struct {
 	BinanceSmartChain migration1592829052.BinanceSmartChainSubscription
 	NEAR              migration1594317706.NEARSubscription
 	Conflux           migration1599849837.CfxSubscription
+	EthQae            migration1603803454.EthCallSubscription
 	Agoric            AgoricSubscription
 }
 
