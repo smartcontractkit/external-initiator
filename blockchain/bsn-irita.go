@@ -66,7 +66,7 @@ func createBSNIritaSubscriber(sub store.Subscription) *biritaSubscriber {
 	serviceClient := servicesdk.NewServiceClient(cfg)
 
 	interval := time.Duration(sub.Endpoint.RefreshInt) * time.Second
-	if interval == 0 {
+	if interval <= 0 {
 		interval = DefaultScannerInterval
 	}
 
@@ -80,7 +80,7 @@ func createBSNIritaSubscriber(sub store.Subscription) *biritaSubscriber {
 }
 
 func (bs *biritaSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ ...interface{}) (subscriber.ISubscription, error) {
-	logger.Infof("Subscribe to BSN-IRITA service requests, service name: %s, provider addresses: %v\n", bs.ServiceName, bs.Addresses)
+	logger.Infof("Subscribe to BSN-IRITA service requests, provider addresses: %v, service name: %s\n", bs.Addresses, bs.ServiceName)
 
 	addressMap := make(map[string]bool)
 	for _, addr := range bs.Addresses {

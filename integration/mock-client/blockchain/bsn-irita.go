@@ -3,7 +3,49 @@ package blockchain
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/smartcontractkit/chainlink/core/logger"
+	"github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
+
+func setBSNIritaRoutes(router *gin.Engine) {
+	router.POST("/", handleBSNIritaRPC)
+}
+
+func handleBSNIritaRPC(c *gin.Context) {
+	var req JsonrpcMessage
+	if err := c.BindJSON(&req); err != nil {
+		logger.Error(err)
+		c.JSON(http.StatusBadRequest, nil)
+		return
+	}
+
+	rsp, err := handleBSNIritaRequest(req)
+	if len(rsp) == 0 || err != nil {
+		var response JsonrpcMessage
+		response.ID = req.ID
+		response.Version = req.Version
+
+		if err != nil {
+			logger.Error(err)
+
+			var errintf interface{}
+			errintf = types.RPCError{
+				Message: err.Error(),
+			}
+
+			response.Error = &errintf
+		}
+
+		c.JSON(http.StatusBadRequest, response)
+		return
+	}
+
+	c.JSON(http.StatusOK, rsp[0])
+	return
+}
 
 func handleBSNIritaRequest(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 	switch msg.Method {

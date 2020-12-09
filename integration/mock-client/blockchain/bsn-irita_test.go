@@ -1,12 +1,12 @@
 package blockchain
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/irisnet/service-sdk-go/service"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmtypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
@@ -21,7 +21,7 @@ func TestHandleQueryStatus(t *testing.T) {
 	assert.True(t, ok)
 
 	var status tmtypes.ResultStatus
-	err := json.Unmarshal(rsp[0].Result, &status)
+	err := tmjson.Unmarshal(rsp[0].Result, &status)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(7753), status.SyncInfo.LatestBlockHeight)
 }
@@ -37,7 +37,7 @@ func TestHandleQueryBlockResults(t *testing.T) {
 	assert.True(t, ok)
 
 	var blockResult tmtypes.ResultBlockResults
-	err := json.Unmarshal(rsp[0].Result, &blockResult)
+	err := tmjson.Unmarshal(rsp[0].Result, &blockResult)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(7753), blockResult.Height)
 }
@@ -54,7 +54,7 @@ func TestHandleQueryServiceRequest(t *testing.T) {
 	assert.NoError(t, err)
 
 	var request service.Request
-	err = json.Unmarshal(rsp[0].Result, &request)
+	err = tmjson.Unmarshal(rsp[0].Result, &request)
 	assert.NoError(t, err)
 	assert.Equal(t, "oracle", request.ServiceName)
 	assert.Equal(t, "iaa1l4vp69jt8ghxtyrh6jm8jp022km50sg35eqcae", request.Provider.String())

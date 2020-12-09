@@ -5,9 +5,9 @@
         "result": {
           "node_info": {
             "protocol_version": {
-              "p2p": 8,
-              "block": 11,
-              "app": 0
+              "p2p": "8",
+              "block": "11",
+              "app": "0"
             },
             "id": "b616b59797b46610ef3818085866a828dd7b57e6",
             "listen_addr": "tcp://0.0.0.0:26656",
@@ -23,11 +23,11 @@
           "sync_info": {
             "latest_block_hash": "B1A30C2EA97A8467293C66991D398694AC28373BF11FAFB7092A1D1344262DE9",
             "latest_app_hash": "44FC1AD5B755E3DB0C0FE982732931EB36A97D33DDA8056B889C86170D354304",
-            "latest_block_height": 7753,
+            "latest_block_height": "7753",
             "latest_block_time": "2020-11-11T06:55:46.321105Z",
             "earliest_block_hash": "B3EAB5C6155DD92CF647883C42AEC651FC97B5262D277D7AB724D3FFEE941AF8",
             "earliest_app_hash": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
-            "earliest_block_height": 1,
+            "earliest_block_height": "1",
             "earliest_block_time": "2020-11-10T05:41:06.758698Z",
             "catching_up": false
           }
@@ -38,7 +38,7 @@
       {
         "jsonrpc": "2.0",
         "result": {
-          "height": 7753,
+          "height": "7753",
 		      "txs_results": null,
 		      "begin_block_events": null,
 		      "end_block_events": [
@@ -66,13 +66,13 @@
 		      "validator_updates": null,
 		      "consensus_param_updates": {
 			      "block": {
-				      "max_bytes": 22020096,
-				      "max_gas": -1
+				      "max_bytes": "22020096",
+				      "max_gas": "-1"
 			      },
 			      "evidence": {
-				      "max_age_num_blocks": 100000,
-				      "max_age_duration": 172800000000000,
-				      "max_num": 50
+				      "max_age_num_blocks": "100000",
+				      "max_age_duration": "172800000000000",
+				      "max_bytes": "1048576"
 			      },
 			      "validator": {
 				      "pub_key_types": [

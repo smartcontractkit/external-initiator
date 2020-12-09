@@ -31,8 +31,6 @@ func HandleRequest(conn, platform string, msg JsonrpcMessage) ([]JsonrpcMessage,
 		return handleCfxRequest(conn, msg)
 	case "eth-call":
 		return handleEthCallRequest(conn, msg)
-	case "birita":
-		return handleBSNIritaRequest(msg)
 	default:
 		return nil, fmt.Errorf("unexpected platform: %v", platform)
 	}
@@ -40,4 +38,5 @@ func HandleRequest(conn, platform string, msg JsonrpcMessage) ([]JsonrpcMessage,
 
 func SetHttpRoutes(router *gin.Engine) {
 	setXtzRoutes(router)
+	setBSNIritaRoutes(router)
 }

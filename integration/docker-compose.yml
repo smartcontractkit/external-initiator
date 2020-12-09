@@ -75,7 +75,7 @@ services:
       - '{"name":"cfx-mock-ws","type":"conflux","url":"ws://mock:8080/ws/cfx"}'
       - '{"name":"eth-call-mock-http","type":"eth-call","url":"http://mock:8080/rpc/eth-call","refreshInterval":600}'
       - '{"name":"eth-call-mock-ws","type":"eth-call","url":"ws://mock:8080/ws/eth-call"}'
-      - '{"name":"birita-mock-http","type":"bsn-irita","url":"http://mock:8080/rpc/birita","refreshInterval":600}'
+      - '{"name":"birita-mock-http","type":"bsn-irita","url":"http://mock:8080","refreshInterval":600}'
     networks:
       - integration
 volumes:
