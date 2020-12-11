@@ -1,13 +1,16 @@
 package blockchain
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
+	abci "github.com/tendermint/tendermint/abci/types"
+	tmjson "github.com/tendermint/tendermint/libs/json"
+	tmrpc "github.com/tendermint/tendermint/rpc/jsonrpc/types"
+
 	"github.com/smartcontractkit/chainlink/core/logger"
-	"github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 func setBSNIritaRoutes(router *gin.Engine) {
@@ -32,7 +35,7 @@ func handleBSNIritaRPC(c *gin.Context) {
 			logger.Error(err)
 
 			var errintf interface{}
-			errintf = types.RPCError{
+			errintf = tmrpc.RPCError{
 				Message: err.Error(),
 			}
 
@@ -44,7 +47,6 @@ func handleBSNIritaRPC(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, rsp[0])
-	return
 }
 
 func handleBSNIritaRequest(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
@@ -66,23 +68,13 @@ func handleBSNIritaRequest(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 }
 
 func handleQueryABCI(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
-	var params []json.RawMessage
-	err := json.Unmarshal(msg.Params, &params)
+	var params abci.RequestQuery
+	err := tmjson.Unmarshal(msg.Params, &params)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(params) != 4 {
-		return nil, fmt.Errorf("incorrect length of params array: %v", len(params))
-	}
-
-	var path string
-	err = json.Unmarshal(params[0], &path)
-	if err != nil {
-		return nil, err
-	}
-
-	if path == "/custom/service/request" {
+	if params.Path == "/custom/service/request" {
 		return handleQueryServiceRequest(msg)
 	}
 
