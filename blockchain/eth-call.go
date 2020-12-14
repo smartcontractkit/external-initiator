@@ -93,11 +93,8 @@ func (helper solFunctionHelper) FunctionSelector() string {
 }
 
 func (helper solFunctionHelper) Unpack(str string) ([]interface{}, error) {
-	// Remove 0x prefix
-	if strings.HasPrefix(str, "0x") {
-		str = str[2:]
-	}
-	data := hexutils.HexToBytes(str)
+	hexWithoutPrefix := strings.TrimPrefix(str, "0x")
+	data := hexutils.HexToBytes(hexWithoutPrefix)
 	return helper.abi.Unpack(helper.methodName, data)
 }
 
@@ -452,16 +449,16 @@ func (ethCall ethCallSubscription) parseResponse(response JsonrpcMessage) ([]sub
 	}
 
 	// If there is no data returned, we have no jobs to initiate
-	if res == nil || len(res) == 0 {
+	if len(res) == 0 {
 		return nil, nil
 	}
 
 	result := res[0]
 	var events []subscriber.Event
-	switch result.(type) {
+	switch typedResult := result.(type) {
 	// Add cases for special types
 	case bool:
-		if result.(bool) == true {
+		if typedResult {
 			events = append(events, subscriber.Event{})
 		}
 	// For any other types, figure out if we have an array or a single value
