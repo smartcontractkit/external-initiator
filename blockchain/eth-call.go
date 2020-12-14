@@ -92,13 +92,13 @@ func (helper solFunctionHelper) FunctionSelector() string {
 	return helper.functionSelector.String()
 }
 
-func (helper solFunctionHelper) Unpack(str string, v interface{}) error {
+func (helper solFunctionHelper) Unpack(str string) ([]interface{}, error) {
 	// Remove 0x prefix
 	if strings.HasPrefix(str, "0x") {
 		str = str[2:]
 	}
 	data := hexutils.HexToBytes(str)
-	return helper.abi.Unpack(v, helper.methodName, data)
+	return helper.abi.Unpack(helper.methodName, data)
 }
 
 type ethCallSubscriber struct {
@@ -446,17 +446,17 @@ func (ethCall ethCallSubscription) parseResponse(response JsonrpcMessage) ([]sub
 		return nil, err
 	}
 
-	var result interface{}
-	err = ethCall.helper.Unpack(data, &result)
+	res, err := ethCall.helper.Unpack(data)
 	if err != nil {
 		return nil, err
 	}
 
 	// If there is no data returned, we have no jobs to initiate
-	if result == nil {
+	if res == nil || len(res) == 0 {
 		return nil, nil
 	}
 
+	result := res[0]
 	var events []subscriber.Event
 	switch result.(type) {
 	// Add cases for special types
