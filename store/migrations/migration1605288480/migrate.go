@@ -12,7 +12,7 @@ type EthCallSubscription struct {
 	ABI              string
 	ResponseKey      string
 	MethodName       string
-	FunctionSelector []byte
+	FunctionSelector [4]byte
 	ReturnType       string
 }
 
