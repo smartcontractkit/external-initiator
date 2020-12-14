@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/external-initiator
 
-go 1.12
+go 1.15
 
 require (
 	github.com/FactomProject/basen v0.0.0-20150613233007-fe3947df716e // indirect
