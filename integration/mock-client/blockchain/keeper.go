@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-func handleEthCallRequest(_ string, msg JsonrpcMessage) ([]JsonrpcMessage, error) {
+func handleKeeperRequest(_ string, msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 	switch msg.Method {
 	case "eth_call":
 		return handleEthCall(msg)
