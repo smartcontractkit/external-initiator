@@ -6,14 +6,12 @@ import (
 	"database/sql/driver"
 	"encoding/csv"
 	"fmt"
-	"io"
-
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink/core/logger"
-	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/store/migrations"
+	"io"
 )
 
 const sqlDialect = "postgres"
@@ -340,11 +338,7 @@ type CfxSubscription struct {
 
 type KeeperSubscription struct {
 	gorm.Model
-	SubscriptionId   uint
-	Address          string
-	ABI              SQLBytes
-	ResponseKey      string
-	MethodName       string
-	FunctionSelector models.FunctionSelector
-	ReturnType       string
+	SubscriptionId uint
+	Address        string
+	UpkeepID       string
 }

@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 )
@@ -31,16 +30,12 @@ var blockchains = []string{
 }
 
 type Params struct {
-	Endpoint         string                  `json:"endpoint"`
-	Addresses        []string                `json:"addresses"`
-	Topics           []string                `json:"topics"`
-	AccountIds       []string                `json:"accountIds"`
-	Address          string                  `json:"address"`
-	ABI              json.RawMessage         `json:"abi"`
-	MethodName       string                  `json:"methodName"`
-	ResponseKey      string                  `json:"responseKey"`
-	FunctionSelector models.FunctionSelector `json:"functionSelector"`
-	ReturnType       string                  `json:"returnType"`
+	Endpoint   string   `json:"endpoint"`
+	Addresses  []string `json:"addresses"`
+	Topics     []string `json:"topics"`
+	AccountIds []string `json:"accountIds"`
+	Address    string   `json:"address"`
+	UpkeepID   string   `json:"upkeepId"`
 }
 
 // CreateJsonManager creates a new instance of a JSON blockchain manager with the provided
@@ -144,8 +139,7 @@ func GetValidations(t string, params Params) []int {
 	case Keeper:
 		return []int{
 			len(params.Address),
-			len(params.ABI) + len(params.ReturnType),
-			len(params.MethodName) + len(params.FunctionSelector.Bytes()),
+			len(params.UpkeepID),
 		}
 	}
 
@@ -185,17 +179,9 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 			Topics:    params.Topics,
 		}
 	case Keeper:
-		key := params.ResponseKey
-		if key == "" {
-			key = defaultResponseKey
-		}
 		sub.Keeper = store.KeeperSubscription{
-			Address:          params.Address,
-			ABI:              store.SQLBytes(params.ABI),
-			ResponseKey:      key,
-			MethodName:       params.MethodName,
-			FunctionSelector: params.FunctionSelector,
-			ReturnType:       params.ReturnType,
+			Address:  params.Address,
+			UpkeepID: params.UpkeepID,
 		}
 	}
 }

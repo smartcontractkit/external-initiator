@@ -15,111 +15,83 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink/core/logger"
-	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
-	"github.com/status-im/keycard-go/hexutils"
 )
 
 const (
-	Keeper             = "keeper"
-	defaultResponseKey = "result"
+	Keeper      = "keeper"
+	checkMethod = "checkForUpkeep"
 )
 
-var emptyFunctionSelector = [4]byte{0, 0, 0, 0}
-
-type solFunctionHelper struct {
-	abi              abi.ABI
-	functionSelector models.FunctionSelector
-	methodName       string
-}
-
-func NewSolFunctionHelper(abiJson json.RawMessage, methodName string, funcSelector models.FunctionSelector, returnType string) (*solFunctionHelper, error) {
-	if (len(abiJson) == 0 || methodName == "") && (len(funcSelector.Bytes()) == 0 || returnType == "") {
-		return nil, errors.New("missing ABI & methodName or functionSelector & returnType")
-	}
-
-	helper := solFunctionHelper{}
-
-	var err error
-	// If ABI is included, we set up the helper based on ABI + methodName
-	if len(abiJson) > 0 {
-		helper.abi, err = abi.JSON(bytes.NewReader(abiJson))
-		if err != nil {
-			return nil, err
-		}
-		helper.methodName = methodName
-
-		var funcSelectorBytes []byte
-		funcSelectorBytes, err = helper.abi.Pack(methodName)
-		if err != nil {
-			return nil, err
-		}
-
-		helper.functionSelector = models.BytesToFunctionSelector(funcSelectorBytes)
-
-		return &helper, nil
-	}
-
-	// With no ABI included, we set up the helper based on funcSelector + returnType
-	t, err := abi.NewType(returnType, "", nil)
-	if err != nil {
-		fmt.Println(err)
-		return nil, err
-	}
-
-	helper.functionSelector = funcSelector
-	helper.methodName = "arbitrary"
-	helper.abi.Methods = map[string]abi.Method{
-		helper.methodName: {
-			Name:    helper.methodName,
-			RawName: helper.methodName,
-			Type:    abi.Function,
-			Outputs: abi.Arguments{
-				{
-					Type: t,
-				},
+const UpkeepRegistryInterface = `[
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "upkeepId",
+				"type": "uint256"
+			}
+		],
+		"name": "checkForUpkeep",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "canPerform",
+				"type": "bool"
 			},
-		},
+			{
+				"internalType": "bytes",
+				"name": "performData",
+				"type": "bytes"
+			},
+			{
+				"internalType": "uint256",
+				"name": "maxLinkPayment",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "gasLimit",
+				"type": "uint256"
+			},
+			{
+				"internalType": "int256",
+				"name": "gasWei",
+				"type": "int256"
+			},
+			{
+				"internalType": "int256",
+				"name": "linkEth",
+				"type": "int256"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
 	}
-
-	return &helper, nil
-}
-
-func (helper solFunctionHelper) FunctionSelector() string {
-	if helper.functionSelector == emptyFunctionSelector {
-		return "0x"
-	}
-	return helper.functionSelector.String()
-}
-
-func (helper solFunctionHelper) Unpack(str string) ([]interface{}, error) {
-	hexWithoutPrefix := strings.TrimPrefix(str, "0x")
-	data := hexutils.HexToBytes(hexWithoutPrefix)
-	return helper.abi.Unpack(helper.methodName, data)
-}
+]`
 
 type keeperSubscriber struct {
-	Endpoint       string
-	Address        common.Address
-	FunctionHelper solFunctionHelper
-	JobID          string
-	ResponseKey    string
-	Connection     subscriber.Type
-	Interval       time.Duration
+	Endpoint   string
+	Address    common.Address
+	Abi        abi.ABI
+	UpkeepID   *big.Int
+	JobID      string
+	Connection subscriber.Type
+	Interval   time.Duration
 }
 
 func createKeeperSubscriber(sub store.Subscription) (*keeperSubscriber, error) {
-	abiBytes := sub.Keeper.ABI
-	// Add a check to convert stringified JSON to JSON object
-	var s string
-	if json.Unmarshal(abiBytes, &s) == nil {
-		abiBytes = []byte(s)
+	abiBytes := []byte(UpkeepRegistryInterface)
+	contractAbi, err := abi.JSON(bytes.NewReader(abiBytes))
+	if err != nil {
+		return nil, err
 	}
 
-	helper, err := NewSolFunctionHelper([]byte(abiBytes), sub.Keeper.MethodName, sub.Keeper.FunctionSelector, sub.Keeper.ReturnType)
+	upkeepId := new(big.Int)
+	_, err = fmt.Sscan(sub.Keeper.UpkeepID, upkeepId)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed creating solidity function helper")
+		return nil, err
 	}
 
 	var t subscriber.Type
@@ -132,13 +104,13 @@ func createKeeperSubscriber(sub store.Subscription) (*keeperSubscriber, error) {
 	}
 
 	return &keeperSubscriber{
-		Endpoint:       strings.TrimSuffix(sub.Endpoint.Url, "/"),
-		Address:        common.HexToAddress(sub.Keeper.Address),
-		FunctionHelper: *helper,
-		JobID:          sub.Job,
-		ResponseKey:    sub.Keeper.ResponseKey,
-		Connection:     t,
-		Interval:       time.Duration(sub.Endpoint.RefreshInt) * time.Second,
+		Endpoint:   strings.TrimSuffix(sub.Endpoint.Url, "/"),
+		Address:    common.HexToAddress(sub.Keeper.Address),
+		Abi:        contractAbi,
+		UpkeepID:   upkeepId,
+		JobID:      sub.Job,
+		Connection: t,
+		Interval:   time.Duration(sub.Endpoint.RefreshInt) * time.Second,
 	}, nil
 }
 
@@ -146,10 +118,10 @@ type keeperSubscription struct {
 	endpoint         string
 	events           chan<- subscriber.Event
 	address          common.Address
-	helper           solFunctionHelper
+	abi              abi.ABI
+	upkeepId         *big.Int
 	isDone           bool
 	jobID            string
-	key              string
 	cooldown         *big.Int
 	lastInitiatedRun *big.Int
 }
@@ -160,8 +132,8 @@ func (keeper keeperSubscriber) SubscribeToEvents(channel chan<- subscriber.Event
 		events:           channel,
 		jobID:            keeper.JobID,
 		address:          keeper.Address,
-		helper:           keeper.FunctionHelper,
-		key:              keeper.ResponseKey,
+		abi:              keeper.Abi,
+		upkeepId:         keeper.UpkeepID,
 		cooldown:         big.NewInt(runtimeConfig.KeeperBlockCooldown),
 		lastInitiatedRun: big.NewInt(0),
 	}
@@ -261,9 +233,14 @@ type ethCallMessage struct {
 }
 
 func (keeper keeperSubscription) getCallPayload() ([]byte, error) {
+	data, err := keeper.abi.Pack(checkMethod, keeper.upkeepId)
+	if err != nil {
+		return nil, err
+	}
+
 	call := ethCallMessage{
 		To:   keeper.address.Hex(),
-		Data: keeper.helper.FunctionSelector(),
+		Data: hexutil.Encode(data[:]),
 	}
 
 	var params []interface{}
@@ -511,65 +488,34 @@ func (keeper keeperSubscription) parseResponse(response JsonrpcMessage) ([]subsc
 		return nil, err
 	}
 
-	res, err := keeper.helper.Unpack(data)
+	dataNoPrefix := strings.TrimPrefix(data, "0x")
+	res, err := keeper.abi.Unpack(checkMethod, []byte(dataNoPrefix))
 	if err != nil {
 		return nil, err
 	}
 
 	// If there is no data returned, we have no jobs to initiate
 	if len(res) == 0 {
+		return nil, errors.New("ethCall returned no results")
+	}
+
+	canPerform, ok := res[0].(bool)
+	if !ok {
+		return nil, errors.New("unable to determine if canPerform == true")
+	}
+
+	if !canPerform {
 		return nil, nil
 	}
 
-	result := res[0]
-	var events []subscriber.Event
-	switch typedResult := result.(type) {
-	// Add cases for special types
-	case bool:
-		if typedResult {
-			events = append(events, subscriber.Event{})
-		}
-	// For any other types, figure out if we have an array or a single value
-	default:
-		slice, err := interfaceToSlice(result)
-		// bytes32 is an array, but we don't want to initiate a job run for each byte
-		_, isbytes := result.([32]byte)
-		if err == nil && !isbytes {
-			for _, r := range slice {
-				event := map[string]interface{}{
-					keeper.key: r,
-				}
-				bz, err := json.Marshal(event)
-				if err != nil {
-					return nil, err
-				}
-				events = append(events, bz)
-			}
-		} else {
-			// If we have bytes32, we want the raw bytes32 instead of decoding it
-			if isbytes {
-				result = fmt.Sprintf("%s", data)
-			}
-			event := map[string]interface{}{
-				keeper.key: result,
-			}
-			bz, err := json.Marshal(event)
-			if err != nil {
-				return nil, err
-			}
-			events = append(events, bz)
-		}
+	event := map[string]interface{}{
+		"result": res[1],
 	}
 
-	return events, nil
-}
-
-func interfaceToSlice(data interface{}) ([]interface{}, error) {
-	bz, err := json.Marshal(data)
+	eventBz, err := json.Marshal(event)
 	if err != nil {
 		return nil, err
 	}
 
-	var slice []interface{}
-	return slice, json.Unmarshal(bz, &slice)
+	return []subscriber.Event{eventBz}, nil
 }

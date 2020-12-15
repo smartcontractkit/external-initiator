@@ -12,13 +12,9 @@ import (
 
 type KeeperSubscription struct {
 	gorm.Model
-	SubscriptionId   uint `gorm:"index"`
-	Address          string
-	ABI              string
-	ResponseKey      string
-	MethodName       string
-	FunctionSelector [4]byte
-	ReturnType       string
+	SubscriptionId uint
+	Address        string
+	UpkeepID       uint
 }
 
 type Subscription struct {

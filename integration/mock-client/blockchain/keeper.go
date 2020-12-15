@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 func handleKeeperRequest(_ string, msg JsonrpcMessage) ([]JsonrpcMessage, error) {
@@ -49,10 +50,11 @@ func handleEthCall(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 		return nil, err
 	}
 
-	if data.Data != "0xf9633930" {
+	if !strings.HasPrefix(data.Data, "0xb7d06888") {
 		return nil, errors.New("unknown function selector")
 	}
 
+	// TODO: Use proper data
 	return []JsonrpcMessage{
 		{
 			Version: "2.0",

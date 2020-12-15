@@ -6,6 +6,7 @@ require (
 	github.com/FactomProject/basen v0.0.0-20150613233007-fe3947df716e // indirect
 	github.com/avast/retry-go v2.6.0+incompatible
 	github.com/centrifuge/go-substrate-rpc-client v2.0.0+incompatible
+	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869
 	github.com/cmars/basen v0.0.0-20150613233007-fe3947df716e // indirect
 	github.com/ethereum/go-ethereum v1.9.24
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a
@@ -23,7 +24,6 @@ require (
 	github.com/smartcontractkit/chainlink v0.9.5-0.20201214122441-66aaea171293
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/viper v1.7.1
-	github.com/status-im/keycard-go v0.0.0-20190424133014-d95853db0f48
 	github.com/stretchr/testify v1.6.1
 	github.com/tidwall/gjson v1.6.3
 	go.uber.org/zap v1.16.0

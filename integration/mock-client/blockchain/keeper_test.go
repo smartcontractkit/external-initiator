@@ -18,7 +18,7 @@ func Test_handleEthCall(t *testing.T) {
 				Version: "2.0",
 				ID:      []byte(`1`),
 				Method:  "eth_call",
-				Params:  []byte(`[{"data":"0xf9633930"},"latest"]`),
+				Params:  []byte(`[{"data":"0xb7d06888"},"latest"]`),
 			},
 			want: []JsonrpcMessage{
 				{
@@ -68,9 +68,9 @@ func Test_msgToEthCall(t *testing.T) {
 				Version: "2.0",
 				ID:      []byte(`1`),
 				Method:  "eth_call",
-				Params:  []byte(`[{"data":"0xf9633930"},"latest"]`),
+				Params:  []byte(`[{"data":"0xb7d06888"},"latest"]`),
 			},
-			want:    &ethCallMessage{Data: "0xf9633930"},
+			want:    &ethCallMessage{Data: "0xb7d06888"},
 			wantErr: false,
 		},
 		{
@@ -79,7 +79,7 @@ func Test_msgToEthCall(t *testing.T) {
 				Version: "2.0",
 				ID:      []byte(`1`),
 				Method:  "eth_call",
-				Params:  []byte(`["latest",{"data":"0xf9633930"}]`),
+				Params:  []byte(`["latest",{"data":"0xb7d06888"}]`),
 			},
 			want:    nil,
 			wantErr: true,
@@ -90,7 +90,7 @@ func Test_msgToEthCall(t *testing.T) {
 				Version: "2.0",
 				ID:      []byte(`1`),
 				Method:  "eth_call",
-				Params:  []byte(`[{"data":"0xf9633930"}]`),
+				Params:  []byte(`[{"data":"0xb7d06888"}]`),
 			},
 			want:    nil,
 			wantErr: true,
