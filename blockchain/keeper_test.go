@@ -132,7 +132,7 @@ func newFunctionHelper(t *testing.T, functionSelector models.FunctionSelector, r
 }
 
 func Test_ethCallSubscriber_GetTestJson(t *testing.T) {
-	ethCall := ethCallSubscriber{}
+	ethCall := keeperSubscriber{}
 	got := ethCall.GetTestJson()
 	want := []byte(`{"jsonrpc":"2.0","id":1,"method":"eth_blockNumber"}`)
 	if !bytes.Equal(got, want) {
@@ -159,7 +159,7 @@ func Test_ethCallSubscriber_ParseTestResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ethCall := ethCallSubscriber{}
+			ethCall := keeperSubscriber{}
 			if err := ethCall.ParseTestResponse(tt.resp); (err != nil) != tt.wantErr {
 				t.Errorf("ParseTestResponse() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -217,7 +217,7 @@ func Test_ethCallSubscription_getCallPayload(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ethCall := ethCallSubscription{
+			ethCall := keeperSubscription{
 				address: tt.fields.address,
 				helper:  tt.fields.helper,
 			}
@@ -247,7 +247,7 @@ func Test_ethCallSubscription_getSubscribePayload(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ethCall := ethCallSubscription{}
+			ethCall := keeperSubscription{}
 			got, err := ethCall.getSubscribePayload()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getSubscribePayload() error = %v, wantErr %v", err, tt.wantErr)
@@ -424,7 +424,7 @@ func Test_ethCallSubscription_parseResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ethCall := ethCallSubscription{
+			ethCall := keeperSubscription{
 				helper: tt.fields.helper,
 				key:    defaultResponseKey,
 			}

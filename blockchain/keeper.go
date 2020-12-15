@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	ETH_CALL           = "eth-call"
+	Keeper             = "keeper"
 	defaultResponseKey = "result"
 )
 
@@ -98,7 +98,7 @@ func (helper solFunctionHelper) Unpack(str string) ([]interface{}, error) {
 	return helper.abi.Unpack(helper.methodName, data)
 }
 
-type ethCallSubscriber struct {
+type keeperSubscriber struct {
 	Endpoint       string
 	Address        common.Address
 	FunctionHelper solFunctionHelper
@@ -108,15 +108,15 @@ type ethCallSubscriber struct {
 	Interval       time.Duration
 }
 
-func createEthCallSubscriber(sub store.Subscription) (*ethCallSubscriber, error) {
-	abiBytes := sub.EthCall.ABI
+func createKeeperSubscriber(sub store.Subscription) (*keeperSubscriber, error) {
+	abiBytes := sub.Keeper.ABI
 	// Add a check to convert stringified JSON to JSON object
 	var s string
 	if json.Unmarshal(abiBytes, &s) == nil {
 		abiBytes = []byte(s)
 	}
 
-	helper, err := NewSolFunctionHelper([]byte(abiBytes), sub.EthCall.MethodName, sub.EthCall.FunctionSelector, sub.EthCall.ReturnType)
+	helper, err := NewSolFunctionHelper([]byte(abiBytes), sub.Keeper.MethodName, sub.Keeper.FunctionSelector, sub.Keeper.ReturnType)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed creating solidity function helper")
 	}
@@ -130,18 +130,18 @@ func createEthCallSubscriber(sub store.Subscription) (*ethCallSubscriber, error)
 		return nil, fmt.Errorf("unknown endpoint protocol: %+v", sub.Endpoint.Url)
 	}
 
-	return &ethCallSubscriber{
+	return &keeperSubscriber{
 		Endpoint:       strings.TrimSuffix(sub.Endpoint.Url, "/"),
-		Address:        common.HexToAddress(sub.EthCall.Address),
+		Address:        common.HexToAddress(sub.Keeper.Address),
 		FunctionHelper: *helper,
 		JobID:          sub.Job,
-		ResponseKey:    sub.EthCall.ResponseKey,
+		ResponseKey:    sub.Keeper.ResponseKey,
 		Connection:     t,
 		Interval:       time.Duration(sub.Endpoint.RefreshInt) * time.Second,
 	}, nil
 }
 
-type ethCallSubscription struct {
+type keeperSubscription struct {
 	endpoint string
 	events   chan<- subscriber.Event
 	address  common.Address
@@ -151,19 +151,19 @@ type ethCallSubscription struct {
 	key      string
 }
 
-func (ethCall ethCallSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ ...interface{}) (subscriber.ISubscription, error) {
-	sub := ethCallSubscription{
-		endpoint: ethCall.Endpoint,
+func (keeper keeperSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ ...interface{}) (subscriber.ISubscription, error) {
+	sub := keeperSubscription{
+		endpoint: keeper.Endpoint,
 		events:   channel,
-		jobID:    ethCall.JobID,
-		address:  ethCall.Address,
-		helper:   ethCall.FunctionHelper,
-		key:      ethCall.ResponseKey,
+		jobID:    keeper.JobID,
+		address:  keeper.Address,
+		helper:   keeper.FunctionHelper,
+		key:      keeper.ResponseKey,
 	}
 
-	switch ethCall.Connection {
+	switch keeper.Connection {
 	case subscriber.RPC:
-		go sub.queryUntilDone(ethCall.Interval)
+		go sub.queryUntilDone(keeper.Interval)
 	case subscriber.WS:
 		sub.subscribeToNewHeads()
 	}
@@ -171,18 +171,18 @@ func (ethCall ethCallSubscriber) SubscribeToEvents(channel chan<- subscriber.Eve
 	return sub, nil
 }
 
-func (ethCall ethCallSubscriber) Test() error {
-	switch ethCall.Connection {
+func (keeper keeperSubscriber) Test() error {
+	switch keeper.Connection {
 	case subscriber.RPC:
-		return ethCall.TestRPC()
+		return keeper.TestRPC()
 	case subscriber.WS:
-		return ethCall.TestWS()
+		return keeper.TestWS()
 	}
 	return errors.New("unknown connection type")
 }
 
-func (ethCall ethCallSubscriber) TestRPC() error {
-	resp, err := sendEthCallPost(ethCall.Endpoint, ethCall.GetTestJson())
+func (keeper keeperSubscriber) TestRPC() error {
+	resp, err := sendEthCallPost(keeper.Endpoint, keeper.GetTestJson())
 	if err != nil {
 		return err
 	}
@@ -190,8 +190,8 @@ func (ethCall ethCallSubscriber) TestRPC() error {
 	return nil
 }
 
-func (ethCall ethCallSubscriber) TestWS() error {
-	c, _, err := websocket.DefaultDialer.Dial(ethCall.Endpoint, nil)
+func (keeper keeperSubscriber) TestWS() error {
+	c, _, err := websocket.DefaultDialer.Dial(keeper.Endpoint, nil)
 	if err != nil {
 		return err
 	}
@@ -208,7 +208,7 @@ func (ethCall ethCallSubscriber) TestWS() error {
 		resp <- body
 	}()
 
-	err = c.WriteMessage(websocket.BinaryMessage, ethCall.GetTestJson())
+	err = c.WriteMessage(websocket.BinaryMessage, keeper.GetTestJson())
 	if err != nil {
 		return err
 	}
@@ -224,11 +224,11 @@ func (ethCall ethCallSubscriber) TestWS() error {
 		if !ok {
 			return errors.New("failed reading test response from WS endpoint")
 		}
-		return ethCall.ParseTestResponse(body)
+		return keeper.ParseTestResponse(body)
 	}
 }
 
-func (ethCall ethCallSubscriber) GetTestJson() []byte {
+func (keeper keeperSubscriber) GetTestJson() []byte {
 	msg := JsonrpcMessage{
 		Version: "2.0",
 		ID:      json.RawMessage(`1`),
@@ -238,7 +238,7 @@ func (ethCall ethCallSubscriber) GetTestJson() []byte {
 	return payload
 }
 
-func (ethCall ethCallSubscriber) ParseTestResponse(resp []byte) error {
+func (keeper keeperSubscriber) ParseTestResponse(resp []byte) error {
 	if len(resp) == 0 {
 		return errors.New("unexpected empty response")
 	}
@@ -255,10 +255,10 @@ type ethCallMessage struct {
 	Data     string `json:"data,omitempty"`
 }
 
-func (ethCall ethCallSubscription) getCallPayload() ([]byte, error) {
+func (keeper keeperSubscription) getCallPayload() ([]byte, error) {
 	call := ethCallMessage{
-		To:   ethCall.address.Hex(),
-		Data: ethCall.helper.FunctionSelector(),
+		To:   keeper.address.Hex(),
+		Data: keeper.helper.FunctionSelector(),
 	}
 
 	var params []interface{}
@@ -278,7 +278,7 @@ func (ethCall ethCallSubscription) getCallPayload() ([]byte, error) {
 	return json.Marshal(msg)
 }
 
-func (ethCall ethCallSubscription) getSubscribePayload() ([]byte, error) {
+func (keeper keeperSubscription) getSubscribePayload() ([]byte, error) {
 	msg := JsonrpcMessage{
 		Version: "2.0",
 		ID:      json.RawMessage(`2`),
@@ -288,24 +288,24 @@ func (ethCall ethCallSubscription) getSubscribePayload() ([]byte, error) {
 	return json.Marshal(msg)
 }
 
-func (ethCall ethCallSubscription) queryUntilDone(interval time.Duration) {
+func (keeper keeperSubscription) queryUntilDone(interval time.Duration) {
 	for {
-		if ethCall.isDone {
+		if keeper.isDone {
 			return
 		}
-		ethCall.query()
+		keeper.query()
 		time.Sleep(interval)
 	}
 }
 
-func (ethCall ethCallSubscription) query() {
-	payload, err := ethCall.getCallPayload()
+func (keeper keeperSubscription) query() {
+	payload, err := keeper.getCallPayload()
 	if err != nil {
 		logger.Error("Unable to get ETH QAE payload:", err)
 		return
 	}
 
-	resp, err := sendEthCallPost(ethCall.endpoint, payload)
+	resp, err := sendEthCallPost(keeper.endpoint, payload)
 	if err != nil {
 		logger.Error(err)
 		return
@@ -325,14 +325,14 @@ func (ethCall ethCallSubscription) query() {
 		return
 	}
 
-	events, err := ethCall.parseResponse(response)
+	events, err := keeper.parseResponse(response)
 	if err != nil {
 		logger.Error("failed parseResponse:", err)
 		return
 	}
 
 	for _, event := range events {
-		ethCall.events <- event
+		keeper.events <- event
 	}
 }
 
@@ -352,9 +352,9 @@ func sendEthCallPost(endpoint string, payload []byte) (*http.Response, error) {
 	return resp, nil
 }
 
-func (ethCall ethCallSubscription) messageReader(conn *websocket.Conn, callPayload []byte) {
+func (keeper keeperSubscription) messageReader(conn *websocket.Conn, callPayload []byte) {
 	defer func() {
-		ethCall.isDone = true
+		keeper.isDone = true
 		_ = conn.Close()
 		logger.Debug("closing WS subscription")
 	}()
@@ -383,67 +383,67 @@ func (ethCall ethCallSubscription) messageReader(conn *websocket.Conn, callPaylo
 			}
 			requestedEthCall = true
 		} else if requestedEthCall {
-			events, err := ethCall.parseResponse(msg)
+			events, err := keeper.parseResponse(msg)
 			if err != nil {
 				logger.Error("Failed parsing response:", err)
 				continue
 			}
 			for _, event := range events {
-				ethCall.events <- event
+				keeper.events <- event
 			}
 			requestedEthCall = false
 		}
 	}
 }
 
-func (ethCall ethCallSubscription) subscribeToNewHeads() {
-	logger.Infof("Connecting to WS endpoint: %s", ethCall.endpoint)
+func (keeper keeperSubscription) subscribeToNewHeads() {
+	logger.Infof("Connecting to WS endpoint: %s", keeper.endpoint)
 
-	callPayload, err := ethCall.getCallPayload()
+	callPayload, err := keeper.getCallPayload()
 	if err != nil {
 		logger.Error(err)
 		return
 	}
 
-	subscribePayload, err := ethCall.getSubscribePayload()
+	subscribePayload, err := keeper.getSubscribePayload()
 	if err != nil {
 		logger.Error(err)
 		return
 	}
 
-	c, _, err := websocket.DefaultDialer.Dial(ethCall.endpoint, nil)
+	c, _, err := websocket.DefaultDialer.Dial(keeper.endpoint, nil)
 	if err != nil {
 		logger.Error(err)
-		ethCall.isDone = true
+		keeper.isDone = true
 		return
 	}
 
-	go ethCall.messageReader(c, callPayload)
+	go keeper.messageReader(c, callPayload)
 
 	err = c.WriteMessage(websocket.TextMessage, subscribePayload)
 	if err != nil {
 		logger.Error(err)
-		ethCall.isDone = true
+		keeper.isDone = true
 		c.Close()
 		return
 	}
 
-	logger.Infof("Connected to %s", ethCall.endpoint)
+	logger.Infof("Connected to %s", keeper.endpoint)
 }
 
-func (ethCall ethCallSubscription) Unsubscribe() {
-	logger.Info("Unsubscribing from ETH QAE endpoint", ethCall.endpoint)
-	ethCall.isDone = true
+func (keeper keeperSubscription) Unsubscribe() {
+	logger.Info("Unsubscribing from ETH QAE endpoint", keeper.endpoint)
+	keeper.isDone = true
 }
 
-func (ethCall ethCallSubscription) parseResponse(response JsonrpcMessage) ([]subscriber.Event, error) {
+func (keeper keeperSubscription) parseResponse(response JsonrpcMessage) ([]subscriber.Event, error) {
 	var data string
 	err := json.Unmarshal(response.Result, &data)
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := ethCall.helper.Unpack(data)
+	res, err := keeper.helper.Unpack(data)
 	if err != nil {
 		return nil, err
 	}
@@ -469,7 +469,7 @@ func (ethCall ethCallSubscription) parseResponse(response JsonrpcMessage) ([]sub
 		if err == nil && !isbytes {
 			for _, r := range slice {
 				event := map[string]interface{}{
-					ethCall.key: r,
+					keeper.key: r,
 				}
 				bz, err := json.Marshal(event)
 				if err != nil {
@@ -483,7 +483,7 @@ func (ethCall ethCallSubscription) parseResponse(response JsonrpcMessage) ([]sub
 				result = fmt.Sprintf("%s", data)
 			}
 			event := map[string]interface{}{
-				ethCall.key: result,
+				keeper.key: result,
 			}
 			bz, err := json.Marshal(event)
 			if err != nil {
