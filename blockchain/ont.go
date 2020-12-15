@@ -43,7 +43,7 @@ type ontSubscription struct {
 	isDone    bool
 }
 
-func (ot *ontSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ ...interface{}) (subscriber.ISubscription, error) {
+func (ot *ontSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ store.RuntimeConfig) (subscriber.ISubscription, error) {
 	logger.Infof("Using Ontology RPC endpoint: Listening for events on addresses: %v\n", ot.Addresses)
 	addresses := make(map[string]bool)
 	for _, a := range ot.Addresses {
