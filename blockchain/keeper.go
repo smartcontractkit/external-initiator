@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net/http"
+	"math/big"
 	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink/core/logger"
@@ -142,23 +143,27 @@ func createKeeperSubscriber(sub store.Subscription) (*keeperSubscriber, error) {
 }
 
 type keeperSubscription struct {
-	endpoint string
-	events   chan<- subscriber.Event
-	address  common.Address
-	helper   solFunctionHelper
-	isDone   bool
-	jobID    string
-	key      string
+	endpoint         string
+	events           chan<- subscriber.Event
+	address          common.Address
+	helper           solFunctionHelper
+	isDone           bool
+	jobID            string
+	key              string
+	cooldown         *big.Int
+	lastInitiatedRun *big.Int
 }
 
-func (keeper keeperSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ ...interface{}) (subscriber.ISubscription, error) {
+func (keeper keeperSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, runtimeConfig store.RuntimeConfig) (subscriber.ISubscription, error) {
 	sub := keeperSubscription{
-		endpoint: keeper.Endpoint,
-		events:   channel,
-		jobID:    keeper.JobID,
-		address:  keeper.Address,
-		helper:   keeper.FunctionHelper,
-		key:      keeper.ResponseKey,
+		endpoint:         keeper.Endpoint,
+		events:           channel,
+		jobID:            keeper.JobID,
+		address:          keeper.Address,
+		helper:           keeper.FunctionHelper,
+		key:              keeper.ResponseKey,
+		cooldown:         big.NewInt(runtimeConfig.KeeperBlockCooldown),
+		lastInitiatedRun: big.NewInt(0),
 	}
 
 	switch keeper.Connection {
@@ -182,7 +187,7 @@ func (keeper keeperSubscriber) Test() error {
 }
 
 func (keeper keeperSubscriber) TestRPC() error {
-	resp, err := sendEthCallPost(keeper.Endpoint, keeper.GetTestJson())
+	resp, err := sendEthNodePost(keeper.Endpoint, keeper.GetTestJson())
 	if err != nil {
 		return err
 	}
@@ -298,14 +303,56 @@ func (keeper keeperSubscription) queryUntilDone(interval time.Duration) {
 	}
 }
 
+func (keeper keeperSubscription) getBlockHeightPost() (*big.Int, error) {
+	payload, err := GetBlockNumberPayload()
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := sendEthNodePost(keeper.endpoint, payload)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var response JsonrpcMessage
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		return nil, err
+	}
+
+	var blockNum string
+	err = json.Unmarshal(response.Result, &blockNum)
+	if err != nil {
+		return nil, err
+	}
+
+	return hexutil.DecodeBig(blockNum)
+}
+
 func (keeper keeperSubscription) query() {
+	blockHeight, err := keeper.getBlockHeightPost()
+	if err != nil {
+		logger.Error("Unable to get the current block height:", err)
+		return
+	}
+
+	if !keeper.cooldownDone(blockHeight) {
+		return
+	}
+
 	payload, err := keeper.getCallPayload()
 	if err != nil {
 		logger.Error("Unable to get ETH QAE payload:", err)
 		return
 	}
 
-	resp, err := sendEthCallPost(keeper.endpoint, payload)
+	resp, err := sendEthNodePost(keeper.endpoint, payload)
 	if err != nil {
 		logger.Error(err)
 		return
@@ -331,25 +378,25 @@ func (keeper keeperSubscription) query() {
 		return
 	}
 
+	if len(events) > 0 {
+		keeper.lastInitiatedRun = blockHeight
+	}
+
 	for _, event := range events {
 		keeper.events <- event
 	}
 }
 
-func sendEthCallPost(endpoint string, payload []byte) (*http.Response, error) {
-	resp, err := http.Post(endpoint, "application/json", bytes.NewReader(payload))
-	if err != nil {
-		return nil, err
+func (keeper keeperSubscription) cooldownDone(blockHeight *big.Int) bool {
+	difference := &big.Int{}
+	if keeper.cooldown.Cmp(difference.Sub(blockHeight, keeper.lastInitiatedRun)) > 0 {
+		logger.Debugw("initiated a run too recently, waiting...",
+			"cooldown", keeper.cooldown.String(),
+			"lastInitiatedRun", keeper.lastInitiatedRun.String(),
+			"blockHeight", blockHeight.String())
+		return false
 	}
-	if resp.StatusCode == 400 {
-		resp.Body.Close()
-		return nil, fmt.Errorf("%s returned 400. This endpoint may not support calls to /monitor", endpoint)
-	}
-	if resp.StatusCode != 200 {
-		resp.Body.Close()
-		return nil, fmt.Errorf("unexpected status code %v from endpoint %s", resp.StatusCode, endpoint)
-	}
-	return resp, nil
+	return true
 }
 
 func (keeper keeperSubscription) messageReader(conn *websocket.Conn, callPayload []byte) {
@@ -360,6 +407,8 @@ func (keeper keeperSubscription) messageReader(conn *websocket.Conn, callPayload
 	}()
 
 	requestedEthCall := false
+	blockHeight := big.NewInt(0)
+	first := true
 
 	for {
 		_, rawMsg, err := conn.ReadMessage()
@@ -376,6 +425,22 @@ func (keeper keeperSubscription) messageReader(conn *websocket.Conn, callPayload
 		}
 
 		if msg.Method == "eth_subscription" {
+			if first {
+				first = false
+				continue
+			}
+
+			blockNum, err := ParseBlocknumberFromNewHeads(msg)
+			if err != nil {
+				logger.Error(err)
+				continue
+			}
+
+			blockHeight = blockNum
+			if !keeper.cooldownDone(blockHeight) {
+				return
+			}
+
 			err = conn.WriteMessage(websocket.TextMessage, callPayload)
 			if err != nil {
 				logger.Error("failed writing to WS connection:", err)
@@ -387,6 +452,9 @@ func (keeper keeperSubscription) messageReader(conn *websocket.Conn, callPayload
 			if err != nil {
 				logger.Error("Failed parsing response:", err)
 				continue
+			}
+			if len(events) > 0 {
+				keeper.lastInitiatedRun = blockHeight
 			}
 			for _, event := range events {
 				keeper.events <- event

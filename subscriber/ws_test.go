@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/gorilla/websocket"
+	"github.com/smartcontractkit/external-initiator/store"
 )
 
 var upgrader = websocket.Upgrader{} // use default options
@@ -13,7 +14,7 @@ func TestWebsocketSubscriber_SubscribeToEvents(t *testing.T) {
 		wss := WebsocketSubscriber{Endpoint: wsMockUrl.String(), Manager: TestsMockManager{true}}
 		events := make(chan Event)
 
-		sub, err := wss.SubscribeToEvents(events)
+		sub, err := wss.SubscribeToEvents(events, store.RuntimeConfig{})
 		if err != nil {
 			t.Errorf("SubscribeToEvents() error = %v", err)
 			return
@@ -34,31 +35,11 @@ func TestWebsocketSubscriber_SubscribeToEvents(t *testing.T) {
 		}
 	})
 
-	t.Run("subscribes and does not expect confirmation message", func(t *testing.T) {
-		wss := WebsocketSubscriber{Endpoint: wsMockUrl.String(), Manager: TestsMockManager{false}}
-		events := make(chan Event)
-
-		sub, err := wss.SubscribeToEvents(events, false)
-		if err != nil {
-			t.Errorf("SubscribeToEvents() error = %v", err)
-			return
-		}
-		defer sub.Unsubscribe()
-
-		event := <-events
-		mockevent := string(event)
-
-		if mockevent != "event" {
-			t.Errorf("SubscribeToEvents() got unexpected message = %v", mockevent)
-			return
-		}
-	})
-
 	t.Run("fails subscribe to invalid URL", func(t *testing.T) {
 		wss := WebsocketSubscriber{Endpoint: "", Manager: TestsMockManager{false}}
 		events := make(chan Event)
 
-		sub, err := wss.SubscribeToEvents(events)
+		sub, err := wss.SubscribeToEvents(events, store.RuntimeConfig{})
 		if err == nil {
 			sub.Unsubscribe()
 			t.Error("SubscribeToEvents() expected error, but got nil")
@@ -70,7 +51,7 @@ func TestWebsocketSubscriber_SubscribeToEvents(t *testing.T) {
 		wss := WebsocketSubscriber{Endpoint: wsMockUrl.String(), Manager: &TestsReconnectManager{}}
 		events := make(chan Event)
 
-		sub, err := wss.SubscribeToEvents(events, false)
+		sub, err := wss.SubscribeToEvents(events, store.RuntimeConfig{})
 		if err != nil {
 			t.Errorf("SubscribeToEvents() error = %v", err)
 			return
@@ -102,7 +83,7 @@ func (m *TestsReconnectManager) GetTriggerJson() []byte {
 	case 0:
 		return []byte(`close`)
 	default:
-		return []byte(`false`)
+		return []byte(`true`)
 	}
 }
 

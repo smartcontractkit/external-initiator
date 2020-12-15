@@ -53,6 +53,8 @@ func startService(
 			Attempts: config.ChainlinkRetryAttempts,
 			Delay:    config.ChainlinkRetryDelay,
 		},
+	}, store.RuntimeConfig{
+		KeeperBlockCooldown: config.KeeperBlockCooldown,
 	})
 
 	var names []string
@@ -102,6 +104,7 @@ type Service struct {
 	clNode        chainlink.Node
 	store         storeInterface
 	subscriptions map[string]*activeSubscription
+	runtimeConfig store.RuntimeConfig
 }
 
 func validateEndpoint(endpoint store.Endpoint) error {
@@ -126,11 +129,13 @@ func validateEndpoint(endpoint store.Endpoint) error {
 func NewService(
 	dbClient storeInterface,
 	clNode chainlink.Node,
+	runtimeConfig store.RuntimeConfig,
 ) *Service {
 	return &Service{
 		store:         dbClient,
 		clNode:        clNode,
 		subscriptions: make(map[string]*activeSubscription),
+		runtimeConfig: runtimeConfig,
 	}
 }
 
@@ -214,7 +219,7 @@ func (srv *Service) subscribe(sub *store.Subscription, iSubscriber subscriber.IS
 
 	events := make(chan subscriber.Event)
 
-	subscription, err := iSubscriber.SubscribeToEvents(events)
+	subscription, err := iSubscriber.SubscribeToEvents(events, srv.runtimeConfig)
 	if err != nil {
 		return err
 	}

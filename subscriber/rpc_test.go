@@ -3,6 +3,8 @@ package subscriber
 import (
 	"testing"
 	"time"
+
+	"github.com/smartcontractkit/external-initiator/store"
 )
 
 func TestRpcSubscriber_SubscribeToEvents(t *testing.T) {
@@ -13,7 +15,7 @@ func TestRpcSubscriber_SubscribeToEvents(t *testing.T) {
 
 		events := make(chan Event)
 
-		sub, err := rpc.SubscribeToEvents(events)
+		sub, err := rpc.SubscribeToEvents(events, store.RuntimeConfig{})
 		if err != nil {
 			t.Errorf("SubscribeToEvents() error = %v", err)
 			return
