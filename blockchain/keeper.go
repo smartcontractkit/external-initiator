@@ -20,8 +20,9 @@ import (
 )
 
 const (
-	Keeper      = "keeper"
-	checkMethod = "checkForUpkeep"
+	Keeper        = "keeper"
+	checkMethod   = "checkForUpkeep"
+	executeMethod = "performUpkeep"
 )
 
 const UpkeepRegistryInterface = `[
@@ -66,6 +67,24 @@ const UpkeepRegistryInterface = `[
 				"type": "int256"
 			}
 		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "id",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bytes",
+				"name": "performData",
+				"type": "bytes"
+			}
+		],
+		"name": "performUpkeep",
+		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
 	}
@@ -508,8 +527,14 @@ func (keeper keeperSubscription) parseResponse(response JsonrpcMessage) ([]subsc
 		return nil, nil
 	}
 
+	executeData, err := keeper.abi.Pack(executeMethod, keeper.upkeepId, res[1])
+	if err != nil {
+		return nil, err
+	}
+
 	event := map[string]interface{}{
-		"result": res[1],
+		"functionSelector": hexutil.Encode(executeData[:4]),
+		"dataPrefix":       hexutil.Encode(executeData[4:]),
 	}
 
 	eventBz, err := json.Marshal(event)
