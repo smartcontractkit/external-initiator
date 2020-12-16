@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -508,7 +509,12 @@ func (keeper keeperSubscription) parseResponse(response JsonrpcMessage) ([]subsc
 	}
 
 	dataNoPrefix := strings.TrimPrefix(data, "0x")
-	res, err := keeper.abi.Unpack(checkMethod, []byte(dataNoPrefix))
+	encb, err := hex.DecodeString(dataNoPrefix)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := keeper.abi.Unpack(checkMethod, encb)
 	if err != nil {
 		return nil, err
 	}

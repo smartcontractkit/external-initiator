@@ -16,10 +16,57 @@ import (
 )
 
 var testAbi abi.ABI
+var encoderAbi abi.ABI
+
+const encodingAbi = `[
+{
+		"inputs": [
+			{
+				"internalType": "bool",
+				"name": "canPerform",
+				"type": "bool"
+			},
+			{
+				"internalType": "bytes",
+				"name": "performData",
+				"type": "bytes"
+			},
+			{
+				"internalType": "uint256",
+				"name": "maxLinkPayment",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "gasLimit",
+				"type": "uint256"
+			},
+			{
+				"internalType": "int256",
+				"name": "gasWei",
+				"type": "int256"
+			},
+			{
+				"internalType": "int256",
+				"name": "linkEth",
+				"type": "int256"
+			}
+		],
+		"name": "checkForUpkeep",
+		"outputs": [],
+		"stateMutability": "view",
+		"type": "function"
+	}
+]`
 
 func TestMain(m *testing.M) {
 	var err error
 	testAbi, err = abi.JSON(bytes.NewReader([]byte(UpkeepRegistryInterface)))
+	if err != nil {
+		panic(err)
+	}
+
+	encoderAbi, err = abi.JSON(bytes.NewReader([]byte(encodingAbi)))
 	if err != nil {
 		panic(err)
 	}
@@ -144,7 +191,11 @@ func Test_ethCallSubscription_getSubscribePayload(t *testing.T) {
 }
 
 func Test_ethCallSubscription_parseResponse(t *testing.T) {
-	// TODO: Add test cases
+	encodedData, err := encoderAbi.Pack(checkMethod, true, []byte("sample data"), big.NewInt(123), big.NewInt(123), big.NewInt(123), big.NewInt(123))
+	require.NoError(t, err)
+	require.True(t, len(encodedData) > 4)
+	encodedData = encodedData[4:] // Remove function selector to just get the data
+
 	tests := []struct {
 		name     string
 		response JsonrpcMessage
@@ -159,11 +210,41 @@ func Test_ethCallSubscription_parseResponse(t *testing.T) {
 			nil,
 			true,
 		},
+		{
+			"Valid but empty UpkeepRegistryInterface unpack",
+			JsonrpcMessage{
+				Result: []byte(`"0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"`),
+			},
+			nil,
+			false,
+		},
+		{
+			"UpkeepRegistryInterface unpack with a true value",
+			JsonrpcMessage{
+				Result: []byte(`"0x000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"`),
+			},
+			[]subscriber.Event{
+				[]byte(`{"address":"0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE","dataPrefix":"0x000000000000000000000000000000000000000000000000000000000000007b00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000","functionSelector":"0x7bbaf1ea"}`),
+			},
+			false,
+		},
+		{
+			"UpkeepRegistryInterface unpack with a true value and bytes",
+			JsonrpcMessage{
+				Result: []byte(fmt.Sprintf(`"%s"`, hexutil.Encode(encodedData[:]))),
+			},
+			[]subscriber.Event{
+				[]byte(`{"address":"0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE","dataPrefix":"0x000000000000000000000000000000000000000000000000000000000000007b0000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000000b73616d706c652064617461000000000000000000000000000000000000000000","functionSelector":"0x7bbaf1ea"}`),
+			},
+			false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ethCall := keeperSubscription{
-				abi: testAbi,
+				address:  common.HexToAddress("0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"),
+				abi:      testAbi,
+				upkeepId: big.NewInt(123),
 			}
 			got, err := ethCall.parseResponse(tt.response)
 			if (err != nil) != tt.wantErr {
