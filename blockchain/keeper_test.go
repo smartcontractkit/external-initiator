@@ -10,7 +10,6 @@ import (
 	"github.com/bmizerany/assert"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/stretchr/testify/require"
 )
@@ -114,7 +113,7 @@ func Test_ethCallSubscription_getCallPayload(t *testing.T) {
 	address := common.HexToAddress("0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE")
 	data, err := testAbi.Pack(checkMethod, big.NewInt(123))
 	require.NoError(t, err)
-	dataHex := hexutil.Encode(data[:])
+	dataHex := bytesToHex(data)
 	t.Run("ABI packs correct data string", func(t *testing.T) {
 		expected := "0xb7d06888000000000000000000000000000000000000000000000000000000000000007b"
 		assert.Equal(t, expected, dataHex)
@@ -231,7 +230,7 @@ func Test_ethCallSubscription_parseResponse(t *testing.T) {
 		{
 			"UpkeepRegistryInterface unpack with a true value and bytes",
 			JsonrpcMessage{
-				Result: []byte(fmt.Sprintf(`"%s"`, hexutil.Encode(encodedData[:]))),
+				Result: []byte(fmt.Sprintf(`"%s"`, bytesToHex(encodedData))),
 			},
 			[]subscriber.Event{
 				[]byte(`{"address":"0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE","dataPrefix":"0x000000000000000000000000000000000000000000000000000000000000007b0000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000000b73616d706c652064617461000000000000000000000000000000000000000000","functionSelector":"0x7bbaf1ea"}`),

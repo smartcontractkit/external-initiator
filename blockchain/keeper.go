@@ -260,7 +260,7 @@ func (keeper keeperSubscription) getCallPayload() ([]byte, error) {
 
 	call := ethCallMessage{
 		To:   keeper.address.Hex(),
-		Data: hexutil.Encode(data[:]),
+		Data: bytesToHex(data),
 	}
 
 	var params []interface{}
@@ -540,8 +540,8 @@ func (keeper keeperSubscription) parseResponse(response JsonrpcMessage) ([]subsc
 
 	event := map[string]interface{}{
 		"address":          keeper.address.String(),
-		"functionSelector": hexutil.Encode(executeData[:4]),
-		"dataPrefix":       hexutil.Encode(executeData[4:]),
+		"functionSelector": bytesToHex(executeData[:4]),
+		"dataPrefix":       bytesToHex(executeData[4:]),
 	}
 
 	eventBz, err := json.Marshal(event)
