@@ -144,6 +144,8 @@ type keeperSubscription struct {
 	jobID            string
 	cooldown         *big.Int
 	lastInitiatedRun *big.Int
+	blockHeight      *big.Int
+	requestedEthCall bool
 }
 
 func (keeper keeperSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, runtimeConfig store.RuntimeConfig) (subscriber.ISubscription, error) {
@@ -156,13 +158,14 @@ func (keeper keeperSubscriber) SubscribeToEvents(channel chan<- subscriber.Event
 		upkeepId:         keeper.UpkeepID,
 		cooldown:         big.NewInt(runtimeConfig.KeeperBlockCooldown),
 		lastInitiatedRun: big.NewInt(0),
+		blockHeight:      big.NewInt(0),
 	}
 
 	switch keeper.Connection {
 	case subscriber.RPC:
 		go sub.queryUntilDone(keeper.Interval)
 	case subscriber.WS:
-		sub.subscribeToNewHeads()
+		go sub.subscribeToNewHeadsWithRetry()
 	}
 
 	return sub, nil
@@ -332,14 +335,20 @@ func (keeper keeperSubscription) getBlockHeightPost() (*big.Int, error) {
 	return hexutil.DecodeBig(blockNum)
 }
 
+func (keeper keeperSubscription) updateLastInitiatedRun() {
+	derefHeight := *keeper.blockHeight
+	keeper.lastInitiatedRun = &derefHeight
+}
+
 func (keeper keeperSubscription) query() {
 	blockHeight, err := keeper.getBlockHeightPost()
 	if err != nil {
 		logger.Error("Unable to get the current block height:", err)
 		return
 	}
+	keeper.blockHeight = blockHeight
 
-	if !keeper.cooldownDone(blockHeight) {
+	if !keeper.isCooldownDone() {
 		return
 	}
 
@@ -376,7 +385,7 @@ func (keeper keeperSubscription) query() {
 	}
 
 	if len(events) > 0 {
-		keeper.lastInitiatedRun = blockHeight
+		keeper.updateLastInitiatedRun()
 	}
 
 	for _, event := range events {
@@ -384,85 +393,49 @@ func (keeper keeperSubscription) query() {
 	}
 }
 
-func (keeper keeperSubscription) cooldownDone(blockHeight *big.Int) bool {
+func (keeper keeperSubscription) isCooldownDone() bool {
 	difference := &big.Int{}
-	if keeper.cooldown.Cmp(difference.Sub(blockHeight, keeper.lastInitiatedRun)) > 0 {
+	if keeper.cooldown.Cmp(difference.Sub(keeper.blockHeight, keeper.lastInitiatedRun)) > 0 {
 		logger.Debugw("initiated a run too recently, waiting...",
 			"cooldown", keeper.cooldown.String(),
 			"lastInitiatedRun", keeper.lastInitiatedRun.String(),
-			"blockHeight", blockHeight.String())
+			"blockHeight", keeper.blockHeight.String())
 		return false
 	}
 	return true
 }
 
-func (keeper keeperSubscription) messageReader(conn *websocket.Conn, callPayload []byte) {
-	defer func() {
-		keeper.isDone = true
-		_ = conn.Close()
-		logger.Debug("closing WS subscription")
-	}()
-
-	requestedEthCall := false
-	blockHeight := big.NewInt(0)
-	first := true
-
-	for {
-		_, rawMsg, err := conn.ReadMessage()
+func (keeper keeperSubscription) handleWsMessage(msg JsonrpcMessage) (error, bool) {
+	if msg.Method == "eth_subscription" {
+		blockNum, err := ParseBlocknumberFromNewHeads(msg)
 		if err != nil {
-			logger.Error("failed reading messages:", err)
-			return
+			return err, false
 		}
 
-		var msg JsonrpcMessage
-		err = json.Unmarshal(rawMsg, &msg)
+		keeper.blockHeight = blockNum
+		if !keeper.isCooldownDone() {
+			return nil, false
+		}
+
+		return nil, true
+	} else {
+		events, err := keeper.parseResponse(msg)
 		if err != nil {
-			logger.Error("error unmarshalling WS message:", err)
-			continue
+			return err, false
+		}
+		if len(events) > 0 {
+			keeper.updateLastInitiatedRun()
+		}
+		for _, event := range events {
+			keeper.events <- event
 		}
 
-		if msg.Method == "eth_subscription" {
-			if first {
-				first = false
-				continue
-			}
-
-			blockNum, err := ParseBlocknumberFromNewHeads(msg)
-			if err != nil {
-				logger.Error(err)
-				continue
-			}
-
-			blockHeight = blockNum
-			if !keeper.cooldownDone(blockHeight) {
-				return
-			}
-
-			err = conn.WriteMessage(websocket.TextMessage, callPayload)
-			if err != nil {
-				logger.Error("failed writing to WS connection:", err)
-				return
-			}
-			requestedEthCall = true
-		} else if requestedEthCall {
-			events, err := keeper.parseResponse(msg)
-			if err != nil {
-				logger.Error("Failed parsing response:", err)
-				continue
-			}
-			if len(events) > 0 {
-				keeper.lastInitiatedRun = blockHeight
-			}
-			for _, event := range events {
-				keeper.events <- event
-			}
-			requestedEthCall = false
-		}
+		return nil, false
 	}
 }
 
 func (keeper keeperSubscription) subscribeToNewHeads() {
-	logger.Infof("Connecting to WS endpoint: %s", keeper.endpoint)
+	logger.Infof("Connecting to Keeper WS endpoint: %s", keeper.endpoint)
 
 	callPayload, err := keeper.getCallPayload()
 	if err != nil {
@@ -476,28 +449,82 @@ func (keeper keeperSubscription) subscribeToNewHeads() {
 		return
 	}
 
-	c, _, err := websocket.DefaultDialer.Dial(keeper.endpoint, nil)
+	conn, _, err := websocket.DefaultDialer.Dial(keeper.endpoint, nil)
 	if err != nil {
 		logger.Error(err)
-		keeper.isDone = true
+		return
+	}
+	defer func() {
+		logger.Infof("Disconnecting from Keeper WS endpoint: %s", keeper.endpoint)
+		conn.Close()
+	}()
+
+	logger.Infof("Connected to Keeper WS endpoint: %s", keeper.endpoint)
+
+	err = conn.WriteMessage(websocket.TextMessage, subscribePayload)
+	if err != nil {
+		logger.Error(err)
 		return
 	}
 
-	go keeper.messageReader(c, callPayload)
+	first := true
 
-	err = c.WriteMessage(websocket.TextMessage, subscribePayload)
-	if err != nil {
-		logger.Error(err)
-		keeper.isDone = true
-		c.Close()
-		return
+	for {
+		if keeper.isDone {
+			return
+		}
+
+		_, rawMsg, err := conn.ReadMessage()
+		if err != nil {
+			logger.Error(errors.Wrap(err, "failed reading messages"))
+			return
+		}
+
+		var msg JsonrpcMessage
+		err = json.Unmarshal(rawMsg, &msg)
+		if err != nil {
+			logger.Error("error unmarshalling Keeper WS message:", err)
+			continue
+		}
+
+		// The first message will be the subscription ID.
+		// Since we don't anticipate any other subscriptions,
+		// we just skip this ID.
+		if first {
+			first = false
+			continue
+		}
+
+		err, shouldRequestEthCall := keeper.handleWsMessage(msg)
+		if err != nil {
+			logger.Error(err)
+		}
+		if shouldRequestEthCall {
+			err = conn.WriteMessage(websocket.TextMessage, callPayload)
+			if err != nil {
+				logger.Error("failed writing to WS connection:", err)
+				return
+			}
+		}
 	}
+}
 
-	logger.Infof("Connected to %s", keeper.endpoint)
+func (keeper keeperSubscription) subscribeToNewHeadsWithRetry() {
+	for {
+		if keeper.isDone {
+			return
+		}
+
+		keeper.subscribeToNewHeads()
+		if !keeper.isDone {
+			logger.Debugf("Waiting 5s to reconnect to Keeper WS endpoint")
+			time.Sleep(5 * time.Second)
+		}
+	}
 }
 
 func (keeper keeperSubscription) Unsubscribe() {
-	logger.Info("Unsubscribing from Keeper ETH endpoint", keeper.endpoint)
+	logger.Info("Stopping Keeper subscription on endpoint", keeper.endpoint)
 	keeper.isDone = true
 }
 

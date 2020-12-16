@@ -257,18 +257,15 @@ func Test_ethCallSubscription_parseResponse(t *testing.T) {
 	}
 }
 
-func Test_keeperSubscription_cooldownDone(t *testing.T) {
+func Test_keeperSubscription_isCooldownDone(t *testing.T) {
 	type fields struct {
 		cooldown         *big.Int
 		lastInitiatedRun *big.Int
-	}
-	type args struct {
-		blockHeight *big.Int
+		blockHeight      *big.Int
 	}
 	tests := []struct {
 		name   string
 		fields fields
-		args   args
 		want   bool
 	}{
 		{
@@ -276,9 +273,7 @@ func Test_keeperSubscription_cooldownDone(t *testing.T) {
 			fields{
 				cooldown:         big.NewInt(1),
 				lastInitiatedRun: big.NewInt(1),
-			},
-			args{
-				blockHeight: big.NewInt(2),
+				blockHeight:      big.NewInt(2),
 			},
 			true,
 		},
@@ -287,9 +282,7 @@ func Test_keeperSubscription_cooldownDone(t *testing.T) {
 			fields{
 				cooldown:         big.NewInt(1),
 				lastInitiatedRun: big.NewInt(1),
-			},
-			args{
-				blockHeight: big.NewInt(1000),
+				blockHeight:      big.NewInt(1000),
 			},
 			true,
 		},
@@ -298,9 +291,7 @@ func Test_keeperSubscription_cooldownDone(t *testing.T) {
 			fields{
 				cooldown:         big.NewInt(0),
 				lastInitiatedRun: big.NewInt(1),
-			},
-			args{
-				blockHeight: big.NewInt(1),
+				blockHeight:      big.NewInt(1),
 			},
 			true,
 		},
@@ -309,9 +300,7 @@ func Test_keeperSubscription_cooldownDone(t *testing.T) {
 			fields{
 				cooldown:         big.NewInt(2),
 				lastInitiatedRun: big.NewInt(1),
-			},
-			args{
-				blockHeight: big.NewInt(2),
+				blockHeight:      big.NewInt(2),
 			},
 			false,
 		},
@@ -320,10 +309,11 @@ func Test_keeperSubscription_cooldownDone(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			keeper := keeperSubscription{
 				cooldown:         tt.fields.cooldown,
+				blockHeight:      tt.fields.blockHeight,
 				lastInitiatedRun: tt.fields.lastInitiatedRun,
 			}
-			if got := keeper.cooldownDone(tt.args.blockHeight); got != tt.want {
-				t.Errorf("cooldownDone() = %v, want %v", got, tt.want)
+			if got := keeper.isCooldownDone(); got != tt.want {
+				t.Errorf("isCooldownDone() = %v, want %v", got, tt.want)
 			}
 		})
 	}
