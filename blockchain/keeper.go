@@ -533,6 +533,7 @@ func (keeper keeperSubscription) parseResponse(response JsonrpcMessage) ([]subsc
 	}
 
 	event := map[string]interface{}{
+		"address":          keeper.address.String(),
 		"functionSelector": hexutil.Encode(executeData[:4]),
 		"dataPrefix":       hexutil.Encode(executeData[4:]),
 	}
