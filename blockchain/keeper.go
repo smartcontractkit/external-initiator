@@ -345,7 +345,7 @@ func (keeper keeperSubscription) query() {
 
 	payload, err := keeper.getCallPayload()
 	if err != nil {
-		logger.Error("Unable to get ETH QAE payload:", err)
+		logger.Error("Unable to get Keeper ETH payload:", err)
 		return
 	}
 
@@ -497,7 +497,7 @@ func (keeper keeperSubscription) subscribeToNewHeads() {
 }
 
 func (keeper keeperSubscription) Unsubscribe() {
-	logger.Info("Unsubscribing from ETH QAE endpoint", keeper.endpoint)
+	logger.Info("Unsubscribing from Keeper ETH endpoint", keeper.endpoint)
 	keeper.isDone = true
 }
 
