@@ -346,6 +346,12 @@ func (keeper keeperSubscription) query() {
 		logger.Error("Unable to get the current block height:", err)
 		return
 	}
+	if blockHeight.Cmp(keeper.blockHeight) < 1 {
+		// No new blocks...
+		return
+	}
+
+	logger.Debugw("Keeper subscription got new block header", "blockHeight", blockHeight.String())
 	keeper.blockHeight = blockHeight
 
 	if !keeper.isCooldownDone() {
@@ -411,8 +417,9 @@ func (keeper keeperSubscription) handleWsMessage(msg JsonrpcMessage) (error, boo
 		if err != nil {
 			return err, false
 		}
-
+		logger.Debugw("Keeper subscription got new block header", "blockHeight", blockNum.String())
 		keeper.blockHeight = blockNum
+
 		if !keeper.isCooldownDone() {
 			return nil, false
 		}
