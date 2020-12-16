@@ -11,7 +11,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/chainlink/core/utils"
 )
@@ -166,12 +165,10 @@ type newHeadsResponseParams struct {
 
 func ParseBlocknumberFromNewHeads(msg JsonrpcMessage) (*big.Int, error) {
 	var params newHeadsResponseParams
-	logger.Debug(string(msg.Params))
 	err := json.Unmarshal(msg.Params, &params)
 	if err != nil {
 		return nil, err
 	}
-	logger.Debug(params)
 	number, ok := params.Result["number"]
 	if !ok {
 		return nil, errors.New("newHeads result is missing block number")
