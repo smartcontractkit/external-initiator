@@ -168,7 +168,7 @@ func (keeper keeperSubscriber) SubscribeToEvents(channel chan<- subscriber.Event
 		go sub.subscribeToNewHeadsWithRetry()
 	}
 
-	return sub, nil
+	return &sub, nil
 }
 
 func (keeper keeperSubscriber) Test() error {
@@ -335,12 +335,12 @@ func (keeper keeperSubscription) getBlockHeightPost() (*big.Int, error) {
 	return hexutil.DecodeBig(blockNum)
 }
 
-func (keeper keeperSubscription) updateLastInitiatedRun() {
+func (keeper *keeperSubscription) updateLastInitiatedRun() {
 	derefHeight := *keeper.blockHeight
 	keeper.lastInitiatedRun = &derefHeight
 }
 
-func (keeper keeperSubscription) query() {
+func (keeper *keeperSubscription) query() {
 	blockHeight, err := keeper.getBlockHeightPost()
 	if err != nil {
 		logger.Error("Unable to get the current block height:", err)
@@ -411,7 +411,7 @@ func (keeper keeperSubscription) isCooldownDone() bool {
 	return true
 }
 
-func (keeper keeperSubscription) handleWsMessage(msg JsonrpcMessage) (error, bool) {
+func (keeper *keeperSubscription) handleWsMessage(msg JsonrpcMessage) (error, bool) {
 	if msg.Method == "eth_subscription" {
 		blockNum, err := ParseBlocknumberFromNewHeads(msg)
 		if err != nil {
@@ -530,7 +530,7 @@ func (keeper keeperSubscription) subscribeToNewHeadsWithRetry() {
 	}
 }
 
-func (keeper keeperSubscription) Unsubscribe() {
+func (keeper *keeperSubscription) Unsubscribe() {
 	logger.Info("Stopping Keeper subscription on endpoint", keeper.endpoint)
 	keeper.isDone = true
 }
