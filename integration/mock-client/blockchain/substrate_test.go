@@ -53,7 +53,7 @@ func getMetadata() (*types.Metadata, error) {
 }
 
 type subscribeResponseParams struct {
-	Subscription int             `json:"subscription"`
+	Subscription string          `json:"subscription"`
 	Result       json.RawMessage `json:"result"`
 }
 
@@ -71,7 +71,7 @@ func TestSubstrateMock_state_subscribeStorage(t *testing.T) {
 	assert.GreaterOrEqual(t, len(resp), 2)
 
 	// get the subscription id number from the first response (subscription confirmation)
-	var subscriptionNum int
+	var subscriptionNum string
 	err := json.Unmarshal(resp[0].Result, &subscriptionNum)
 	require.NoError(t, err)
 
