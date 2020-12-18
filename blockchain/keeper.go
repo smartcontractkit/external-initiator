@@ -581,10 +581,17 @@ func (keeper keeperSubscription) parseResponse(response JsonrpcMessage) ([]subsc
 		return nil, err
 	}
 
+	var result []byte
+	//result = append(result, executeData[:4]...) // func selector
+	result = append(result, executeData[4:36]...)
+	result = append(result, res[1].([]byte)...)
+
 	event := map[string]interface{}{
+		"format":           "preformatted",
 		"address":          keeper.address.String(),
 		"functionSelector": bytesToHex(executeData[:4]),
-		"dataPrefix":       bytesToHex(executeData[4:]),
+		// "dataPrefix":       bytesToHex(executeData[4:36]),
+		"result": bytesToHex(result),
 	}
 
 	eventBz, err := json.Marshal(event)
