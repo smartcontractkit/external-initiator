@@ -13,6 +13,10 @@ import (
 	"github.com/smartcontractkit/external-initiator/subscriber"
 )
 
+var (
+	ErrConnectionType = errors.New("unknown connection type")
+)
+
 // ExpectsMock variable is set when we run in a mock context
 var ExpectsMock = false
 

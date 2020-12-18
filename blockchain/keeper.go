@@ -145,7 +145,6 @@ type keeperSubscription struct {
 	cooldown         *big.Int
 	lastInitiatedRun *big.Int
 	blockHeight      *big.Int
-	requestedEthCall bool
 }
 
 func (keeper keeperSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, runtimeConfig store.RuntimeConfig) (subscriber.ISubscription, error) {
@@ -166,6 +165,8 @@ func (keeper keeperSubscriber) SubscribeToEvents(channel chan<- subscriber.Event
 		go sub.queryUntilDone(keeper.Interval)
 	case subscriber.WS:
 		go sub.subscribeToNewHeadsWithRetry()
+	default:
+		return nil, ErrConnectionType
 	}
 
 	return &sub, nil
@@ -177,8 +178,9 @@ func (keeper keeperSubscriber) Test() error {
 		return keeper.TestRPC()
 	case subscriber.WS:
 		return keeper.TestWS()
+	default:
+		return ErrConnectionType
 	}
-	return errors.New("unknown connection type")
 }
 
 func (keeper keeperSubscriber) TestRPC() error {
@@ -186,8 +188,7 @@ func (keeper keeperSubscriber) TestRPC() error {
 	if err != nil {
 		return err
 	}
-	resp.Body.Close()
-	return nil
+	return resp.Body.Close()
 }
 
 func (keeper keeperSubscriber) TestWS() error {
@@ -195,7 +196,7 @@ func (keeper keeperSubscriber) TestWS() error {
 	if err != nil {
 		return err
 	}
-	defer c.Close()
+	defer logger.ErrorIfCalling(c.Close)
 
 	resp := make(chan []byte)
 
@@ -313,7 +314,7 @@ func (keeper keeperSubscription) getBlockHeightPost() (*big.Int, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer logger.ErrorIfCalling(resp.Body.Close)
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -369,7 +370,7 @@ func (keeper *keeperSubscription) query() {
 		logger.Error(err)
 		return
 	}
-	defer resp.Body.Close()
+	defer logger.ErrorIfCalling(resp.Body.Close)
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -411,34 +412,34 @@ func (keeper keeperSubscription) isCooldownDone() bool {
 	return true
 }
 
-func (keeper *keeperSubscription) handleWsMessage(msg JsonrpcMessage) (error, bool) {
-	if msg.Method == "eth_subscription" {
-		blockNum, err := ParseBlocknumberFromNewHeads(msg)
-		if err != nil {
-			return err, false
-		}
-		logger.Debugw("Keeper subscription got new block header", "blockHeight", blockNum.String())
-		keeper.blockHeight = blockNum
-
-		if !keeper.isCooldownDone() {
-			return nil, false
-		}
-
-		return nil, true
-	} else {
-		events, err := keeper.parseResponse(msg)
-		if err != nil {
-			return err, false
-		}
-		if len(events) > 0 {
-			keeper.updateLastInitiatedRun()
-		}
-		for _, event := range events {
-			keeper.events <- event
-		}
-
-		return nil, false
+func (keeper *keeperSubscription) handleWsSubscriptionMessage(msg JsonrpcMessage) (bool, error) {
+	blockNum, err := ParseBlocknumberFromNewHeads(msg)
+	if err != nil {
+		return false, err
 	}
+	logger.Debugw("Keeper subscription got new block header", "blockHeight", blockNum.String())
+	keeper.blockHeight = blockNum
+
+	if !keeper.isCooldownDone() {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (keeper *keeperSubscription) handleWsMessage(msg JsonrpcMessage) error {
+	events, err := keeper.parseResponse(msg)
+	if err != nil {
+		return err
+	}
+	if len(events) > 0 {
+		keeper.updateLastInitiatedRun()
+	}
+	for _, event := range events {
+		keeper.events <- event
+	}
+
+	return nil
 }
 
 func (keeper keeperSubscription) subscribeToNewHeads() {
@@ -463,7 +464,7 @@ func (keeper keeperSubscription) subscribeToNewHeads() {
 	}
 	defer func() {
 		logger.Infof("Disconnecting from Keeper WS endpoint: %s", keeper.endpoint)
-		conn.Close()
+		logger.ErrorIf(conn.Close())
 	}()
 
 	logger.Infof("Connected to Keeper WS endpoint: %s", keeper.endpoint)
@@ -502,10 +503,18 @@ func (keeper keeperSubscription) subscribeToNewHeads() {
 			continue
 		}
 
-		err, shouldRequestEthCall := keeper.handleWsMessage(msg)
+		shouldRequestEthCall := false
+		switch msg.Method {
+		case "eth_subscription":
+			shouldRequestEthCall, err = keeper.handleWsSubscriptionMessage(msg)
+		default:
+			err = keeper.handleWsMessage(msg)
+		}
 		if err != nil {
 			logger.Error(err)
+			continue
 		}
+
 		if shouldRequestEthCall {
 			err = conn.WriteMessage(websocket.TextMessage, callPayload)
 			if err != nil {
