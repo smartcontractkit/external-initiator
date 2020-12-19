@@ -576,22 +576,16 @@ func (keeper keeperSubscription) parseResponse(response JsonrpcMessage) ([]subsc
 		return nil, nil
 	}
 
-	executeData, err := keeper.abi.Pack(executeMethod, keeper.upkeepId, res[1])
+	executeData, err := keeper.abi.Pack(executeMethod, keeper.upkeepId, res[1].([]byte))
 	if err != nil {
 		return nil, err
 	}
-
-	var result []byte
-	//result = append(result, executeData[:4]...) // func selector
-	result = append(result, executeData[4:36]...)
-	result = append(result, res[1].([]byte)...)
 
 	event := map[string]interface{}{
 		"format":           "preformatted",
 		"address":          keeper.address.String(),
 		"functionSelector": bytesToHex(executeData[:4]),
-		// "dataPrefix":       bytesToHex(executeData[4:36]),
-		"result": bytesToHex(result),
+		"result":           bytesToHex(executeData[4:]),
 	}
 
 	eventBz, err := json.Marshal(event)
