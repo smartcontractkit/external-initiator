@@ -3,7 +3,9 @@ module github.com/smartcontractkit/external-initiator/integration/mock-client
 go 1.14
 
 require (
-	github.com/centrifuge/go-substrate-rpc-client v1.1.0
+	github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a // indirect
+	github.com/centrifuge/go-substrate-rpc-client v2.0.0+incompatible
+	github.com/elastic/gosigar v0.10.4 // indirect
 	github.com/ethereum/go-ethereum v1.9.22
 	github.com/gin-gonic/gin v1.6.0
 	github.com/gorilla/websocket v1.4.2
