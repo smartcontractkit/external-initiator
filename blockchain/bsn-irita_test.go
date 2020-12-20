@@ -2,13 +2,9 @@ package blockchain
 
 import (
 	"bytes"
-	"encoding/hex"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/irisnet/service-sdk-go/service"
-	"github.com/irisnet/service-sdk-go/types"
 
 	"github.com/smartcontractkit/external-initiator/store"
 )
@@ -23,37 +19,37 @@ func TestCreateBSNIritaSubscriber(t *testing.T) {
 					ServiceName: "oracle",
 				},
 			}
-			biritaSubscriber := createBSNIritaSubscriber(sub)
+			biritaSubscriber, err := createBSNIritaSubscriber(sub)
+			assert.NoError(t, err)
 			assert.Equal(t, "oracle", biritaSubscriber.ServiceName)
 			assert.Equal(t, []string{"test-provider-address"}, biritaSubscriber.Addresses)
 		})
 }
 
 func TestBuildTriggerEvent(t *testing.T) {
-	providerAddrBech32 := "iaa1cq3xx80jym3jshlxmwnfwu840jxta032aa4jss"
-	providerAddr, _ := types.AccAddressFromBech32(providerAddrBech32)
-	requestID, _ := hex.DecodeString("FFB2EA8819BAF485C49DEBC08A4431E4BA5707945F8B33C8E777110BE62491240000000000000000000000000000007900000000000017F70000")
+	providerAddr := "iaa1cq3xx80jym3jshlxmwnfwu840jxta032aa4jss"
+	requestID := "FFB2EA8819BAF485C49DEBC08A4431E4BA5707945F8B33C8E777110BE62491240000000000000000000000000000007900000000000017F70000"
 
 	tests := []struct {
 		name     string
-		args     service.Request
+		args     BIritaServiceRequest
 		wantPass bool
 		want     []byte
 	}{
 		{
 			"basic service request",
-			service.Request{
-				Id:          requestID,
+			BIritaServiceRequest{
+				ID:          requestID,
 				Input:       `{"body":{"id":"test"}}`,
 				ServiceName: "oracle",
 				Provider:    providerAddr,
 			},
 			true,
-			[]byte(`{"request_id":"FFB2EA8819BAF485C49DEBC08A4431E4BA5707945F8B33C8E777110BE62491240000000000000000000000000000007900000000000017F70000","request_body":"{\"id\":\"test\"}"}`),
+			[]byte(`{"request_id":"FFB2EA8819BAF485C49DEBC08A4431E4BA5707945F8B33C8E777110BE62491240000000000000000000000000000007900000000000017F70000","request_body":{"id":"test"}}`),
 		},
 		{
 			"missing request id",
-			service.Request{
+			BIritaServiceRequest{
 				Input:       `{"body":{"id":"test"}}`,
 				ServiceName: "oracle",
 				Provider:    providerAddr,
@@ -63,8 +59,8 @@ func TestBuildTriggerEvent(t *testing.T) {
 		},
 		{
 			"missing request input",
-			service.Request{
-				Id:          requestID,
+			BIritaServiceRequest{
+				ID:          requestID,
 				Input:       "",
 				ServiceName: "oracle",
 				Provider:    providerAddr,
@@ -74,8 +70,8 @@ func TestBuildTriggerEvent(t *testing.T) {
 		},
 		{
 			"service name does not match",
-			service.Request{
-				Id:          requestID,
+			BIritaServiceRequest{
+				ID:          requestID,
 				Input:       `{"body":{"id":"test"}}`,
 				ServiceName: "incorrect-service-name",
 				Provider:    providerAddr,
@@ -85,11 +81,11 @@ func TestBuildTriggerEvent(t *testing.T) {
 		},
 		{
 			"provider address does not match",
-			service.Request{
-				Id:          requestID,
+			BIritaServiceRequest{
+				ID:          requestID,
 				Input:       `{"body":{"id":"test"}}`,
 				ServiceName: "oracle",
-				Provider:    types.AccAddress([]byte("incorrect-provider")),
+				Provider:    "incorrect-provider",
 			},
 			false,
 			nil,
@@ -99,7 +95,7 @@ func TestBuildTriggerEvent(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sub := &biritaSubscription{
-				addresses:   map[string]bool{providerAddrBech32: true},
+				addresses:   map[string]bool{providerAddr: true},
 				serviceName: "oracle",
 			}
 

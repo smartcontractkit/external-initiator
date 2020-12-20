@@ -79,7 +79,7 @@ func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error)
 	case ETH_CALL:
 		return createEthCallSubscriber(sub)
 	case BIRITA:
-		return createBSNIritaSubscriber(sub), nil
+		return createBSNIritaSubscriber(sub)
 	}
 
 	return nil, errors.New("unknown blockchain type for Client subscription")

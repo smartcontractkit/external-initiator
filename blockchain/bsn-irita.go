@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -8,11 +9,10 @@ import (
 
 	"github.com/tidwall/gjson"
 
-	servicesdk "github.com/irisnet/service-sdk-go"
-	"github.com/irisnet/service-sdk-go/service"
-	"github.com/irisnet/service-sdk-go/types"
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto"
 	tmjson "github.com/tendermint/tendermint/libs/json"
+	tmrpc "github.com/tendermint/tendermint/rpc/client/http"
 
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/chainlink/core/store/models"
@@ -21,14 +21,16 @@ import (
 )
 
 const (
-	BIRITA                 = "bsn-irita"
-	DefaultScannerInterval = 5 * time.Second
+	BIRITA = "bsn-irita"
+
+	DefaultScannerInterval = 5
+	ClientTimeout          = 10
 
 	ServiceRequestEventType = "new_batch_request_provider"
 )
 
 type biritaSubscriber struct {
-	Client      servicesdk.ServiceClient
+	Client      *tmrpc.HTTP
 	Interval    time.Duration
 	JobID       string
 	Addresses   []string
@@ -36,7 +38,7 @@ type biritaSubscriber struct {
 }
 
 type biritaSubscription struct {
-	client      servicesdk.ServiceClient
+	client      *tmrpc.HTTP
 	events      chan<- subscriber.Event
 	interval    time.Duration
 	jobID       string
@@ -55,24 +57,31 @@ type biritaQueryServiceRequestParams struct {
 	RequestID []byte
 }
 
-func createBSNIritaSubscriber(sub store.Subscription) *biritaSubscriber {
-	cfg := types.ClientConfig{
-		NodeURI: sub.Endpoint.Url,
-	}
-	serviceClient := servicesdk.NewServiceClient(cfg)
+type BIritaServiceRequest struct {
+	ID          string `json:"id"`
+	ServiceName string `json:"service_name"`
+	Provider    string `json:"provider"`
+	Input       string `json:"input"`
+}
 
-	interval := time.Duration(sub.Endpoint.RefreshInt) * time.Second
+func createBSNIritaSubscriber(sub store.Subscription) (*biritaSubscriber, error) {
+	client, err := tmrpc.NewWithTimeout(sub.Endpoint.Url, "", ClientTimeout)
+	if err != nil {
+		return nil, err
+	}
+
+	interval := sub.Endpoint.RefreshInt
 	if interval <= 0 {
 		interval = DefaultScannerInterval
 	}
 
 	return &biritaSubscriber{
-		Client:      serviceClient,
-		Interval:    interval,
+		Client:      client,
+		Interval:    time.Duration(interval) * time.Second,
 		JobID:       sub.Job,
 		Addresses:   sub.BSNIrita.Addresses,
 		ServiceName: sub.BSNIrita.ServiceName,
-	}
+	}, nil
 }
 
 func (bs *biritaSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ ...interface{}) (subscriber.ISubscription, error) {
@@ -98,7 +107,7 @@ func (bs *biritaSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _
 }
 
 func (bs *biritaSubscriber) Test() error {
-	_, err := bs.Client.Status()
+	_, err := bs.Client.Status(context.Background())
 	if err != nil {
 		return err
 	}
@@ -137,7 +146,7 @@ func (bs *biritaSubscription) scan() {
 }
 
 func (bs biritaSubscription) getLatestHeight() (int64, error) {
-	res, err := bs.client.Status()
+	res, err := bs.client.Status(context.Background())
 	if err != nil {
 		return -1, err
 	}
@@ -147,7 +156,7 @@ func (bs biritaSubscription) getLatestHeight() (int64, error) {
 
 func (bs *biritaSubscription) scanByRange(startHeight int64, endHeight int64) {
 	for h := startHeight; h <= endHeight; {
-		blockResult, err := bs.client.BlockResults(&h)
+		blockResult, err := bs.client.BlockResults(context.Background(), &h)
 		if err != nil {
 			logger.Errorf("BSN-IRITA: failed to retrieve the block result, height: %d, err: %s", h, err)
 			continue
@@ -213,7 +222,7 @@ func (bs *biritaSubscription) validServiceRequestEvent(event abci.Event) bool {
 	return true
 }
 
-func (bs *biritaSubscription) queryServiceRequest(requestID string) (request service.Request, err error) {
+func (bs *biritaSubscription) queryServiceRequest(requestID string) (request BIritaServiceRequest, err error) {
 	requestIDBz, err := hex.DecodeString(requestID)
 	if err != nil {
 		return request, err
@@ -228,7 +237,7 @@ func (bs *biritaSubscription) queryServiceRequest(requestID string) (request ser
 		return request, err
 	}
 
-	res, err := bs.client.ABCIQuery("/custom/service/request", bz)
+	res, err := bs.client.ABCIQuery(context.Background(), "/custom/service/request", bz)
 	if err != nil {
 		return request, err
 	}
@@ -241,8 +250,8 @@ func (bs *biritaSubscription) queryServiceRequest(requestID string) (request ser
 	return
 }
 
-func (bs *biritaSubscription) onServiceRequest(request service.Request) {
-	logger.Infof("BSN-IRITA: service request received: %s", request.Id.String())
+func (bs *biritaSubscription) onServiceRequest(request BIritaServiceRequest) {
+	logger.Infof("BSN-IRITA: service request received: %s", request.ID)
 
 	event, err := bs.buildTriggerEvent(request)
 	if err != nil {
@@ -253,7 +262,7 @@ func (bs *biritaSubscription) onServiceRequest(request service.Request) {
 	bs.events <- event
 }
 
-func (bs *biritaSubscription) buildTriggerEvent(request service.Request) (subscriber.Event, error) {
+func (bs *biritaSubscription) buildTriggerEvent(request BIritaServiceRequest) (subscriber.Event, error) {
 	err := bs.checkServiceRequest(request)
 	if err != nil {
 		return nil, err
@@ -267,7 +276,7 @@ func (bs *biritaSubscription) buildTriggerEvent(request service.Request) (subscr
 	}
 
 	var triggerEvent biritaTriggerEvent
-	triggerEvent.RequestID = request.Id.String()
+	triggerEvent.RequestID = request.ID
 	triggerEvent.RequestBody = requestBody
 
 	event, err := json.Marshal(triggerEvent)
@@ -278,8 +287,8 @@ func (bs *biritaSubscription) buildTriggerEvent(request service.Request) (subscr
 	return event, nil
 }
 
-func (bs *biritaSubscription) checkServiceRequest(request service.Request) error {
-	if len(request.Id) == 0 {
+func (bs *biritaSubscription) checkServiceRequest(request BIritaServiceRequest) error {
+	if len(request.ID) == 0 {
 		return fmt.Errorf("missing request id")
 	}
 
@@ -291,7 +300,7 @@ func (bs *biritaSubscription) checkServiceRequest(request service.Request) error
 		return fmt.Errorf("service name does not match")
 	}
 
-	if _, ok := bs.addresses[request.Provider.String()]; !ok {
+	if _, ok := bs.addresses[request.Provider]; !ok {
 		return fmt.Errorf("provider address does not match")
 	}
 
@@ -304,6 +313,37 @@ func (bs *biritaSubscription) Unsubscribe() {
 }
 
 func getAttributeValue(event abci.Event, attributeKey string) (string, error) {
-	stringEvents := types.StringifyEvents([]abci.Event{event})
-	return stringEvents.GetValue(event.Type, attributeKey)
+	for _, attr := range event.Attributes {
+		if string(attr.Key) == attributeKey {
+			return string(attr.Value), nil
+		}
+	}
+
+	return "", fmt.Errorf("attribute key %s does not exist", attributeKey)
+}
+
+type dummySM2 []byte
+
+func (dummySM2) Address() crypto.Address {
+	return nil
+}
+
+func (dummySM2) Bytes() []byte {
+	return nil
+}
+
+func (dummySM2) VerifySignature(msg []byte, sig []byte) bool {
+	return true
+}
+
+func (dummySM2) Equals(other crypto.PubKey) bool {
+	return false
+}
+
+func (dummySM2) Type() string {
+	return ""
+}
+
+func init() {
+	tmjson.RegisterType(dummySM2{}, "tendermint/PubKeySm2")
 }

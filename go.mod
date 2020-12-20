@@ -12,29 +12,24 @@ require (
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a
 	github.com/gin-gonic/gin v1.6.0
 	github.com/golang/mock v1.4.4
-	github.com/google/uuid v1.1.1
+	github.com/google/uuid v1.1.2
 	github.com/gorilla/websocket v1.4.2
 	github.com/iotexproject/iotex-proto v0.4.3
-	github.com/irisnet/service-sdk-go v0.0.0-20201030091855-7f57f83f8c6c
 	github.com/jinzhu/gorm v1.9.12
 	github.com/magiconair/properties v1.8.1
 	github.com/ontio/ontology-go-sdk v1.11.1
 	github.com/pierrec/xxHash v0.1.5 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/smartcontractkit/chainlink v0.9.5
-	github.com/spf13/cobra v1.0.0
+	github.com/spf13/cobra v1.1.1
 	github.com/spf13/viper v1.7.1
 	github.com/status-im/keycard-go v0.0.0-20190424133014-d95853db0f48
+	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.6.1
-	github.com/tendermint/tendermint v0.33.4
+	github.com/tendermint/tendermint v0.34.0
 	github.com/tidwall/gjson v1.6.1
 	go.uber.org/zap v1.16.0
-	google.golang.org/grpc v1.31.1
+	google.golang.org/grpc v1.33.2
 	gopkg.in/gormigrate.v1 v1.6.0
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
-)
-
-replace (
-	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
-	github.com/tendermint/tendermint => github.com/bianjieai/tendermint v0.34.0-irita-200930
 )

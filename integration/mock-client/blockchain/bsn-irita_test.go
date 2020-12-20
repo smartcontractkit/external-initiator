@@ -5,9 +5,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/irisnet/service-sdk-go/service"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmrpc "github.com/tendermint/tendermint/rpc/core/types"
+
+	"github.com/smartcontractkit/external-initiator/blockchain"
 )
 
 func TestHandleQueryStatus(t *testing.T) {
@@ -57,9 +58,9 @@ func TestHandleQueryServiceRequest(t *testing.T) {
 	err = tmjson.Unmarshal(rsp[0].Result, &abciResponse)
 	assert.NoError(t, err)
 
-	var request service.Request
+	var request blockchain.BIritaServiceRequest
 	err = tmjson.Unmarshal(abciResponse.Response.Value, &request)
 	assert.NoError(t, err)
 	assert.Equal(t, "oracle", request.ServiceName)
-	assert.Equal(t, "iaa1l4vp69jt8ghxtyrh6jm8jp022km50sg35eqcae", request.Provider.String())
+	assert.Equal(t, "iaa1l4vp69jt8ghxtyrh6jm8jp022km50sg35eqcae", request.Provider)
 }
