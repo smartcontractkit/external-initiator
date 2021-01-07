@@ -12,7 +12,7 @@ type EthCallSubscription struct {
 	ABI              string
 	ResponseKey      string
 	MethodName       string
-	FunctionSelector []byte
+	FunctionSelector [4]byte
 	ReturnType       string
 }
 
@@ -26,5 +26,5 @@ func Migrate(tx *gorm.DB) error {
 }
 
 func Rollback(tx *gorm.DB) error {
-	return tx.DropTable("eth_qae_subscriptions").Error
+	return tx.DropTable("eth_call_subscriptions").Error
 }

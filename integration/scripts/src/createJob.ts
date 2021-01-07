@@ -31,8 +31,7 @@ async function createJob({ chainlinkUrl }: Options) {
             addresses: [process.argv[3]],
             address: process.argv[3],
             accountIds: [process.argv[4]],
-            functionSelector: process.argv[5],
-            returnType: process.argv[6]
+            upkeepId: "123",
           },
         },
       },

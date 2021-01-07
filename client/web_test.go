@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
-	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,16 +37,12 @@ func (s storeFailer) SaveEndpoint(*store.Endpoint) error {
 
 func generateCreateSubscriptionReq(id, endpoint string, addresses, topics, accountIds []string) CreateSubscriptionReq {
 	params := struct {
-		Endpoint         string                  `json:"endpoint"`
-		Addresses        []string                `json:"addresses"`
-		Topics           []string                `json:"topics"`
-		AccountIds       []string                `json:"accountIds"`
-		Address          string                  `json:"address"`
-		ABI              json.RawMessage         `json:"abi"`
-		MethodName       string                  `json:"methodName"`
-		ResponseKey      string                  `json:"responseKey"`
-		FunctionSelector models.FunctionSelector `json:"functionSelector"`
-		ReturnType       string                  `json:"returnType"`
+		Endpoint   string   `json:"endpoint"`
+		Addresses  []string `json:"addresses"`
+		Topics     []string `json:"topics"`
+		AccountIds []string `json:"accountIds"`
+		Address    string   `json:"address"`
+		UpkeepID   string   `json:"upkeepId"`
 	}{
 		Endpoint:   endpoint,
 		Addresses:  addresses,

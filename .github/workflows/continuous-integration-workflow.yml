@@ -34,6 +34,10 @@ jobs:
           args: psql -v ON_ERROR_STOP=1 --username postgres -h postgres -c "CREATE USER ei NOSUPERUSER CREATEDB;"
       - name: Checkout the repo
         uses: actions/checkout@v2
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.15
       - name: Fetch EI dependencies
         run: go mod download
       - name: Test EI
