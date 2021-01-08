@@ -180,7 +180,7 @@ func cfxLogRequestToResponse(msg JsonrpcMessage) (cfxLogResponse, error) {
 	}
 
 	if len(reqs) != 1 {
-		return cfxLogResponse{}, fmt.Errorf("Expected exactly 1 filter in request, got %d", len(reqs))
+		return cfxLogResponse{}, fmt.Errorf("expected exactly 1 filter in request, got %d", len(reqs))
 	}
 
 	return handleCfxMapStringInterface(reqs[0])

@@ -33,12 +33,9 @@ func handleBSNIritaRPC(c *gin.Context) {
 
 		if err != nil {
 			logger.Error(err)
-
-			var errintf interface{}
-			errintf = tmrpc.RPCError{
+			errintf := interface{}(tmrpc.RPCError{
 				Message: err.Error(),
-			}
-
+			})
 			response.Error = &errintf
 		}
 

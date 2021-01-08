@@ -2,16 +2,11 @@ FROM golang:alpine as build-env
 
 RUN apk add build-base linux-headers
 
-# NOTICE: We copy the complete local /external-initiator, as it's sometimes useful during
-# development to replace the external-initiator go dependency with a local version.
-
 # First, we copy go mod files to cache Docker image layers and avoid running
 # 'go mod download' if dependecies did not change.
 RUN mkdir -p /external-initiator/integration/mock-client
 WORKDIR /external-initiator
 COPY go.mod go.sum ./
-WORKDIR /external-initiator/integration/mock-client
-COPY /integration/mock-client/go.mod /integration/mock-client/go.sum ./
 RUN go mod download
 
 # Second, we copy (including the /external-initiator as a local dependency) and compile the code

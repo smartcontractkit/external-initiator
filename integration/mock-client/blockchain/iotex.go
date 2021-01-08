@@ -40,7 +40,7 @@ func (*MockIoTeXServer) GetLogs(_ context.Context, req *iotexapi.GetLogsRequest)
 	}
 	return &iotexapi.GetLogsResponse{
 		Logs: []*iotextypes.Log{
-			&iotextypes.Log{
+			{
 				ContractAddress: contract,
 				Topics:          topic,
 				Data:            data,
@@ -52,8 +52,5 @@ func (*MockIoTeXServer) GetLogs(_ context.Context, req *iotexapi.GetLogsRequest)
 }
 
 func hexToBytes(x string) ([]byte, error) {
-	if strings.HasPrefix(x, "0x") {
-		x = x[2:]
-	}
-	return hex.DecodeString(x)
+	return hex.DecodeString(strings.TrimPrefix(x, "0x"))
 }
