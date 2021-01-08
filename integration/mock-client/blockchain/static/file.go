@@ -6,6 +6,8 @@ import (
 	"os"
 	"path"
 	"strings"
+
+	"github.com/smartcontractkit/chainlink/core/logger"
 )
 
 func Get(platform string) ([]byte, error) {
@@ -18,7 +20,7 @@ func Get(platform string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer responsesFile.Close()
+	defer logger.ErrorIfCalling(responsesFile.Close)
 
 	return ioutil.ReadAll(responsesFile)
 }

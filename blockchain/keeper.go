@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/big"
+	"net/url"
 	"strings"
 	"time"
 
@@ -92,7 +93,7 @@ const UpkeepRegistryInterface = `[
 ]`
 
 type keeperSubscriber struct {
-	Endpoint   string
+	Endpoint   url.URL
 	Address    common.Address
 	Abi        abi.ABI
 	UpkeepID   *big.Int
@@ -123,8 +124,13 @@ func createKeeperSubscriber(sub store.Subscription) (*keeperSubscriber, error) {
 		return nil, fmt.Errorf("unknown endpoint protocol: %+v", sub.Endpoint.Url)
 	}
 
+	u, err := url.Parse(sub.Endpoint.Url)
+	if err != nil {
+		return nil, err
+	}
+
 	return &keeperSubscriber{
-		Endpoint:   strings.TrimSuffix(sub.Endpoint.Url, "/"),
+		Endpoint:   *u,
 		Address:    common.HexToAddress(sub.Keeper.Address),
 		Abi:        contractAbi,
 		UpkeepID:   upkeepId,
@@ -135,7 +141,7 @@ func createKeeperSubscriber(sub store.Subscription) (*keeperSubscriber, error) {
 }
 
 type keeperSubscription struct {
-	endpoint         string
+	endpoint         url.URL
 	events           chan<- subscriber.Event
 	address          common.Address
 	abi              abi.ABI
@@ -192,7 +198,7 @@ func (keeper keeperSubscriber) TestRPC() error {
 }
 
 func (keeper keeperSubscriber) TestWS() error {
-	c, _, err := websocket.DefaultDialer.Dial(keeper.Endpoint, nil)
+	c, _, err := websocket.DefaultDialer.Dial(keeper.Endpoint.String(), nil)
 	if err != nil {
 		return err
 	}
@@ -443,7 +449,7 @@ func (keeper *keeperSubscription) handleWsMessage(msg JsonrpcMessage) error {
 }
 
 func (keeper keeperSubscription) subscribeToNewHeads() {
-	logger.Infof("Connecting to Keeper WS endpoint: %s", keeper.endpoint)
+	logger.Infof("Connecting to Keeper WS endpoint: %s", keeper.endpoint.String())
 
 	callPayload, err := keeper.getCallPayload()
 	if err != nil {
@@ -457,17 +463,17 @@ func (keeper keeperSubscription) subscribeToNewHeads() {
 		return
 	}
 
-	conn, _, err := websocket.DefaultDialer.Dial(keeper.endpoint, nil)
+	conn, _, err := websocket.DefaultDialer.Dial(keeper.endpoint.String(), nil)
 	if err != nil {
 		logger.Error(err)
 		return
 	}
 	defer func() {
-		logger.Infof("Disconnecting from Keeper WS endpoint: %s", keeper.endpoint)
+		logger.Infof("Disconnecting from Keeper WS endpoint: %s", keeper.endpoint.String())
 		logger.ErrorIf(conn.Close())
 	}()
 
-	logger.Infof("Connected to Keeper WS endpoint: %s", keeper.endpoint)
+	logger.Infof("Connected to Keeper WS endpoint: %s", keeper.endpoint.String())
 
 	err = conn.WriteMessage(websocket.TextMessage, subscribePayload)
 	if err != nil {

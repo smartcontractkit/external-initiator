@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"net/url"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -185,18 +186,18 @@ func GetBlockNumberPayload() ([]byte, error) {
 	return json.Marshal(msg)
 }
 
-func sendEthNodePost(endpoint string, payload []byte) (*http.Response, error) {
-	resp, err := http.Post(endpoint, "application/json", bytes.NewReader(payload))
+func sendEthNodePost(endpoint url.URL, payload []byte) (*http.Response, error) {
+	resp, err := http.Post(endpoint.String(), "application/json", bytes.NewReader(payload))
 	if err != nil {
 		return nil, err
 	}
 	if resp.StatusCode == 400 {
 		_ = resp.Body.Close()
-		return nil, fmt.Errorf("%s returned 400. This endpoint may not support calls to /monitor", endpoint)
+		return nil, fmt.Errorf("%s returned 400. This endpoint may not support calls to /monitor", endpoint.String())
 	}
 	if resp.StatusCode != 200 {
 		_ = resp.Body.Close()
-		return nil, fmt.Errorf("unexpected status code %v from endpoint %s", resp.StatusCode, endpoint)
+		return nil, fmt.Errorf("unexpected status code %v from endpoint %s", resp.StatusCode, endpoint.String())
 	}
 	return resp, nil
 }
