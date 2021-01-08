@@ -98,7 +98,7 @@ func runCallback(v *viper.Viper, args []string, runner runner) {
 		logger.Error(err)
 		return
 	}
-	defer db.Close()
+	defer logger.ErrorIfCalling(db.Close)
 
 	runner(config, db, args)
 }

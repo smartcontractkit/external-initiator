@@ -78,7 +78,7 @@ func (config RetryConfig) withRetry(client *http.Client, request *http.Request) 
 				logger.Errorf("job run trigger error making request: %v", e.Error())
 				return e
 			}
-			defer r.Body.Close()
+			defer logger.ErrorIfCalling(r.Body.Close)
 			statusCode = r.StatusCode
 			elapsed := time.Since(start)
 			logger.Debugw(fmt.Sprintf("job run trigger got %v in %s", statusCode, elapsed), "statusCode", statusCode, "timeElapsedSeconds", elapsed)

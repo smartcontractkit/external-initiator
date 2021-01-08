@@ -191,11 +191,11 @@ func sendEthNodePost(endpoint string, payload []byte) (*http.Response, error) {
 		return nil, err
 	}
 	if resp.StatusCode == 400 {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		return nil, fmt.Errorf("%s returned 400. This endpoint may not support calls to /monitor", endpoint)
 	}
 	if resp.StatusCode != 200 {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		return nil, fmt.Errorf("unexpected status code %v from endpoint %s", resp.StatusCode, endpoint)
 	}
 	return resp, nil
