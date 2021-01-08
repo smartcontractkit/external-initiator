@@ -22,7 +22,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o /go/
 
 FROM scratch
 COPY --from=build-env /go/bin/mock-client /go/bin/mock-client
-COPY --from=build-env /external-initiator/integration/mock-client/blockchain/mock-responses /blockchain/mock-responses
+COPY --from=build-env /external-initiator/integration/mock-client/blockchain/static /blockchain/static
 
 EXPOSE 8080
 EXPOSE 8090
