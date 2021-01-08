@@ -80,6 +80,9 @@ func (e cfxManager) GetTriggerJson() []byte {
 	case subscriber.RPC:
 		msg.Method = "cfx_getLogs"
 		msg.Params = json.RawMessage(`[` + string(filterBytes) + `]`)
+	default:
+		logger.Errorw(ErrSubscriberType.Error(), "type", e.p)
+		return nil
 	}
 
 	bytes, err := json.Marshal(msg)
@@ -285,6 +288,10 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 				e.fq.FromEpoch = hexutil.EncodeBig(curBlkn)
 			}
 		}
+
+	default:
+		logger.Errorw(ErrSubscriberType.Error(), "type", e.p)
+		return nil, false
 	}
 
 	return events, true

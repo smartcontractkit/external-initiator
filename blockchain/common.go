@@ -15,6 +15,7 @@ import (
 
 var (
 	ErrConnectionType = errors.New("unknown connection type")
+	ErrSubscriberType = errors.New("unknown subscriber type")
 )
 
 // ExpectsMock variable is set when we run in a mock context

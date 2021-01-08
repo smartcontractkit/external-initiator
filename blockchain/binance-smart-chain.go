@@ -161,6 +161,10 @@ func (e bscManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 				e.fq.FromBlock = hexutil.EncodeBig(curBlkn)
 			}
 		}
+
+	default:
+		logger.Errorw(ErrSubscriberType.Error(), "type", e.p)
+		return nil, false
 	}
 
 	return events, true

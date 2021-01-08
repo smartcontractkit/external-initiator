@@ -64,6 +64,9 @@ func (h hmyManager) GetTriggerJson() []byte {
 	case subscriber.RPC:
 		msg.Method = "hmy_getLogs"
 		msg.Params = json.RawMessage(`[` + string(filterBytes) + `]`)
+	default:
+		logger.Errorw(ErrSubscriberType.Error(), "type", h.p)
+		return nil
 	}
 
 	bytes, err := json.Marshal(msg)
@@ -220,6 +223,10 @@ func (h hmyManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 				h.fq.FromBlock = hexutil.EncodeBig(curBlkn)
 			}
 		}
+
+	default:
+		logger.Errorw(ErrSubscriberType.Error(), "type", h.p)
+		return nil, false
 	}
 
 	return events, true
