@@ -32,9 +32,7 @@ func TestRpcSubscriber_SubscribeToEvents(t *testing.T) {
 		mockevent = string(event)
 		if mockevent != "2" {
 			t.Errorf("SubscribeToEvents() got unexpected second message = %v", mockevent)
-			return
 		}
-		return
 	})
 }
 

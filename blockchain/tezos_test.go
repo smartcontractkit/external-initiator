@@ -72,20 +72,18 @@ func Test_extractEventsFromBlock(t *testing.T) {
 	wd, _ := os.Getwd()
 	ui := path.Join(wd, "testdata/tezos_test_block_operations_user_initiated.json")
 	userInitiatedSampleFile, err := os.Open(ui)
-	if err != nil {
-		require.NoError(t, err)
-	}
+	require.NoError(t, err)
 	defer userInitiatedSampleFile.Close()
 
 	sci := path.Join(wd, "testdata/tezos_test_block_operations_sc_initiated.json")
 	scInitiatedSampleFile, err := os.Open(sci)
-	if err != nil {
-		require.NoError(t, err)
-	}
+	require.NoError(t, err)
 	defer scInitiatedSampleFile.Close()
 
 	userInitiatedSampleJSON, err := ioutil.ReadAll(userInitiatedSampleFile)
+	require.NoError(t, err)
 	scInitiatedSampleJSON, err := ioutil.ReadAll(scInitiatedSampleFile)
+	require.NoError(t, err)
 
 	t.Run("returns error if json is invalid",
 		func(t *testing.T) {

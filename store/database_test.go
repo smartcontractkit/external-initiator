@@ -242,6 +242,7 @@ func TestClient_SaveSubscription(t *testing.T) {
 	assert.NoError(t, err)
 
 	subs, err = db.LoadSubscriptions()
+	assert.NoError(t, err)
 	for _, s := range subs {
 		assert.NotEqual(t, sub.ID, s.ID)
 		assert.NotEqual(t, sub.ReferenceId, s.ReferenceId)
@@ -436,6 +437,7 @@ func TestClient_DeleteAllEndpointsExcept(t *testing.T) {
 		Name: "test2",
 	}
 	err = db.SaveEndpoint(&newEndpoint)
+	assert.NoError(t, err)
 
 	err = db.DeleteAllEndpointsExcept([]string{sub.EndpointName})
 	assert.NoError(t, err)

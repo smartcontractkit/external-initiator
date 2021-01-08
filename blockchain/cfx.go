@@ -211,8 +211,8 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 			return nil, false
 		}
 
-		//filter out revert logs (https://developer.conflux-chain.org/docs/conflux-doc/docs/pubsub)
-		if check := strings.Contains(string(res.Result), "revertTo"); check == true {
+		// filter out revert logs (https://developer.conflux-chain.org/docs/conflux-doc/docs/pubsub)
+		if strings.Contains(string(res.Result), "revertTo") {
 			logger.Debug("Conflux revertTo log ignored")
 			return nil, false
 		}

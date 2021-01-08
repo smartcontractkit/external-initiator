@@ -58,7 +58,7 @@ func (cl Node) TriggerJob(jobId string, data []byte) error {
 	}
 
 	if statusCode >= 400 {
-		return fmt.Errorf("Received faulty status code: %v", statusCode)
+		return fmt.Errorf("received faulty status code: %v", statusCode)
 	}
 
 	return nil

@@ -95,36 +95,34 @@ func (tzs tezosSubscription) readMessages() {
 	go tzs.readLines(lines, reader)
 
 	for {
-		select {
-		case line, ok := <-lines:
-			if !ok {
-				return
-			}
+		line, ok := <-lines
+		if !ok {
+			return
+		}
 
-			blockID, err := extractBlockIDFromHeaderJSON(line)
-			if err != nil {
-				logger.Error(err)
-				return
-			}
+		blockID, err := extractBlockIDFromHeaderJSON(line)
+		if err != nil {
+			logger.Error(err)
+			return
+		}
 
-			logger.Debugf("Got new Tezos head: %s\n", blockID)
-			blockJSON, err := tzs.getBlock(blockID)
-			if err != nil {
-				logger.Error(err)
-				return
-			}
+		logger.Debugf("Got new Tezos head: %s\n", blockID)
+		blockJSON, err := tzs.getBlock(blockID)
+		if err != nil {
+			logger.Error(err)
+			return
+		}
 
-			events, err := extractEventsFromBlock(blockJSON, tzs.addresses, tzs.jobid)
-			if err != nil {
-				logger.Error(err)
-				return
-			}
+		events, err := extractEventsFromBlock(blockJSON, tzs.addresses, tzs.jobid)
+		if err != nil {
+			logger.Error(err)
+			return
+		}
 
-			logger.Debugf("%v events matching addresses %v\n", len(events), tzs.addresses)
+		logger.Debugf("%v events matching addresses %v\n", len(events), tzs.addresses)
 
-			for _, event := range events {
-				tzs.events <- event
-			}
+		for _, event := range events {
+			tzs.events <- event
 		}
 	}
 }
@@ -140,7 +138,7 @@ func monitor(endpoint string) (*http.Response, error) {
 	}
 	if resp.StatusCode != 200 {
 		resp.Body.Close()
-		return nil, fmt.Errorf("Unexpected status code %v from endpoint %s", resp.StatusCode, endpoint)
+		return nil, fmt.Errorf("unexpected status code %v from endpoint %s", resp.StatusCode, endpoint)
 	}
 	return resp, nil
 }
