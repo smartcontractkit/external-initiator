@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/chainlink/core/logger"
+	"github.com/smartcontractkit/external-initiator/store"
 )
 
 // RpcSubscriber holds the configuration for
@@ -101,7 +102,7 @@ func sendPostRequest(url string, body []byte) ([]byte, error) {
 	return ioutil.ReadAll(r.Body)
 }
 
-func (rpc RpcSubscriber) SubscribeToEvents(channel chan<- Event, confirmation ...interface{}) (ISubscription, error) {
+func (rpc RpcSubscriber) SubscribeToEvents(channel chan<- Event, _ store.RuntimeConfig) (ISubscription, error) {
 	logger.Infof("Using RPC endpoint: %s\n", rpc.Endpoint)
 
 	subscription := rpcSubscription{

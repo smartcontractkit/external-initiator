@@ -1,9 +1,13 @@
 package blockchain
 
 import (
+	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
+	"net/http"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -152,4 +156,47 @@ func logDataParse(data []byte) (cborData []byte, dataPrefixBytes []byte, rerr er
 
 func bytesToHex(data []byte) string {
 	return utils.AddHexPrefix(hex.EncodeToString(data))
+}
+
+type newHeadsResponseParams struct {
+	Subscription string                 `json:"subscription"`
+	Result       map[string]interface{} `json:"result"`
+}
+
+func ParseBlocknumberFromNewHeads(msg JsonrpcMessage) (*big.Int, error) {
+	var params newHeadsResponseParams
+	err := json.Unmarshal(msg.Params, &params)
+	if err != nil {
+		return nil, err
+	}
+	number, ok := params.Result["number"]
+	if !ok {
+		return nil, errors.New("newHeads result is missing block number")
+	}
+	return hexutil.DecodeBig(fmt.Sprint(number))
+}
+
+func GetBlockNumberPayload() ([]byte, error) {
+	msg := JsonrpcMessage{
+		Version: "2.0",
+		ID:      json.RawMessage(`2`),
+		Method:  "eth_blockNumber",
+	}
+	return json.Marshal(msg)
+}
+
+func sendEthNodePost(endpoint string, payload []byte) (*http.Response, error) {
+	resp, err := http.Post(endpoint, "application/json", bytes.NewReader(payload))
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode == 400 {
+		resp.Body.Close()
+		return nil, fmt.Errorf("%s returned 400. This endpoint may not support calls to /monitor", endpoint)
+	}
+	if resp.StatusCode != 200 {
+		resp.Body.Close()
+		return nil, fmt.Errorf("unexpected status code %v from endpoint %s", resp.StatusCode, endpoint)
+	}
+	return resp, nil
 }

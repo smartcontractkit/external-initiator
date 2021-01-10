@@ -15,7 +15,7 @@
     "create-job": "node ./dist/createJob"
   },
   "dependencies": {
-    "axios": "^0.19.2",
+    "axios": "^0.21.1",
     "chalk": "^2.4.2",
     "request": "^2.88.2",
     "source-map-support": "^0.5.13"

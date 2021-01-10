@@ -84,7 +84,7 @@ func createBSNIritaSubscriber(sub store.Subscription) (*biritaSubscriber, error)
 	}, nil
 }
 
-func (bs *biritaSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ ...interface{}) (subscriber.ISubscription, error) {
+func (bs *biritaSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ store.RuntimeConfig) (subscriber.ISubscription, error) {
 	logger.Infof("Subscribe to BSN-IRITA service requests, provider addresses: %v, service name: %s\n", bs.Addresses, bs.ServiceName)
 
 	addressMap := make(map[string]bool)

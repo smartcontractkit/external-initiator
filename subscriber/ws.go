@@ -6,6 +6,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/smartcontractkit/chainlink/core/logger"
+	"github.com/smartcontractkit/external-initiator/store"
 )
 
 // WebsocketSubscriber holds the configuration for
@@ -141,7 +142,7 @@ func (wss websocketSubscription) reconnect() {
 	wss.init()
 }
 
-func (wss WebsocketSubscriber) SubscribeToEvents(channel chan<- Event, confirmation ...interface{}) (ISubscription, error) {
+func (wss WebsocketSubscriber) SubscribeToEvents(channel chan<- Event, _ store.RuntimeConfig) (ISubscription, error) {
 	logger.Infof("Connecting to WS endpoint: %s\n", wss.Endpoint)
 
 	c, _, err := websocket.DefaultDialer.Dial(wss.Endpoint, nil)
@@ -152,7 +153,7 @@ func (wss WebsocketSubscriber) SubscribeToEvents(channel chan<- Event, confirmat
 	subscription := websocketSubscription{
 		conn:      &wsConn{connection: c},
 		events:    channel,
-		confirmed: len(confirmation) != 0, // If passed as a param, do not expect confirmation message
+		confirmed: false,
 		manager:   wss.Manager,
 		endpoint:  wss.Endpoint,
 	}

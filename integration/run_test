@@ -37,8 +37,8 @@ run_test() {
   ./integration/test_ei_event "iotx-mock-grpc" "$EVM_SUBSCRIBED_ADDRESS" "" 1
   ./integration/test_ei_event "cfx-mock-http" "$EVM_SUBSCRIBED_ADDRESS" "" 1
   ./integration/test_ei_event "cfx-mock-ws" "$EVM_SUBSCRIBED_ADDRESS" "" 1
-  ./integration/test_ei_event "eth-call-mock-http" "$EVM_SUBSCRIBED_ADDRESS" "" 1 "getFlag()" "bool"
-  ./integration/test_ei_event "eth-call-mock-ws" "$EVM_SUBSCRIBED_ADDRESS" "" 1 "getFlag()" "bool"
+  ./integration/test_ei_event "keeper-mock-http" "$EVM_SUBSCRIBED_ADDRESS" "" 1
+  ./integration/test_ei_event "keeper-mock-ws" "$EVM_SUBSCRIBED_ADDRESS" "" 1
   ./integration/test_ei_event "birita-mock-http" "$BIRITA_PROVIDER_ADDRESS" "" 1
 
   # Account based

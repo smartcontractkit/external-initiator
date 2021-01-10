@@ -12,7 +12,6 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink/core/logger"
-	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/store/migrations"
 )
 
@@ -149,8 +148,8 @@ func (client Client) prepareSubscription(rawSub *Subscription) (*Subscription, e
 		if err := client.db.Model(&sub).Related(&sub.NEAR).Error; err != nil {
 			return nil, err
 		}
-	case "eth-call":
-		if err := client.db.Model(&sub).Related(&sub.EthCall).Error; err != nil {
+	case "keeper":
+		if err := client.db.Model(&sub).Related(&sub.Keeper).Error; err != nil {
 			return nil, err
 		}
 	case "bsn-irita":
@@ -295,7 +294,7 @@ type Subscription struct {
 	BinanceSmartChain BinanceSmartChainSubscription
 	NEAR              NEARSubscription
 	Conflux           CfxSubscription
-	EthCall           EthCallSubscription
+	Keeper            KeeperSubscription
 	BSNIrita          BSNIritaSubscription
 }
 
@@ -343,15 +342,11 @@ type CfxSubscription struct {
 	Topics         SQLStringArray
 }
 
-type EthCallSubscription struct {
+type KeeperSubscription struct {
 	gorm.Model
-	SubscriptionId   uint
-	Address          string
-	ABI              SQLBytes
-	ResponseKey      string
-	MethodName       string
-	FunctionSelector models.FunctionSelector
-	ReturnType       string
+	SubscriptionId uint
+	Address        string
+	UpkeepID       string
 }
 
 type BSNIritaSubscription struct {

@@ -9,9 +9,12 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
+)
+
+var (
+	ErrConnectionType = errors.New("unknown connection type")
 )
 
 // ExpectsMock variable is set when we run in a mock context
@@ -27,22 +30,18 @@ var blockchains = []string{
 	NEAR,
 	IOTX,
 	CFX,
-	ETH_CALL,
+	Keeper,
 	BIRITA,
 }
 
 type Params struct {
-	Endpoint         string                  `json:"endpoint"`
-	Addresses        []string                `json:"addresses"`
-	Topics           []string                `json:"topics"`
-	AccountIds       []string                `json:"accountIds"`
-	Address          string                  `json:"address"`
-	ABI              json.RawMessage         `json:"abi"`
-	MethodName       string                  `json:"methodName"`
-	ResponseKey      string                  `json:"responseKey"`
-	FunctionSelector models.FunctionSelector `json:"functionSelector"`
-	ReturnType       string                  `json:"returnType"`
-	ServiceName      string                  `json:"serviceName"`
+	Endpoint    string   `json:"endpoint"`
+	Addresses   []string `json:"addresses"`
+	Topics      []string `json:"topics"`
+	AccountIds  []string `json:"accountIds"`
+	Address     string   `json:"address"`
+	UpkeepID    string   `json:"upkeepId"`
+	ServiceName string   `json:"serviceName"`
 }
 
 // CreateJsonManager creates a new instance of a JSON blockchain manager with the provided
@@ -76,8 +75,8 @@ func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error)
 		return createOntSubscriber(sub), nil
 	case IOTX:
 		return createIoTeXSubscriber(sub)
-	case ETH_CALL:
-		return createEthCallSubscriber(sub)
+	case Keeper:
+		return createKeeperSubscriber(sub)
 	case BIRITA:
 		return createBSNIritaSubscriber(sub)
 	}
@@ -88,7 +87,7 @@ func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error)
 func GetConnectionType(endpoint store.Endpoint) (subscriber.Type, error) {
 	switch endpoint.Type {
 	// Add blockchain implementations that encapsulate entire connection here
-	case XTZ, ONT, IOTX, ETH_CALL, BIRITA:
+	case XTZ, ONT, IOTX, Keeper, BIRITA:
 		return subscriber.Client, nil
 	default:
 		u, err := url.Parse(endpoint.Url)
@@ -145,11 +144,10 @@ func GetValidations(t string, params Params) []int {
 		return []int{
 			len(params.Addresses) + len(params.Topics),
 		}
-	case ETH_CALL:
+	case Keeper:
 		return []int{
 			len(params.Address),
-			len(params.ABI) + len(params.ReturnType),
-			len(params.MethodName) + len(params.FunctionSelector.Bytes()),
+			len(params.UpkeepID),
 		}
 	case BIRITA:
 		return []int{
@@ -192,18 +190,10 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 			Addresses: params.Addresses,
 			Topics:    params.Topics,
 		}
-	case ETH_CALL:
-		key := params.ResponseKey
-		if key == "" {
-			key = defaultResponseKey
-		}
-		sub.EthCall = store.EthCallSubscription{
-			Address:          params.Address,
-			ABI:              store.SQLBytes(params.ABI),
-			ResponseKey:      key,
-			MethodName:       params.MethodName,
-			FunctionSelector: params.FunctionSelector,
-			ReturnType:       params.ReturnType,
+	case Keeper:
+		sub.Keeper = store.KeeperSubscription{
+			Address:  params.Address,
+			UpkeepID: params.UpkeepID,
 		}
 	case BIRITA:
 		sub.BSNIrita = store.BSNIritaSubscription{

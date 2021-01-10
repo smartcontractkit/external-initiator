@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 )
 
-func handleEthCallRequest(_ string, msg JsonrpcMessage) ([]JsonrpcMessage, error) {
+func handleKeeperRequest(_ string, msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 	switch msg.Method {
 	case "eth_call":
 		return handleEthCall(msg)
@@ -49,7 +50,7 @@ func handleEthCall(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 		return nil, err
 	}
 
-	if data.Data != "0xf9633930" {
+	if !strings.HasPrefix(data.Data, "0xb7d06888") {
 		return nil, errors.New("unknown function selector")
 	}
 
@@ -57,7 +58,7 @@ func handleEthCall(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 		{
 			Version: "2.0",
 			ID:      msg.ID,
-			Result:  []byte(`"0x0000000000000000000000000000000000000000000000000000000000000001"`),
+			Result:  []byte(`"0x000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"`),
 		},
 	}, nil
 }

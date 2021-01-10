@@ -73,8 +73,8 @@ services:
       - '{"name":"iotx-mock-grpc","type":"iotex","url":"http://mock:8090","refreshInterval":600}'
       - '{"name":"cfx-mock-http","type":"conflux","url":"http://mock:8080/rpc/cfx","refreshInterval":600}'
       - '{"name":"cfx-mock-ws","type":"conflux","url":"ws://mock:8080/ws/cfx"}'
-      - '{"name":"eth-call-mock-http","type":"eth-call","url":"http://mock:8080/rpc/eth-call","refreshInterval":600}'
-      - '{"name":"eth-call-mock-ws","type":"eth-call","url":"ws://mock:8080/ws/eth-call"}'
+      - '{"name":"keeper-mock-http","type":"keeper","url":"http://mock:8080/rpc/keeper","refreshInterval":600}'
+      - '{"name":"keeper-mock-ws","type":"keeper","url":"ws://mock:8080/ws/keeper"}'
       - '{"name":"birita-mock-http","type":"bsn-irita","url":"http://mock:8080","refreshInterval":600}'
     networks:
       - integration
