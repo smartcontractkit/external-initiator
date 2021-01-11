@@ -31,15 +31,17 @@ var blockchains = []string{
 	IOTX,
 	CFX,
 	Keeper,
+	BIRITA,
 }
 
 type Params struct {
-	Endpoint   string   `json:"endpoint"`
-	Addresses  []string `json:"addresses"`
-	Topics     []string `json:"topics"`
-	AccountIds []string `json:"accountIds"`
-	Address    string   `json:"address"`
-	UpkeepID   string   `json:"upkeepId"`
+	Endpoint    string   `json:"endpoint"`
+	Addresses   []string `json:"addresses"`
+	Topics      []string `json:"topics"`
+	AccountIds  []string `json:"accountIds"`
+	Address     string   `json:"address"`
+	UpkeepID    string   `json:"upkeepId"`
+	ServiceName string   `json:"serviceName"`
 }
 
 // CreateJsonManager creates a new instance of a JSON blockchain manager with the provided
@@ -75,6 +77,8 @@ func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error)
 		return createIoTeXSubscriber(sub)
 	case Keeper:
 		return createKeeperSubscriber(sub)
+	case BIRITA:
+		return createBSNIritaSubscriber(sub)
 	}
 
 	return nil, errors.New("unknown blockchain type for Client subscription")
@@ -83,7 +87,7 @@ func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error)
 func GetConnectionType(endpoint store.Endpoint) (subscriber.Type, error) {
 	switch endpoint.Type {
 	// Add blockchain implementations that encapsulate entire connection here
-	case XTZ, ONT, IOTX, Keeper:
+	case XTZ, ONT, IOTX, Keeper, BIRITA:
 		return subscriber.Client, nil
 	default:
 		u, err := url.Parse(endpoint.Url)
@@ -145,6 +149,10 @@ func GetValidations(t string, params Params) []int {
 			len(params.Address),
 			len(params.UpkeepID),
 		}
+	case BIRITA:
+		return []int{
+			len(params.Addresses),
+		}
 	}
 
 	return nil
@@ -186,6 +194,11 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 		sub.Keeper = store.KeeperSubscription{
 			Address:  params.Address,
 			UpkeepID: params.UpkeepID,
+		}
+	case BIRITA:
+		sub.BSNIrita = store.BSNIritaSubscription{
+			Addresses:   params.Addresses,
+			ServiceName: params.ServiceName,
 		}
 	}
 }

@@ -8,6 +8,7 @@ source_mock_env() {
   source ./integration/mock-env/evm.env
   source ./integration/mock-env/near.env
   source ./integration/mock-env/substrate.env
+  source ./integration/mock-env/birita.env
 }
 
 assert() {

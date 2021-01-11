@@ -38,4 +38,5 @@ func HandleRequest(conn, platform string, msg JsonrpcMessage) ([]JsonrpcMessage,
 
 func SetHttpRoutes(router *gin.Engine) {
 	setXtzRoutes(router)
+	setBSNIritaRoutes(router)
 }
