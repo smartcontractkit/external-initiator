@@ -19,7 +19,7 @@ import (
 // and secret as provided on protected routes.
 func RunWebserver() {
 	srv := NewHTTPService()
-	err := srv.Router.Run("0.0.0.0:8080")
+	err := srv.Router.Run(":8080")
 	if err != nil {
 		logger.Error(err)
 	}

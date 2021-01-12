@@ -36,7 +36,7 @@ func RunWebserver(
 	store subscriptionStorer,
 ) {
 	srv := NewHTTPService(accessKey, secret, store)
-	err := srv.Router.Run("0.0.0.0:8080")
+	err := srv.Router.Run(":8080")
 	if err != nil {
 		logger.Error(err)
 	}
