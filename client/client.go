@@ -31,6 +31,9 @@ func generateCmd() *cobra.Command {
 		Run:  func(_ *cobra.Command, args []string) { runCallback(v, args, startService) },
 	}
 
+	newcmd.Flags().Int("port", 8080, "The port for the EI API to listen on")
+	must(v.BindPFlag("port", newcmd.Flags().Lookup("port")))
+
 	newcmd.Flags().String("databaseurl", "postgresql://postgres:password@localhost:5432/ei?sslmode=disable", "DatabaseURL configures the URL for external initiator to connect to. This must be a properly formatted URL, with a valid scheme (postgres://).")
 	must(v.BindPFlag("databaseurl", newcmd.Flags().Lookup("databaseurl")))
 
@@ -71,6 +74,7 @@ func generateCmd() *cobra.Command {
 }
 
 var requiredConfig = []string{
+	"port",
 	"chainlinkurl",
 	"ic_accesskey",
 	"ic_secret",

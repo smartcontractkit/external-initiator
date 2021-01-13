@@ -89,7 +89,7 @@ func startService(
 		}
 	}()
 
-	go RunWebserver(config.ChainlinkToInitiatorAccessKey, config.ChainlinkToInitiatorSecret, srv)
+	go RunWebserver(config.ChainlinkToInitiatorAccessKey, config.ChainlinkToInitiatorSecret, srv, config.Port)
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt)
