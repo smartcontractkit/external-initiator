@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/store"
@@ -24,8 +25,10 @@ type bscManager struct {
 func createBscManager(p subscriber.Type, config store.Subscription) bscManager {
 	return bscManager{
 		ethManager{
-			fq: createEvmFilterQuery(config.Job, config.BinanceSmartChain.Addresses),
-			p:  p,
+			fq:           createEvmFilterQuery(config.Job, config.BinanceSmartChain.Addresses),
+			p:            p,
+			endpointName: config.EndpointName,
+			jobid:        config.Job,
 		},
 	}
 }
@@ -76,6 +79,7 @@ func (e bscManager) ParseTestResponse(data []byte) error {
 // If there are new events, update bscManager with
 // the latest block number it sees.
 func (e bscManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
+	promLastSourcePing.With(prometheus.Labels{"endpoint": e.endpointName, "jobid": e.jobid}).SetToCurrentTime()
 	logger.Debugw("Parsing Binance Smart Chain response", "ExpectsMock", ExpectsMock)
 
 	var msg JsonrpcMessage

@@ -3,6 +3,7 @@ module github.com/smartcontractkit/external-initiator
 go 1.15
 
 require (
+	github.com/Depado/ginprom v1.2.1-0.20200115153638-53bbba851bd8
 	github.com/FactomProject/basen v0.0.0-20150613233007-fe3947df716e // indirect
 	github.com/avast/retry-go v2.6.0+incompatible
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869
@@ -21,6 +22,7 @@ require (
 	github.com/ontio/ontology-go-sdk v1.11.1
 	github.com/pierrec/xxHash v0.1.5 // indirect
 	github.com/pkg/errors v0.9.1
+	github.com/prometheus/client_golang v1.8.0
 	github.com/smartcontractkit/chainlink v0.9.5-0.20201214122441-66aaea171293
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/viper v1.7.1

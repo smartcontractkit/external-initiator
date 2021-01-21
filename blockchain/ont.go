@@ -7,6 +7,7 @@ import (
 
 	ontology_go_sdk "github.com/ontio/ontology-go-sdk"
 	"github.com/ontio/ontology-go-sdk/common"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/store"
@@ -22,25 +23,28 @@ func createOntSubscriber(sub store.Subscription) *ontSubscriber {
 	sdk := ontology_go_sdk.NewOntologySdk()
 	sdk.NewRpcClient().SetAddress(sub.Endpoint.Url)
 	return &ontSubscriber{
-		Sdk:       sdk,
-		Addresses: sub.Ontology.Addresses,
-		JobId:     sub.Job,
+		Sdk:          sdk,
+		Addresses:    sub.Ontology.Addresses,
+		JobId:        sub.Job,
+		EndpointName: sub.EndpointName,
 	}
 }
 
 type ontSubscriber struct {
-	Sdk       *ontology_go_sdk.OntologySdk
-	Addresses []string
-	JobId     string
+	Sdk          *ontology_go_sdk.OntologySdk
+	Addresses    []string
+	JobId        string
+	EndpointName string
 }
 
 type ontSubscription struct {
-	sdk       *ontology_go_sdk.OntologySdk
-	events    chan<- subscriber.Event
-	addresses map[string]bool
-	jobId     string
-	height    uint32
-	isDone    bool
+	sdk          *ontology_go_sdk.OntologySdk
+	events       chan<- subscriber.Event
+	addresses    map[string]bool
+	jobId        string
+	endpointName string
+	height       uint32
+	isDone       bool
 }
 
 func (ot *ontSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ store.RuntimeConfig) (subscriber.ISubscription, error) {
@@ -50,10 +54,11 @@ func (ot *ontSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ st
 		addresses[a] = true
 	}
 	ontSubscription := &ontSubscription{
-		sdk:       ot.Sdk,
-		events:    channel,
-		addresses: addresses,
-		jobId:     ot.JobId,
+		sdk:          ot.Sdk,
+		events:       channel,
+		addresses:    addresses,
+		jobId:        ot.JobId,
+		endpointName: ot.EndpointName,
 	}
 
 	go ontSubscription.scanWithRetry()
@@ -86,6 +91,7 @@ func (ots *ontSubscription) scan() {
 		logger.Error("ont scan, get current block height error:", err)
 		return
 	}
+	promLastSourcePing.With(prometheus.Labels{"endpoint": ots.endpointName, "jobid": ots.jobId}).SetToCurrentTime()
 	if ots.height == 0 {
 		ots.height = currentHeight
 	}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/store"
@@ -19,8 +20,10 @@ const CFX = "conflux"
 // The cfxManager implements the subscriber.JsonManager interface and allows
 // for interacting with CFX nodes over RPC.
 type cfxManager struct {
-	fq *cfxFilterQuery
-	p  subscriber.Type
+	fq           *cfxFilterQuery
+	p            subscriber.Type
+	endpointName string
+	jobid        string
 }
 
 // createCfxManager creates a new instance of cfxManager with the provided
@@ -44,7 +47,9 @@ func createCfxManager(p subscriber.Type, config store.Subscription) cfxManager {
 			Addresses: addresses,
 			Topics:    topics,
 		},
-		p: p,
+		p:            p,
+		endpointName: config.EndpointName,
+		jobid:        config.Job,
 	}
 }
 
@@ -190,6 +195,7 @@ func Cfx2EthResponse(cfx cfxLogResponse) (models.Log, error) {
 // If there are new events, update cfxManager with
 // the latest block number it sees.
 func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
+	promLastSourcePing.With(prometheus.Labels{"endpoint": e.endpointName, "jobid": e.jobid}).SetToCurrentTime()
 	logger.Debugw("Parsing response", "ExpectsMock", ExpectsMock)
 
 	var msg JsonrpcMessage

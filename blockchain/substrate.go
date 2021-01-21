@@ -7,6 +7,7 @@ import (
 
 	"github.com/centrifuge/go-substrate-rpc-client/scale"
 	"github.com/centrifuge/go-substrate-rpc-client/types"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
@@ -22,9 +23,10 @@ type substrateFilter struct {
 }
 
 type substrateManager struct {
-	filter substrateFilter
-	meta   *types.Metadata
-	key    types.StorageKey
+	filter       substrateFilter
+	meta         *types.Metadata
+	key          types.StorageKey
+	endpointName string
 }
 
 func createSubstrateManager(t subscriber.Type, conf store.Subscription) (*substrateManager, error) {
@@ -47,6 +49,7 @@ func createSubstrateManager(t subscriber.Type, conf store.Subscription) (*substr
 			JobID:   types.NewText(conf.Job),
 			Address: addresses,
 		},
+		endpointName: conf.EndpointName,
 	}, nil
 }
 
@@ -178,6 +181,8 @@ type substrateSubscribeResponse struct {
 }
 
 func (sm *substrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
+	promLastSourcePing.With(prometheus.Labels{"endpoint": sm.endpointName, "jobid": string(sm.filter.JobID)}).SetToCurrentTime()
+
 	var msg JsonrpcMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
