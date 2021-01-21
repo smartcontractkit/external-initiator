@@ -18,7 +18,7 @@ func Test_handleEthCall(t *testing.T) {
 				Version: "2.0",
 				ID:      []byte(`1`),
 				Method:  "eth_call",
-				Params:  []byte(`[{"data":"0xb7d06888"},"latest"]`),
+				Params:  []byte(`[{"data":"0x07d76d31"},"latest"]`),
 			},
 			want: []JsonrpcMessage{
 				{

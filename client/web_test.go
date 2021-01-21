@@ -44,6 +44,7 @@ func generateCreateSubscriptionReq(id, endpoint string, addresses, topics, accou
 		Address     string   `json:"address"`
 		UpkeepID    string   `json:"upkeepId"`
 		ServiceName string   `json:"serviceName"`
+		From        string   `json:"from"`
 	}{
 		Endpoint:   endpoint,
 		Addresses:  addresses,

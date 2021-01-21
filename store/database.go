@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pkg/errors"
@@ -347,6 +348,7 @@ type KeeperSubscription struct {
 	SubscriptionId uint
 	Address        string
 	UpkeepID       string
+	From           common.Address
 }
 
 type BSNIritaSubscription struct {

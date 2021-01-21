@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 )
@@ -43,6 +44,7 @@ type Params struct {
 	Address     string   `json:"address"`
 	UpkeepID    string   `json:"upkeepId"`
 	ServiceName string   `json:"serviceName"`
+	From        string   `json:"from"`
 }
 
 // CreateJsonManager creates a new instance of a JSON blockchain manager with the provided
@@ -149,6 +151,7 @@ func GetValidations(t string, params Params) []int {
 		return []int{
 			len(params.Address),
 			len(params.UpkeepID),
+			len(params.From),
 		}
 	case BIRITA:
 		return []int{
@@ -192,9 +195,11 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 			Topics:    params.Topics,
 		}
 	case Keeper:
+		from := common.HexToAddress(params.From)
 		sub.Keeper = store.KeeperSubscription{
 			Address:  params.Address,
 			UpkeepID: params.UpkeepID,
+			From:     from,
 		}
 	case BIRITA:
 		sub.BSNIrita = store.BSNIritaSubscription{

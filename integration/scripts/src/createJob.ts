@@ -1,7 +1,7 @@
 import url from 'url'
 import axios from 'axios'
 
-import {getArgs, getLoginCookie, registerPromiseHandler} from './common'
+import { getArgs, getLoginCookie, registerPromiseHandler } from './common'
 
 async function main() {
   registerPromiseHandler()
@@ -31,7 +31,8 @@ async function createJob({ chainlinkUrl }: Options) {
             addresses: [process.argv[3]],
             address: process.argv[3],
             accountIds: [process.argv[4]],
-            upkeepId: "123",
+            from: '0x0000000000000000000000000000000000000000',
+            upkeepId: '123',
           },
         },
       },
