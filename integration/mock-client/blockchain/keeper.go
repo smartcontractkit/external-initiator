@@ -50,7 +50,7 @@ func handleEthCall(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 		return nil, err
 	}
 
-	if !strings.HasPrefix(data.Data, "0x07d76d31") { // checkForUpkeep()
+	if !strings.HasPrefix(data.Data, "0x07d76d31") { // checkForUpkeep(uint256,address)
 		return nil, errors.New("unknown function selector")
 	}
 
