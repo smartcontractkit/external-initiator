@@ -560,6 +560,19 @@ func (keeper *keeperSubscription) Unsubscribe() {
 }
 
 func (keeper keeperSubscription) parseResponse(response JsonrpcMessage) ([]subscriber.Event, error) {
+	if response.Error != nil {
+		respErr, ok1 := (*response.Error).(map[string]interface{})
+		message := "unknown EVM error"
+		if ok1 {
+			msg, ok2 := respErr["message"].(string)
+			if ok2 {
+				message = msg
+			}
+		}
+		logger.Debugf("call to %s errored, assuming inelligible to perform upkeep: %s", checkMethod, message)
+		return nil, nil
+	}
+
 	var data string
 	err := json.Unmarshal(response.Result, &data)
 	if err != nil {
