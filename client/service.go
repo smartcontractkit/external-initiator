@@ -2,6 +2,7 @@ package client
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/url"
 	"os"
 	"os/signal"
@@ -330,9 +331,9 @@ func getSubscriber(sub store.Subscription) (subscriber.ISubscriber, error) {
 		return subscriber.WebsocketSubscriber{Endpoint: sub.Endpoint.Url, Manager: manager}, nil
 	case subscriber.RPC:
 		return subscriber.RpcSubscriber{Endpoint: sub.Endpoint.Url, Interval: time.Duration(sub.Endpoint.RefreshInt) * time.Second, Manager: manager}, nil
+	default:
+		return nil, fmt.Errorf("unknown subscriber type: %v", connType)
 	}
-
-	return nil, errors.New("unknown Endpoint type")
 }
 
 func normalizeLocalhost(endpoint string) string {

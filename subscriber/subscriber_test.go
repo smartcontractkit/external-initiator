@@ -83,7 +83,7 @@ func TestMain(m *testing.M) {
 				err = c.WriteMessage(mt, []byte("confirmation"))
 				if err != nil {
 					log.Println("write:", err)
-					break
+					return
 				}
 			case "close":
 				// Close connection prematurely
@@ -94,7 +94,7 @@ func TestMain(m *testing.M) {
 			err = c.WriteMessage(mt, []byte("event"))
 			if err != nil {
 				log.Println("write:", err)
-				break
+				return
 			}
 		}
 	}))

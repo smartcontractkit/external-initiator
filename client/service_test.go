@@ -52,9 +52,7 @@ func (s storeClientFailer) SaveEndpoint(*store.Endpoint) error {
 	return s.error
 }
 
-type mockSubscription struct {
-	error error
-}
+type mockSubscription struct{}
 
 func (s mockSubscription) Unsubscribe() {}
 

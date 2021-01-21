@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/smartcontractkit/chainlink/core/logger"
-	mockresponses "github.com/smartcontractkit/external-initiator/integration/mock-client/blockchain/mock-responses"
+	"github.com/smartcontractkit/external-initiator/integration/mock-client/blockchain/static"
 )
 
 func setXtzRoutes(router *gin.Engine) {
@@ -18,7 +18,7 @@ func setXtzRoutes(router *gin.Engine) {
 type xtzResponses map[string]interface{}
 
 func getXtzResponse(method string) (interface{}, error) {
-	bz, err := mockresponses.Get("xtz")
+	bz, err := static.Get("xtz")
 	if err != nil {
 		return nil, err
 	}

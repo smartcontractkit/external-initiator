@@ -93,7 +93,7 @@ func sendPostRequest(url string, body []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer r.Body.Close()
+	defer logger.ErrorIfCalling(r.Body.Close)
 
 	if r.StatusCode < 200 || r.StatusCode >= 400 {
 		return nil, errors.New("got unexpected status code")

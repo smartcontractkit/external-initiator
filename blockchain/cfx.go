@@ -80,6 +80,9 @@ func (e cfxManager) GetTriggerJson() []byte {
 	case subscriber.RPC:
 		msg.Method = "cfx_getLogs"
 		msg.Params = json.RawMessage(`[` + string(filterBytes) + `]`)
+	default:
+		logger.Errorw(ErrSubscriberType.Error(), "type", e.p)
+		return nil
 	}
 
 	bytes, err := json.Marshal(msg)
@@ -211,8 +214,8 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 			return nil, false
 		}
 
-		//filter out revert logs (https://developer.conflux-chain.org/docs/conflux-doc/docs/pubsub)
-		if check := strings.Contains(string(res.Result), "revertTo"); check == true {
+		// filter out revert logs (https://developer.conflux-chain.org/docs/conflux-doc/docs/pubsub)
+		if strings.Contains(string(res.Result), "revertTo") {
 			logger.Debug("Conflux revertTo log ignored")
 			return nil, false
 		}
@@ -285,6 +288,10 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 				e.fq.FromEpoch = hexutil.EncodeBig(curBlkn)
 			}
 		}
+
+	default:
+		logger.Errorw(ErrSubscriberType.Error(), "type", e.p)
+		return nil, false
 	}
 
 	return events, true

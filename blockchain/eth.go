@@ -82,6 +82,9 @@ func (e ethManager) GetTriggerJson() []byte {
 	case subscriber.RPC:
 		msg.Method = "eth_getLogs"
 		msg.Params = json.RawMessage(`[` + string(filterBytes) + `]`)
+	default:
+		logger.Errorw(ErrSubscriberType.Error(), "type", e.p)
+		return nil
 	}
 
 	bytes, err := json.Marshal(msg)
@@ -234,6 +237,10 @@ func (e ethManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 				e.fq.FromBlock = hexutil.EncodeBig(curBlkn)
 			}
 		}
+
+	default:
+		logger.Errorw(ErrSubscriberType.Error(), "type", e.p)
+		return nil, false
 	}
 
 	return events, true

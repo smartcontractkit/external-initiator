@@ -65,8 +65,7 @@ func (tz tezosSubscriber) Test() error {
 	if err != nil {
 		return err
 	}
-	resp.Body.Close()
-	return nil
+	return resp.Body.Close()
 }
 
 func (tzs tezosSubscription) readMessagesWithRetry() {
@@ -86,7 +85,7 @@ func (tzs tezosSubscription) readMessages() {
 		logger.Error(err)
 		return
 	}
-	defer resp.Body.Close()
+	defer logger.ErrorIfCalling(resp.Body.Close)
 	logger.Debugf("Connected to RPC endpoint at %s, waiting for heads...\n", tzs.endpoint)
 
 	reader := bufio.NewReader(resp.Body)
@@ -95,36 +94,34 @@ func (tzs tezosSubscription) readMessages() {
 	go tzs.readLines(lines, reader)
 
 	for {
-		select {
-		case line, ok := <-lines:
-			if !ok {
-				return
-			}
+		line, ok := <-lines
+		if !ok {
+			return
+		}
 
-			blockID, err := extractBlockIDFromHeaderJSON(line)
-			if err != nil {
-				logger.Error(err)
-				return
-			}
+		blockID, err := extractBlockIDFromHeaderJSON(line)
+		if err != nil {
+			logger.Error(err)
+			return
+		}
 
-			logger.Debugf("Got new Tezos head: %s\n", blockID)
-			blockJSON, err := tzs.getBlock(blockID)
-			if err != nil {
-				logger.Error(err)
-				return
-			}
+		logger.Debugf("Got new Tezos head: %s\n", blockID)
+		blockJSON, err := tzs.getBlock(blockID)
+		if err != nil {
+			logger.Error(err)
+			return
+		}
 
-			events, err := extractEventsFromBlock(blockJSON, tzs.addresses, tzs.jobid)
-			if err != nil {
-				logger.Error(err)
-				return
-			}
+		events, err := extractEventsFromBlock(blockJSON, tzs.addresses, tzs.jobid)
+		if err != nil {
+			logger.Error(err)
+			return
+		}
 
-			logger.Debugf("%v events matching addresses %v\n", len(events), tzs.addresses)
+		logger.Debugf("%v events matching addresses %v\n", len(events), tzs.addresses)
 
-			for _, event := range events {
-				tzs.events <- event
-			}
+		for _, event := range events {
+			tzs.events <- event
 		}
 	}
 }
@@ -135,12 +132,12 @@ func monitor(endpoint string) (*http.Response, error) {
 		return nil, err
 	}
 	if resp.StatusCode == 400 {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		return nil, fmt.Errorf("%s returned 400. This endpoint may not support calls to /monitor", endpoint)
 	}
 	if resp.StatusCode != 200 {
-		resp.Body.Close()
-		return nil, fmt.Errorf("Unexpected status code %v from endpoint %s", resp.StatusCode, endpoint)
+		_ = resp.Body.Close()
+		return nil, fmt.Errorf("unexpected status code %v from endpoint %s", resp.StatusCode, endpoint)
 	}
 	return resp, nil
 }
@@ -170,7 +167,7 @@ func (tzs tezosSubscription) getBlock(blockID string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer logger.ErrorIfCalling(resp.Body.Close)
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -184,7 +181,7 @@ func (tzs tezosSubscription) Unsubscribe() {
 	logger.Info("Unsubscribing from Tezos endpoint", tzs.endpoint)
 	tzs.isDone = true
 	if tzs.monitorResp != nil {
-		tzs.monitorResp.Body.Close()
+		logger.ErrorIf(tzs.monitorResp.Body.Close())
 	}
 }
 

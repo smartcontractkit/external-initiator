@@ -58,7 +58,7 @@ func (cl Node) TriggerJob(jobId string, data []byte) error {
 	}
 
 	if statusCode >= 400 {
-		return fmt.Errorf("Received faulty status code: %v", statusCode)
+		return fmt.Errorf("received faulty status code: %v", statusCode)
 	}
 
 	return nil
@@ -78,7 +78,7 @@ func (config RetryConfig) withRetry(client *http.Client, request *http.Request) 
 				logger.Errorf("job run trigger error making request: %v", e.Error())
 				return e
 			}
-			defer r.Body.Close()
+			defer logger.ErrorIfCalling(r.Body.Close)
 			statusCode = r.StatusCode
 			elapsed := time.Since(start)
 			logger.Debugw(fmt.Sprintf("job run trigger got %v in %s", statusCode, elapsed), "statusCode", statusCode, "timeElapsedSeconds", elapsed)

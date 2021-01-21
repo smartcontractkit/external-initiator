@@ -22,7 +22,7 @@ func (wss WebsocketSubscriber) Test() error {
 	if err != nil {
 		return err
 	}
-	defer c.Close()
+	defer logger.ErrorIfCalling(c.Close)
 
 	testPayload := wss.Manager.GetTestJson()
 	if testPayload == nil {

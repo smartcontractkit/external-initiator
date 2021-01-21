@@ -1,4 +1,4 @@
-package mock_responses
+package static
 
 import (
 	"fmt"
@@ -6,6 +6,8 @@ import (
 	"os"
 	"path"
 	"strings"
+
+	"github.com/smartcontractkit/chainlink/core/logger"
 )
 
 func Get(platform string) ([]byte, error) {
@@ -13,12 +15,12 @@ func Get(platform string) ([]byte, error) {
 	if !strings.HasSuffix(wd, "/blockchain") {
 		wd += "/blockchain"
 	}
-	responsesPath := path.Join(wd, fmt.Sprintf("mock-responses/%s.json", platform))
+	responsesPath := path.Join(wd, fmt.Sprintf("static/%s.json", platform))
 	responsesFile, err := os.Open(responsesPath)
 	if err != nil {
 		return nil, err
 	}
-	defer responsesFile.Close()
+	defer logger.ErrorIfCalling(responsesFile.Close)
 
 	return ioutil.ReadAll(responsesFile)
 }
