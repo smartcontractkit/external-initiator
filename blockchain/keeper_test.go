@@ -196,6 +196,7 @@ func Test_ethCallSubscription_parseResponse(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, len(encodedData) > 4)
 	encodedData = encodedData[4:] // Remove function selector to just get the data
+	errMessage := interface{}("error message")
 
 	tests := []struct {
 		name     string
@@ -203,6 +204,15 @@ func Test_ethCallSubscription_parseResponse(t *testing.T) {
 		want     []subscriber.Event
 		wantErr  bool
 	}{
+		{
+			"Error",
+			JsonrpcMessage{
+				Result: []byte{},
+				Error:  &errMessage,
+			},
+			nil,
+			false,
+		},
 		{
 			"Invalid UpkeepRegistryInterface unpack",
 			JsonrpcMessage{
