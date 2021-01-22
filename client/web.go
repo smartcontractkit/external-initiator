@@ -34,9 +34,11 @@ type subscriptionStorer interface {
 func RunWebserver(
 	accessKey, secret string,
 	store subscriptionStorer,
+	port int,
 ) {
 	srv := NewHTTPService(accessKey, secret, store)
-	err := srv.Router.Run(":8080")
+	addr := fmt.Sprintf(":%v", port)
+	err := srv.Router.Run(addr)
 	if err != nil {
 		logger.Error(err)
 	}
