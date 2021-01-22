@@ -23,7 +23,7 @@ import (
 
 const (
 	Keeper        = "keeper"
-	checkMethod   = "checkForUpkeep"
+	checkMethod   = "checkUpkeep"
 	executeMethod = "performUpkeep"
 )
 
@@ -41,13 +41,8 @@ const UpkeepRegistryInterface = `[
 				"type": "address"
 			}
 		],
-		"name": "checkForUpkeep",
+		"name": "checkUpkeep",
 		"outputs": [
-			{
-				"internalType": "bool",
-				"name": "canPerform",
-				"type": "bool"
-			},
 			{
 				"internalType": "bytes",
 				"name": "performData",
@@ -569,7 +564,7 @@ func (keeper keeperSubscription) parseResponse(response JsonrpcMessage) ([]subsc
 				message = msg
 			}
 		}
-		logger.Debugf("call to %s errored, assuming inelligible to perform upkeep: %s", checkMethod, message)
+		logger.Debugf("call to %s errored, inelligible to perform upkeep: %s", checkMethod, message)
 		return nil, nil
 	}
 
@@ -591,20 +586,12 @@ func (keeper keeperSubscription) parseResponse(response JsonrpcMessage) ([]subsc
 	}
 
 	// If there is no data returned, we have no jobs to initiate
+	// this shouldn't ever happen because the contract should error rather than return an empty result
 	if len(res) == 0 {
 		return nil, errors.New("ethCall returned no results")
 	}
 
-	canPerform, ok := res[0].(bool)
-	if !ok {
-		return nil, errors.New("unable to determine if canPerform == true")
-	}
-
-	if !canPerform {
-		return nil, nil
-	}
-
-	executeData, err := keeper.abi.Pack(executeMethod, keeper.upkeepId, res[1].([]byte))
+	executeData, err := keeper.abi.Pack(executeMethod, keeper.upkeepId, res[0].([]byte))
 	if err != nil {
 		return nil, err
 	}
