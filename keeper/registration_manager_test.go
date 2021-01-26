@@ -1,7 +1,6 @@
 package keeper
 
 import (
-	"math/big"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -11,14 +10,18 @@ import (
 
 var address = common.HexToAddress("0x0000000000000000000000000000000000000123")
 var checkGasLimit = int64(10_000)
+var cooldown = uint(3)
+
+func setupRegistrationManager(t *testing.T) (*store.Client, RegistrationManager, func()) {
+	db, cleanup := store.SetupTestDB(t)
+	rm := NewRegistrationManager(db, cooldown)
+	return db, rm, cleanup
+}
 
 func TestRegistrationManager_PerformFullSync(t *testing.T) {
-	db, cleanup := store.SetupTestDB(t)
+	db, rm, cleanup := setupRegistrationManager(t)
 	defer cleanup()
 
-	assertRegistrationCount(t, db, 0)
-
-	rm := NewRegistrationManager(db)
 	rm.PerformFullSync()
 	// TODO - add client mocks
 
@@ -26,11 +29,8 @@ func TestRegistrationManager_PerformFullSync(t *testing.T) {
 }
 
 func TestRegistrationManager_Upsert(t *testing.T) {
-	db, cleanup := store.SetupTestDB(t)
+	db, rm, cleanup := setupRegistrationManager(t)
 	defer cleanup()
-
-	assertRegistrationCount(t, db, 0)
-	rm := NewRegistrationManager(db)
 
 	// create registration
 	newRegistration := upkeepRegistration{
@@ -65,12 +65,8 @@ func TestRegistrationManager_Upsert(t *testing.T) {
 }
 
 func TestRegistrationManager_Delete(t *testing.T) {
-	db, cleanup := store.SetupTestDB(t)
+	db, rm, cleanup := setupRegistrationManager(t)
 	defer cleanup()
-
-	rm := NewRegistrationManager(db)
-
-	assertRegistrationCount(t, db, 0)
 
 	// create registration
 	registration := upkeepRegistration{
@@ -99,11 +95,8 @@ func TestRegistrationManager_Delete(t *testing.T) {
 }
 
 func TestRegistrationManager_BatchDelete(t *testing.T) {
-	db, cleanup := store.SetupTestDB(t)
+	db, rm, cleanup := setupRegistrationManager(t)
 	defer cleanup()
-
-	assertRegistrationCount(t, db, 0)
-	address := common.HexToAddress("0x0000000000000000000000000000000000000123")
 
 	registrations := [3]upkeepRegistration{
 		{
@@ -128,7 +121,6 @@ func TestRegistrationManager_BatchDelete(t *testing.T) {
 
 	assertRegistrationCount(t, db, 3)
 
-	rm := NewRegistrationManager(db)
 	err := rm.BatchDelete(address, []int64{0, 2})
 	require.NoError(t, err)
 
@@ -136,43 +128,40 @@ func TestRegistrationManager_BatchDelete(t *testing.T) {
 }
 
 func TestRegistrationManager_Active(t *testing.T) {
-	db, cleanup := store.SetupTestDB(t)
+	db, rm, cleanup := setupRegistrationManager(t)
 	defer cleanup()
 
-	assertRegistrationCount(t, db, 0)
-
-	// TODO
-	// currentBlock := 10
-	// coolDown := 3
-	address := common.HexToAddress("0x0000000000000000000000000000000000000123")
-
-	// valid
-	registration1 := upkeepRegistration{
-		UpkeepID:           0,
-		Address:            address,
-		LastRunBlockHeight: 0, // 0 means never
-		CheckGasLimit:      checkGasLimit,
-	}
-	// upkeep too recent
-	registration2 := upkeepRegistration{
-		UpkeepID:           1,
-		Address:            address,
-		LastRunBlockHeight: 7,
-		CheckGasLimit:      checkGasLimit,
+	registrations := [3]upkeepRegistration{
+		{ // valid
+			UpkeepID:           0,
+			Address:            address,
+			LastRunBlockHeight: 0, // 0 means never
+			CheckGasLimit:      checkGasLimit,
+		}, { // valid
+			UpkeepID:           1,
+			Address:            address,
+			LastRunBlockHeight: 6,
+			CheckGasLimit:      checkGasLimit,
+		}, { // too recent
+			UpkeepID:           2,
+			Address:            address,
+			LastRunBlockHeight: 7,
+			CheckGasLimit:      checkGasLimit,
+		},
 	}
 
-	for _, reg := range []upkeepRegistration{registration1, registration2} {
+	for _, reg := range registrations {
 		err := db.DB().Create(&reg).Error
 		require.NoError(t, err)
 	}
 
-	assertRegistrationCount(t, db, 2)
+	assertRegistrationCount(t, db, 3)
 
-	rm := NewRegistrationManager(db)
-	activeRegistrations, err := rm.Active()
+	activeRegistrations, err := rm.Active(10)
 	require.NoError(t, err)
-	require.Len(t, activeRegistrations, 1)
-	require.Equal(t, *big.NewInt(1), activeRegistrations[0].UpkeepID)
+	require.Len(t, activeRegistrations, 2)
+	require.Equal(t, int64(0), activeRegistrations[0].UpkeepID)
+	require.Equal(t, int64(1), activeRegistrations[1].UpkeepID)
 }
 
 func assertRegistrationCount(t *testing.T, db *store.Client, expected int) {

@@ -10,15 +10,20 @@ type RegistrationManager interface {
 	Upsert(upkeepRegistration) error
 	Delete(common.Address, int64) error
 	BatchDelete(common.Address, []int64) error
-	Active() ([]upkeepRegistration, error)
+	Active(uint) ([]upkeepRegistration, error)
 }
 
-func NewRegistrationManager(dbClient *store.Client) RegistrationManager {
-	return registrationManager{dbClient}
+func NewRegistrationManager(dbClient *store.Client, coolDown uint) RegistrationManager {
+	return registrationManager{
+		dbClient: dbClient,
+		coolDown: coolDown,
+	}
 }
 
 type registrationManager struct {
-	dbClient *store.Client
+	dbClient          *store.Client
+	coolDown          uint
+	latestBlockHeight uint
 }
 
 type upkeepRegistration struct {
@@ -61,7 +66,18 @@ func (rm registrationManager) BatchDelete(address common.Address, upkeedIDs []in
 		Error
 }
 
-func (registrationManager) Active() ([]upkeepRegistration, error) {
-	// TODO
-	return nil, nil
+func (rm registrationManager) Active(chainHeight uint) (result []upkeepRegistration, _ error) {
+	err := rm.dbClient.DB().
+		Where("last_run_block_height < ?", rm.runnableHeight(chainHeight)).
+		Find(&result).
+		Error
+
+	return result, err
+}
+
+func (rm registrationManager) runnableHeight(chainHeight uint) uint {
+	if chainHeight < rm.coolDown {
+		return 0
+	}
+	return chainHeight - rm.coolDown
 }
