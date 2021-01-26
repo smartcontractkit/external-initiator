@@ -2,7 +2,6 @@ package keeper
 
 import (
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/smartcontractkit/chainlink/core/utils"
 	"github.com/smartcontractkit/external-initiator/store"
 )
 
@@ -10,7 +9,7 @@ type RegistrationManager interface {
 	PerformFullSync() error
 	Upsert(upkeepRegistration) error
 	Delete(common.Address, int64) error
-	IdempotentBatchDelete(common.Address, []utils.Big) error
+	BatchDelete(common.Address, []int64) error
 	Active() ([]upkeepRegistration, error)
 }
 
@@ -55,9 +54,11 @@ func (rm registrationManager) Delete(address common.Address, upkeepID int64) err
 		Error
 }
 
-func (registrationManager) IdempotentBatchDelete(common.Address, []utils.Big) error {
-	// TODO
-	return nil
+func (rm registrationManager) BatchDelete(address common.Address, upkeedIDs []int64) error {
+	return rm.dbClient.DB().
+		Where("address = ? AND upkeep_id IN (?)", address, upkeedIDs).
+		Delete(upkeepRegistration{}).
+		Error
 }
 
 func (registrationManager) Active() ([]upkeepRegistration, error) {

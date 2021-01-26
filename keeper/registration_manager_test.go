@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/smartcontractkit/chainlink/core/utils"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/stretchr/testify/require"
 )
@@ -69,7 +68,7 @@ func TestRegistrationManager_Delete(t *testing.T) {
 	db, cleanup := store.SetupTestDB(t)
 	defer cleanup()
 
-	manager := NewRegistrationManager(db)
+	rm := NewRegistrationManager(db)
 
 	assertRegistrationCount(t, db, 0)
 
@@ -84,22 +83,22 @@ func TestRegistrationManager_Delete(t *testing.T) {
 	assertRegistrationCount(t, db, 1)
 
 	// delete
-	err = manager.Delete(registration.Address, 0)
+	err = rm.Delete(registration.Address, 0)
 	require.NoError(t, err)
 	assertRegistrationCount(t, db, 0)
 
 	// delete again
-	err = manager.Delete(registration.Address, 0)
+	err = rm.Delete(registration.Address, 0)
 	require.NoError(t, err)
 	assertRegistrationCount(t, db, 0)
 
 	// delete a non-existent registration
-	err = manager.Delete(registration.Address, 1234)
+	err = rm.Delete(registration.Address, 1234)
 	require.NoError(t, err)
 	assertRegistrationCount(t, db, 0)
 }
 
-func TestRegistrationManager_IdempotentBatchDelete(t *testing.T) {
+func TestRegistrationManager_BatchDelete(t *testing.T) {
 	db, cleanup := store.SetupTestDB(t)
 	defer cleanup()
 
@@ -129,8 +128,8 @@ func TestRegistrationManager_IdempotentBatchDelete(t *testing.T) {
 
 	assertRegistrationCount(t, db, 3)
 
-	manager := NewRegistrationManager(db)
-	err := manager.IdempotentBatchDelete(address, []utils.Big{*utils.NewBigI(0), *utils.NewBigI(2)})
+	rm := NewRegistrationManager(db)
+	err := rm.BatchDelete(address, []int64{0, 2})
 	require.NoError(t, err)
 
 	assertRegistrationCount(t, db, 1)
@@ -169,8 +168,8 @@ func TestRegistrationManager_Active(t *testing.T) {
 
 	assertRegistrationCount(t, db, 2)
 
-	manager := NewRegistrationManager(db)
-	activeRegistrations, err := manager.Active()
+	rm := NewRegistrationManager(db)
+	activeRegistrations, err := rm.Active()
 	require.NoError(t, err)
 	require.Len(t, activeRegistrations, 1)
 	require.Equal(t, *big.NewInt(1), activeRegistrations[0].UpkeepID)
