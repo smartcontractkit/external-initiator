@@ -23,7 +23,7 @@ type registrationManager struct {
 }
 
 type upkeepRegistration struct {
-	UpkeepID           *utils.Big
+	UpkeepID           int64
 	Address            common.Address
 	LastRunBlockHeight int64 `gorm:"not null;default:0"`
 	CheckGasLimit      int64

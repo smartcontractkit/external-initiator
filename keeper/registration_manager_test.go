@@ -31,18 +31,38 @@ func TestRegistrationManager_Upsert(t *testing.T) {
 	defer cleanup()
 
 	assertRegistrationCount(t, db, 0)
+	rm := NewRegistrationManager(db)
 
+	// create registration
 	newRegistration := upkeepRegistration{
-		UpkeepID:      utils.NewBigI(0),
+		UpkeepID:      0,
 		Address:       address,
 		CheckGasLimit: checkGasLimit,
 	}
-
-	rm := NewRegistrationManager(db)
 	err := rm.Upsert(newRegistration)
 	require.NoError(t, err)
 
 	assertRegistrationCount(t, db, 1)
+	var existingRegistration upkeepRegistration
+	err = db.DB().First(&existingRegistration).Error
+	require.NoError(t, err)
+	require.Equal(t, checkGasLimit, existingRegistration.CheckGasLimit)
+	require.Equal(t, int64(0), existingRegistration.LastRunBlockHeight)
+
+	// update registration
+	updatedRegistration := upkeepRegistration{
+		UpkeepID:           0,
+		Address:            address,
+		CheckGasLimit:      20_000,
+		LastRunBlockHeight: 100,
+	}
+	err = rm.Upsert(updatedRegistration)
+	require.NoError(t, err)
+	assertRegistrationCount(t, db, 1)
+	err = db.DB().First(&existingRegistration).Error
+	require.NoError(t, err)
+	require.Equal(t, int64(20_000), existingRegistration.CheckGasLimit)
+	require.Equal(t, int64(100), existingRegistration.LastRunBlockHeight)
 }
 
 func TestRegistrationManager_IdempotentDelete(t *testing.T) {
@@ -52,7 +72,7 @@ func TestRegistrationManager_IdempotentDelete(t *testing.T) {
 	assertRegistrationCount(t, db, 0)
 
 	registration := upkeepRegistration{
-		UpkeepID:      utils.NewBigI(0),
+		UpkeepID:      0,
 		Address:       address,
 		CheckGasLimit: checkGasLimit,
 	}
@@ -78,15 +98,15 @@ func TestRegistrationManager_IdempotentDeletes(t *testing.T) {
 
 	registrations := [3]upkeepRegistration{
 		{
-			UpkeepID:      utils.NewBigI(0),
+			UpkeepID:      0,
 			Address:       address,
 			CheckGasLimit: checkGasLimit,
 		}, {
-			UpkeepID:      utils.NewBigI(1),
+			UpkeepID:      1,
 			Address:       address,
 			CheckGasLimit: checkGasLimit,
 		}, {
-			UpkeepID:      utils.NewBigI(2),
+			UpkeepID:      2,
 			Address:       address,
 			CheckGasLimit: checkGasLimit,
 		},
@@ -119,14 +139,14 @@ func TestRegistrationManager_Active(t *testing.T) {
 
 	// valid
 	registration1 := upkeepRegistration{
-		UpkeepID:           utils.NewBigI(0),
+		UpkeepID:           0,
 		Address:            address,
 		LastRunBlockHeight: 0, // 0 means never
 		CheckGasLimit:      checkGasLimit,
 	}
 	// upkeep too recent
 	registration2 := upkeepRegistration{
-		UpkeepID:           utils.NewBigI(1),
+		UpkeepID:           1,
 		Address:            address,
 		LastRunBlockHeight: 7,
 		CheckGasLimit:      checkGasLimit,
