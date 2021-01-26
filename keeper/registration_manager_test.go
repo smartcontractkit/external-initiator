@@ -65,31 +65,41 @@ func TestRegistrationManager_Upsert(t *testing.T) {
 	require.Equal(t, int64(100), existingRegistration.LastRunBlockHeight)
 }
 
-func TestRegistrationManager_IdempotentDelete(t *testing.T) {
+func TestRegistrationManager_Delete(t *testing.T) {
 	db, cleanup := store.SetupTestDB(t)
 	defer cleanup()
 
+	manager := NewRegistrationManager(db)
+
 	assertRegistrationCount(t, db, 0)
 
+	// create registration
 	registration := upkeepRegistration{
 		UpkeepID:      0,
 		Address:       address,
 		CheckGasLimit: checkGasLimit,
 	}
-
 	err := db.DB().Create(&registration).Error
 	require.NoError(t, err)
-
 	assertRegistrationCount(t, db, 1)
 
-	manager := NewRegistrationManager(db)
-	err = manager.IdempotentDelete(registration.Address, utils.NewBigI(0))
+	// delete
+	err = manager.Delete(registration.Address, 0)
 	require.NoError(t, err)
+	assertRegistrationCount(t, db, 0)
 
+	// delete again
+	err = manager.Delete(registration.Address, 0)
+	require.NoError(t, err)
+	assertRegistrationCount(t, db, 0)
+
+	// delete a non-existent registration
+	err = manager.Delete(registration.Address, 1234)
+	require.NoError(t, err)
 	assertRegistrationCount(t, db, 0)
 }
 
-func TestRegistrationManager_IdempotentDeletes(t *testing.T) {
+func TestRegistrationManager_IdempotentBatchDelete(t *testing.T) {
 	db, cleanup := store.SetupTestDB(t)
 	defer cleanup()
 
@@ -120,7 +130,7 @@ func TestRegistrationManager_IdempotentDeletes(t *testing.T) {
 	assertRegistrationCount(t, db, 3)
 
 	manager := NewRegistrationManager(db)
-	err := manager.IdempotentDeletes(address, []utils.Big{*utils.NewBigI(0), *utils.NewBigI(2)})
+	err := manager.IdempotentBatchDelete(address, []utils.Big{*utils.NewBigI(0), *utils.NewBigI(2)})
 	require.NoError(t, err)
 
 	assertRegistrationCount(t, db, 1)

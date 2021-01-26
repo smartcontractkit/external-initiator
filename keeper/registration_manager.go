@@ -9,8 +9,8 @@ import (
 type RegistrationManager interface {
 	PerformFullSync() error
 	Upsert(upkeepRegistration) error
-	IdempotentDelete(common.Address, *utils.Big) error
-	IdempotentDeletes(common.Address, []utils.Big) error
+	Delete(common.Address, int64) error
+	IdempotentBatchDelete(common.Address, []utils.Big) error
 	Active() ([]upkeepRegistration, error)
 }
 
@@ -48,12 +48,14 @@ func (rm registrationManager) Upsert(registration upkeepRegistration) error {
 		Error
 }
 
-func (rm registrationManager) IdempotentDelete(address common.Address, upkeepID *utils.Big) error {
-	// TODO
-	return nil
+func (rm registrationManager) Delete(address common.Address, upkeepID int64) error {
+	return rm.dbClient.DB().
+		Where("address = ? AND upkeep_id = ?", address, upkeepID).
+		Delete(upkeepRegistration{}).
+		Error
 }
 
-func (registrationManager) IdempotentDeletes(common.Address, []utils.Big) error {
+func (registrationManager) IdempotentBatchDelete(common.Address, []utils.Big) error {
 	// TODO
 	return nil
 }
