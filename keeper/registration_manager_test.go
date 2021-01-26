@@ -19,7 +19,7 @@ func TestRegistrationManager_PerformFullSync(t *testing.T) {
 
 	assertRegistrationCount(t, db, 0)
 
-	rm := NewRegistrationManager()
+	rm := NewRegistrationManager(db)
 	rm.PerformFullSync()
 	// TODO - add client mocks
 
@@ -38,7 +38,7 @@ func TestRegistrationManager_UpsertRegistration(t *testing.T) {
 		CheckGasLimit: checkGasLimit,
 	}
 
-	rm := NewRegistrationManager()
+	rm := NewRegistrationManager(db)
 	err := rm.UpsertRegistration(newRegistration)
 	require.NoError(t, err)
 
@@ -62,7 +62,7 @@ func TestRegistrationManager_DeleteRegistration(t *testing.T) {
 
 	assertRegistrationCount(t, db, 1)
 
-	manager := NewRegistrationManager()
+	manager := NewRegistrationManager(db)
 	err = manager.DeleteRegistration(registration.Address, utils.NewBigI(0))
 	require.NoError(t, err)
 
@@ -99,7 +99,7 @@ func TestRegistrationManager_DeleteRegistrations(t *testing.T) {
 
 	assertRegistrationCount(t, db, 3)
 
-	manager := NewRegistrationManager()
+	manager := NewRegistrationManager(db)
 	err := manager.DeleteRegistrations(address, []utils.Big{*utils.NewBigI(0), *utils.NewBigI(2)})
 	require.NoError(t, err)
 
@@ -119,17 +119,17 @@ func TestRegistrationManager_GetActiveRegistrations(t *testing.T) {
 
 	// valid
 	registration1 := upkeepRegistration{
-		UpkeepID:      utils.NewBigI(0),
-		Address:       address,
-		LastRun:       0, // 0 means never
-		CheckGasLimit: checkGasLimit,
+		UpkeepID:           utils.NewBigI(0),
+		Address:            address,
+		LastRunBlockHeight: 0, // 0 means never
+		CheckGasLimit:      checkGasLimit,
 	}
 	// upkeep too recent
 	registration2 := upkeepRegistration{
-		UpkeepID:      utils.NewBigI(1),
-		Address:       address,
-		LastRun:       7,
-		CheckGasLimit: checkGasLimit,
+		UpkeepID:           utils.NewBigI(1),
+		Address:            address,
+		LastRunBlockHeight: 7,
+		CheckGasLimit:      checkGasLimit,
 	}
 
 	for _, reg := range []upkeepRegistration{registration1, registration2} {
@@ -139,7 +139,7 @@ func TestRegistrationManager_GetActiveRegistrations(t *testing.T) {
 
 	assertRegistrationCount(t, db, 2)
 
-	manager := NewRegistrationManager()
+	manager := NewRegistrationManager(db)
 	activeRegistrations, err := manager.GetActiveRegistrations()
 	require.NoError(t, err)
 	require.Len(t, activeRegistrations, 1)

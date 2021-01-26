@@ -10,7 +10,7 @@ func Migrate(tx *gorm.DB) error {
 			address bytea NOT NULL,
 			upkeep_id bigint NOT NULL,
 			check_gas_limit int NOT NULL,
-			last_run bigInt DEFAULT 0 NOT NULL
+			last_run_block_height bigInt DEFAULT 0 NOT NULL
 		);
 
 		CREATE UNIQUE INDEX idx_upkeep_registrations_unique_upkeep_ids_per_address ON upkeep_registrations(address, upkeep_id);
