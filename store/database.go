@@ -106,6 +106,11 @@ func (client Client) Close() error {
 	return client.db.Close()
 }
 
+// DB return the underlying gorm db
+func (client Client) DB() *gorm.DB {
+	return client.db
+}
+
 func (client Client) prepareSubscription(rawSub *Subscription) (*Subscription, error) {
 	endpoint, err := client.LoadEndpoint(rawSub.EndpointName)
 	if err != nil {
