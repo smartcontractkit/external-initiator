@@ -26,7 +26,7 @@ func TestRegistrationManager_PerformFullSync(t *testing.T) {
 	assertRegistrationCount(t, db, 3)
 }
 
-func TestRegistrationManager_UpsertRegistration(t *testing.T) {
+func TestRegistrationManager_Upsert(t *testing.T) {
 	db, cleanup := store.SetupTestDB(t)
 	defer cleanup()
 
@@ -39,13 +39,13 @@ func TestRegistrationManager_UpsertRegistration(t *testing.T) {
 	}
 
 	rm := NewRegistrationManager(db)
-	err := rm.UpsertRegistration(newRegistration)
+	err := rm.Upsert(newRegistration)
 	require.NoError(t, err)
 
 	assertRegistrationCount(t, db, 1)
 }
 
-func TestRegistrationManager_DeleteRegistration(t *testing.T) {
+func TestRegistrationManager_IdempotentDelete(t *testing.T) {
 	db, cleanup := store.SetupTestDB(t)
 	defer cleanup()
 
@@ -63,13 +63,13 @@ func TestRegistrationManager_DeleteRegistration(t *testing.T) {
 	assertRegistrationCount(t, db, 1)
 
 	manager := NewRegistrationManager(db)
-	err = manager.DeleteRegistration(registration.Address, utils.NewBigI(0))
+	err = manager.IdempotentDelete(registration.Address, utils.NewBigI(0))
 	require.NoError(t, err)
 
 	assertRegistrationCount(t, db, 0)
 }
 
-func TestRegistrationManager_DeleteRegistrations(t *testing.T) {
+func TestRegistrationManager_IdempotentDeletes(t *testing.T) {
 	db, cleanup := store.SetupTestDB(t)
 	defer cleanup()
 
@@ -100,13 +100,13 @@ func TestRegistrationManager_DeleteRegistrations(t *testing.T) {
 	assertRegistrationCount(t, db, 3)
 
 	manager := NewRegistrationManager(db)
-	err := manager.DeleteRegistrations(address, []utils.Big{*utils.NewBigI(0), *utils.NewBigI(2)})
+	err := manager.IdempotentDeletes(address, []utils.Big{*utils.NewBigI(0), *utils.NewBigI(2)})
 	require.NoError(t, err)
 
 	assertRegistrationCount(t, db, 1)
 }
 
-func TestRegistrationManager_GetActiveRegistrations(t *testing.T) {
+func TestRegistrationManager_Active(t *testing.T) {
 	db, cleanup := store.SetupTestDB(t)
 	defer cleanup()
 
@@ -140,7 +140,7 @@ func TestRegistrationManager_GetActiveRegistrations(t *testing.T) {
 	assertRegistrationCount(t, db, 2)
 
 	manager := NewRegistrationManager(db)
-	activeRegistrations, err := manager.GetActiveRegistrations()
+	activeRegistrations, err := manager.Active()
 	require.NoError(t, err)
 	require.Len(t, activeRegistrations, 1)
 	require.Equal(t, *big.NewInt(1), activeRegistrations[0].UpkeepID)

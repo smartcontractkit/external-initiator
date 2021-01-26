@@ -8,10 +8,10 @@ import (
 
 type RegistrationManager interface {
 	PerformFullSync() error
-	UpsertRegistration(upkeepRegistration) error
-	DeleteRegistration(common.Address, *utils.Big) error
-	DeleteRegistrations(common.Address, []utils.Big) error
-	GetActiveRegistrations() ([]upkeepRegistration, error)
+	Upsert(upkeepRegistration) error
+	IdempotentDelete(common.Address, *utils.Big) error
+	IdempotentDeletes(common.Address, []utils.Big) error
+	Active() ([]upkeepRegistration, error)
 }
 
 func NewRegistrationManager(dbClient *store.Client) RegistrationManager {
@@ -37,7 +37,7 @@ func (registrationManager) PerformFullSync() error {
 	return nil
 }
 
-func (rm registrationManager) UpsertRegistration(registration upkeepRegistration) error {
+func (rm registrationManager) Upsert(registration upkeepRegistration) error {
 	return rm.dbClient.DB().
 		Set(
 			"gorm:insert_option",
@@ -48,17 +48,17 @@ func (rm registrationManager) UpsertRegistration(registration upkeepRegistration
 		Error
 }
 
-func (registrationManager) DeleteRegistration(common.Address, *utils.Big) error {
+func (rm registrationManager) IdempotentDelete(address common.Address, upkeepID *utils.Big) error {
 	// TODO
 	return nil
 }
 
-func (registrationManager) DeleteRegistrations(common.Address, []utils.Big) error {
+func (registrationManager) IdempotentDeletes(common.Address, []utils.Big) error {
 	// TODO
 	return nil
 }
 
-func (registrationManager) GetActiveRegistrations() ([]upkeepRegistration, error) {
+func (registrationManager) Active() ([]upkeepRegistration, error) {
 	// TODO
 	return nil, nil
 }
