@@ -2,7 +2,7 @@ package keeper
 
 import (
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/smartcontractkit/external-initiator/store"
+	"github.com/jinzhu/gorm"
 )
 
 type RegistrationManager interface {
@@ -13,7 +13,7 @@ type RegistrationManager interface {
 	Active(uint) ([]upkeepRegistration, error)
 }
 
-func NewRegistrationManager(dbClient *store.Client, coolDown uint) RegistrationManager {
+func NewRegistrationManager(dbClient *gorm.DB, coolDown uint) RegistrationManager {
 	return registrationManager{
 		dbClient: dbClient,
 		coolDown: coolDown,
@@ -21,7 +21,7 @@ func NewRegistrationManager(dbClient *store.Client, coolDown uint) RegistrationM
 }
 
 type registrationManager struct {
-	dbClient          *store.Client
+	dbClient          *gorm.DB
 	coolDown          uint
 	latestBlockHeight uint
 }
@@ -42,7 +42,7 @@ func (registrationManager) PerformFullSync() error {
 }
 
 func (rm registrationManager) Upsert(registration upkeepRegistration) error {
-	return rm.dbClient.DB().
+	return rm.dbClient.
 		Set(
 			"gorm:insert_option",
 			`ON CONFLICT (address, upkeep_id)
@@ -53,21 +53,21 @@ func (rm registrationManager) Upsert(registration upkeepRegistration) error {
 }
 
 func (rm registrationManager) Delete(address common.Address, upkeepID int64) error {
-	return rm.dbClient.DB().
+	return rm.dbClient.
 		Where("address = ? AND upkeep_id = ?", address, upkeepID).
 		Delete(upkeepRegistration{}).
 		Error
 }
 
 func (rm registrationManager) BatchDelete(address common.Address, upkeedIDs []int64) error {
-	return rm.dbClient.DB().
+	return rm.dbClient.
 		Where("address = ? AND upkeep_id IN (?)", address, upkeedIDs).
 		Delete(upkeepRegistration{}).
 		Error
 }
 
 func (rm registrationManager) Active(chainHeight uint) (result []upkeepRegistration, _ error) {
-	err := rm.dbClient.DB().
+	err := rm.dbClient.
 		Where("last_run_block_height < ?", rm.runnableHeight(chainHeight)).
 		Find(&result).
 		Error

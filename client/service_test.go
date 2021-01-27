@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jinzhu/gorm"
 	"github.com/smartcontractkit/external-initiator/blockchain"
 	"github.com/smartcontractkit/external-initiator/chainlink"
 	"github.com/smartcontractkit/external-initiator/store"
@@ -50,6 +51,10 @@ func (s storeClientFailer) DeleteSubscription(*store.Subscription) error {
 
 func (s storeClientFailer) SaveEndpoint(*store.Endpoint) error {
 	return s.error
+}
+
+func (s storeClientFailer) DB() *gorm.DB {
+	return nil
 }
 
 type mockSubscription struct{}

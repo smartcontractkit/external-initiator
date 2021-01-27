@@ -14,7 +14,7 @@ var cooldown = uint(3)
 
 func setupRegistrationManager(t *testing.T) (*store.Client, RegistrationManager, func()) {
 	db, cleanup := store.SetupTestDB(t)
-	rm := NewRegistrationManager(db, cooldown)
+	rm := NewRegistrationManager(db.DB(), cooldown)
 	return db, rm, cleanup
 }
 

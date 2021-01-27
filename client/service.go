@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/blockchain"
@@ -27,6 +28,7 @@ type storeInterface interface {
 	SaveSubscription(arg *store.Subscription) error
 	DeleteSubscription(subscription *store.Subscription) error
 	SaveEndpoint(e *store.Endpoint) error
+	DB() *gorm.DB
 }
 
 // startService runs the Service in the background and gracefully stops when a
@@ -140,7 +142,7 @@ func NewService(
 		clNode:         clNode,
 		subscriptions:  make(map[string]*activeSubscription),
 		runtimeConfig:  runtimeConfig,
-		upkeepExecuter: keeper.NewUpkeepExecuter(runtimeConfig.KeeperEthEndpoint),
+		upkeepExecuter: keeper.NewUpkeepExecuter(dbClient.DB(), runtimeConfig),
 	}
 }
 
