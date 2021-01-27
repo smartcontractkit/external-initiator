@@ -136,15 +136,21 @@ func NewService(
 	runtimeConfig store.RuntimeConfig,
 ) *Service {
 	return &Service{
-		store:         dbClient,
-		clNode:        clNode,
-		subscriptions: make(map[string]*activeSubscription),
-		runtimeConfig: runtimeConfig,
+		store:          dbClient,
+		clNode:         clNode,
+		subscriptions:  make(map[string]*activeSubscription),
+		runtimeConfig:  runtimeConfig,
+		upkeepExecuter: keeper.NewUpkeepExecuter(runtimeConfig.KeeperEthEndpoint),
 	}
 }
 
 // Run loads subscriptions, validates and subscribes to them.
 func (srv *Service) Run() error {
+	err := srv.upkeepExecuter.Start()
+	if err != nil {
+		return err
+	}
+
 	subs, err := srv.store.LoadSubscriptions()
 	if err != nil {
 		return err
@@ -197,6 +203,8 @@ func closeSubscription(sub *activeSubscription) {
 // Close shuts down any open subscriptions and closes
 // the database client.
 func (srv *Service) Close() {
+	srv.upkeepExecuter.Stop()
+
 	for _, sub := range srv.subscriptions {
 		closeSubscription(sub)
 	}
