@@ -13,6 +13,7 @@ import (
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/blockchain"
 	"github.com/smartcontractkit/external-initiator/chainlink"
+	"github.com/smartcontractkit/external-initiator/keeper"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 )
@@ -56,6 +57,7 @@ func startService(
 		},
 	}, store.RuntimeConfig{
 		KeeperBlockCooldown: config.KeeperBlockCooldown,
+		KeeperEthEndpoint:   config.KeeperEthEndpoint,
 	})
 
 	var names []string
@@ -102,10 +104,11 @@ func startService(
 // Service holds the main process for running
 // the external initiator.
 type Service struct {
-	clNode        chainlink.Node
-	store         storeInterface
-	subscriptions map[string]*activeSubscription
-	runtimeConfig store.RuntimeConfig
+	clNode         chainlink.Node
+	store          storeInterface
+	subscriptions  map[string]*activeSubscription
+	runtimeConfig  store.RuntimeConfig
+	upkeepExecuter keeper.UpkeepExecuter
 }
 
 func validateEndpoint(endpoint store.Endpoint) error {
