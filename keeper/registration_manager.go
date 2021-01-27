@@ -10,10 +10,10 @@ type RegistrationManager interface {
 	Upsert(upkeepRegistration) error
 	Delete(common.Address, int64) error
 	BatchDelete(common.Address, []int64) error
-	Active(uint) ([]upkeepRegistration, error)
+	Active(chainHeight uint64) ([]upkeepRegistration, error)
 }
 
-func NewRegistrationManager(dbClient *gorm.DB, coolDown uint) RegistrationManager {
+func NewRegistrationManager(dbClient *gorm.DB, coolDown uint64) RegistrationManager {
 	return registrationManager{
 		dbClient: dbClient,
 		coolDown: coolDown,
@@ -21,9 +21,8 @@ func NewRegistrationManager(dbClient *gorm.DB, coolDown uint) RegistrationManage
 }
 
 type registrationManager struct {
-	dbClient          *gorm.DB
-	coolDown          uint
-	latestBlockHeight uint
+	dbClient *gorm.DB
+	coolDown uint64
 }
 
 type upkeepRegistration struct {
@@ -66,7 +65,7 @@ func (rm registrationManager) BatchDelete(address common.Address, upkeedIDs []in
 		Error
 }
 
-func (rm registrationManager) Active(chainHeight uint) (result []upkeepRegistration, _ error) {
+func (rm registrationManager) Active(chainHeight uint64) (result []upkeepRegistration, _ error) {
 	err := rm.dbClient.
 		Where("last_run_block_height < ?", rm.runnableHeight(chainHeight)).
 		Find(&result).
@@ -75,7 +74,7 @@ func (rm registrationManager) Active(chainHeight uint) (result []upkeepRegistrat
 	return result, err
 }
 
-func (rm registrationManager) runnableHeight(chainHeight uint) uint {
+func (rm registrationManager) runnableHeight(chainHeight uint64) uint64 {
 	if chainHeight < rm.coolDown {
 		return 0
 	}
