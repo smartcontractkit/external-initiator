@@ -26,10 +26,11 @@ type registrationManager struct {
 }
 
 type upkeepRegistration struct {
+	Address            common.Address `gorm:"default:null"`
+	CheckGasLimit      int64          `gorm:"default:null"`
+	From               common.Address `gorm:"default:null"`
+	LastRunBlockHeight int64          `gorm:"not null;default:0"`
 	UpkeepID           int64
-	Address            common.Address
-	LastRunBlockHeight int64 `gorm:"not null;default:0"`
-	CheckGasLimit      int64
 }
 
 // upkeepRegistration conforms to RegistrationManager interface

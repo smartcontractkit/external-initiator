@@ -8,7 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var address = common.HexToAddress("0x0000000000000000000000000000000000000123")
+var registryAddress = common.HexToAddress("0x0000000000000000000000000000000000000123")
+var fromAddress = common.HexToAddress("0x0000000000000000000000000000000000000ABC")
 var checkGasLimit = int64(10_000)
 var cooldown = uint64(3)
 
@@ -18,26 +19,31 @@ func setupRegistrationManager(t *testing.T) (*store.Client, RegistrationManager,
 	return db, rm, cleanup
 }
 
-func TestRegistrationManager_PerformFullSync(t *testing.T) {
-	db, rm, cleanup := setupRegistrationManager(t)
-	defer cleanup()
-
-	rm.PerformFullSync()
-	// TODO - add client mocks
-
-	assertRegistrationCount(t, db, 3)
+func newRegistrationWithUpkeepID(upkeepID int64) upkeepRegistration {
+	return upkeepRegistration{
+		UpkeepID:      upkeepID,
+		Address:       registryAddress,
+		From:          fromAddress,
+		CheckGasLimit: checkGasLimit,
+	}
 }
+
+// func TestRegistrationManager_PerformFullSync(t *testing.T) {
+// 	db, rm, cleanup := setupRegistrationManager(t)
+// 	defer cleanup()
+
+// 	rm.PerformFullSync()
+// 	// TODO - add client mocks
+
+// 	assertRegistrationCount(t, db, 3)
+// }
 
 func TestRegistrationManager_Upsert(t *testing.T) {
 	db, rm, cleanup := setupRegistrationManager(t)
 	defer cleanup()
 
 	// create registration
-	newRegistration := upkeepRegistration{
-		UpkeepID:      0,
-		Address:       address,
-		CheckGasLimit: checkGasLimit,
-	}
+	newRegistration := newRegistrationWithUpkeepID(0)
 	err := rm.Upsert(newRegistration)
 	require.NoError(t, err)
 
@@ -51,7 +57,8 @@ func TestRegistrationManager_Upsert(t *testing.T) {
 	// update registration
 	updatedRegistration := upkeepRegistration{
 		UpkeepID:           0,
-		Address:            address,
+		Address:            registryAddress,
+		From:               fromAddress,
 		CheckGasLimit:      20_000,
 		LastRunBlockHeight: 100,
 	}
@@ -69,11 +76,7 @@ func TestRegistrationManager_Delete(t *testing.T) {
 	defer cleanup()
 
 	// create registration
-	registration := upkeepRegistration{
-		UpkeepID:      0,
-		Address:       address,
-		CheckGasLimit: checkGasLimit,
-	}
+	registration := newRegistrationWithUpkeepID(0)
 	err := db.DB().Create(&registration).Error
 	require.NoError(t, err)
 	assertRegistrationCount(t, db, 1)
@@ -99,19 +102,9 @@ func TestRegistrationManager_BatchDelete(t *testing.T) {
 	defer cleanup()
 
 	registrations := [3]upkeepRegistration{
-		{
-			UpkeepID:      0,
-			Address:       address,
-			CheckGasLimit: checkGasLimit,
-		}, {
-			UpkeepID:      1,
-			Address:       address,
-			CheckGasLimit: checkGasLimit,
-		}, {
-			UpkeepID:      2,
-			Address:       address,
-			CheckGasLimit: checkGasLimit,
-		},
+		newRegistrationWithUpkeepID(0),
+		newRegistrationWithUpkeepID(1),
+		newRegistrationWithUpkeepID(2),
 	}
 
 	for _, reg := range registrations {
@@ -121,7 +114,7 @@ func TestRegistrationManager_BatchDelete(t *testing.T) {
 
 	assertRegistrationCount(t, db, 3)
 
-	err := rm.BatchDelete(address, []int64{0, 2})
+	err := rm.BatchDelete(registryAddress, []int64{0, 2})
 	require.NoError(t, err)
 
 	assertRegistrationCount(t, db, 1)
@@ -134,17 +127,20 @@ func TestRegistrationManager_Active(t *testing.T) {
 	registrations := [3]upkeepRegistration{
 		{ // valid
 			UpkeepID:           0,
-			Address:            address,
+			Address:            registryAddress,
+			From:               fromAddress,
 			LastRunBlockHeight: 0, // 0 means never
 			CheckGasLimit:      checkGasLimit,
 		}, { // valid
 			UpkeepID:           1,
-			Address:            address,
+			Address:            registryAddress,
+			From:               fromAddress,
 			LastRunBlockHeight: 6,
 			CheckGasLimit:      checkGasLimit,
 		}, { // too recent
 			UpkeepID:           2,
-			Address:            address,
+			Address:            registryAddress,
+			From:               fromAddress,
 			LastRunBlockHeight: 7,
 			CheckGasLimit:      checkGasLimit,
 		},
