@@ -10,7 +10,7 @@ import (
 
 var registryAddress = common.HexToAddress("0x0000000000000000000000000000000000000123")
 var fromAddress = common.HexToAddress("0x0000000000000000000000000000000000000ABC")
-var checkGasLimit = int64(10_000)
+var checkGasLimit = uint64(10_000)
 var cooldown = uint64(3)
 
 func setupRegistrationManager(t *testing.T) (*store.Client, RegistrationManager, func()) {

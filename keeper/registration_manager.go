@@ -8,6 +8,7 @@ import (
 type RegistrationManager interface {
 	PerformFullSync() error
 	Upsert(upkeepRegistration) error
+	SetRanAt(upkeepRegistration, uint64) error
 	Delete(common.Address, int64) error
 	BatchDelete(common.Address, []int64) error
 	Active(chainHeight uint64) ([]upkeepRegistration, error)
@@ -27,7 +28,7 @@ type registrationManager struct {
 
 type upkeepRegistration struct {
 	Address            common.Address `gorm:"default:null"`
-	CheckGasLimit      int64          `gorm:"default:null"`
+	CheckGasLimit      uint64         `gorm:"default:null"`
 	From               common.Address `gorm:"default:null"`
 	LastRunBlockHeight int64          `gorm:"not null;default:0"`
 	UpkeepID           int64
@@ -50,6 +51,11 @@ func (rm registrationManager) Upsert(registration upkeepRegistration) error {
 		).
 		Create(&registration).
 		Error
+}
+
+func (rm registrationManager) SetRanAt(registration upkeepRegistration, chainHeight uint64) error {
+	registration.LastRunBlockHeight = int64(chainHeight) // TODO - RYAN
+	return rm.Upsert(registration)
 }
 
 func (rm registrationManager) Delete(address common.Address, upkeepID int64) error {
