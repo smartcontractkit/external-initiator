@@ -11,20 +11,6 @@ source_mock_env() {
   source ./integration/mock-env/birita.env
 }
 
-assert() {
-  sleepCount=0
-  while [ "$sleepCount" -le "30" ] && output=$(eval "$2"); do
-    if [ "$output" == "$3" ]; then
-      printf -- "\033[32mTest passed!\033[0m %s: got expected value %s.\n" "$1" "$3"
-      return
-    fi
-    sleepCount=$((sleepCount + 1))
-    sleep 1
-  done
-  printf -- "\033[31mTEST FAILED!\033[0m %s: expected %s, actual %s; while evaluating '$2'.\n" "$1" "$3" "$output"
-  exit 1
-}
-
 waitFor() {
   [ -z "$2" ] && timeout=60 || timeout=$2
   sleepCount=0
@@ -91,6 +77,15 @@ add_ei() {
   echo "EI has been added to Chainlink node"
   popd >/dev/null || exit
   title "Done adding EI."
+}
+
+run_tests() {
+  title "Running the tests..."
+  pushd integration/scripts >/dev/null || exit
+  local log=$LOG_PATH/run_tests.log
+  yarn run-test
+  popd >/dev/null || exit
+  title "Done running tests"
 }
 
 start_docker() {

@@ -18,8 +18,7 @@ run_setup() {
 
   pushd integration/scripts >/dev/null || exit
   local log=$LOG_PATH/integration_setup.log
-  yarn install
-  yarn setup | tee "$log"
+  yarn
   popd >/dev/null || exit
 
   build_docker
