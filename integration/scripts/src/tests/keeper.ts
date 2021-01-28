@@ -12,7 +12,7 @@ export const getTests = (): Test[] => {
       params: {
         endpoint: 'keeper-mock-http',
         address,
-        from: '0x0000000000000000000000000000000000000000',
+        from: defaultEvmAddress,
         upkeepId: '123',
       },
     },
@@ -22,7 +22,7 @@ export const getTests = (): Test[] => {
       params: {
         endpoint: 'keeper-mock-ws',
         address,
-        from: '0x0000000000000000000000000000000000000000',
+        from: defaultEvmAddress,
         upkeepId: '123',
       },
     },
