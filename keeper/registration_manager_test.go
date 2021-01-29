@@ -4,12 +4,14 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/stretchr/testify/require"
 )
 
 var registryAddress = common.HexToAddress("0x0000000000000000000000000000000000000123")
 var fromAddress = common.HexToAddress("0x0000000000000000000000000000000000000ABC")
+var jobID = models.NewID()
 var checkGasLimit = uint64(10_000)
 var cooldown = uint64(3)
 
@@ -23,6 +25,7 @@ func newRegistrationWithUpkeepID(upkeepID int64) upkeepRegistration {
 	return upkeepRegistration{
 		UpkeepID:      upkeepID,
 		Address:       registryAddress,
+		JobID:         jobID,
 		From:          fromAddress,
 		CheckGasLimit: checkGasLimit,
 	}
@@ -58,6 +61,7 @@ func TestRegistrationManager_Upsert(t *testing.T) {
 	updatedRegistration := upkeepRegistration{
 		UpkeepID:           0,
 		Address:            registryAddress,
+		JobID:              jobID,
 		From:               fromAddress,
 		CheckGasLimit:      20_000,
 		LastRunBlockHeight: 100,
@@ -67,7 +71,7 @@ func TestRegistrationManager_Upsert(t *testing.T) {
 	assertRegistrationCount(t, db, 1)
 	err = db.DB().First(&existingRegistration).Error
 	require.NoError(t, err)
-	require.Equal(t, int64(20_000), existingRegistration.CheckGasLimit)
+	require.Equal(t, uint64(20_000), existingRegistration.CheckGasLimit)
 	require.Equal(t, int64(100), existingRegistration.LastRunBlockHeight)
 }
 
@@ -129,18 +133,21 @@ func TestRegistrationManager_Active(t *testing.T) {
 			UpkeepID:           0,
 			Address:            registryAddress,
 			From:               fromAddress,
+			JobID:              jobID,
 			LastRunBlockHeight: 0, // 0 means never
 			CheckGasLimit:      checkGasLimit,
 		}, { // valid
 			UpkeepID:           1,
 			Address:            registryAddress,
 			From:               fromAddress,
+			JobID:              jobID,
 			LastRunBlockHeight: 6,
 			CheckGasLimit:      checkGasLimit,
 		}, { // too recent
 			UpkeepID:           2,
 			Address:            registryAddress,
 			From:               fromAddress,
+			JobID:              jobID,
 			LastRunBlockHeight: 7,
 			CheckGasLimit:      checkGasLimit,
 		},

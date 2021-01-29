@@ -3,6 +3,7 @@ package keeper
 import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jinzhu/gorm"
+	"github.com/smartcontractkit/chainlink/core/store/models"
 )
 
 type RegistrationManager interface {
@@ -30,6 +31,7 @@ type upkeepRegistration struct {
 	Address            common.Address `gorm:"default:null"`
 	CheckGasLimit      uint64         `gorm:"default:null"`
 	From               common.Address `gorm:"default:null"`
+	JobID              *models.ID     `gorm:"default:null"`
 	LastRunBlockHeight int64          `gorm:"not null;default:0"`
 	UpkeepID           int64
 }
