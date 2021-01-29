@@ -1,7 +1,6 @@
 import { ChainlinkNode } from './chainlinkNode'
 import { fetchTests } from './tests'
-import { fetchArgs } from './args'
-import { fetchCredentials } from './common'
+import { fetchArgs, fetchCredentials } from './common'
 import * as assert from './asserts'
 
 const main = async () => {

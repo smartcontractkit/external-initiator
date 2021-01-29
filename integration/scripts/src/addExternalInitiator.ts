@@ -1,13 +1,13 @@
 import url from 'url'
 import { ChainlinkNode, ExternalInitiator } from './chainlinkNode'
-import { fetchArgs } from './args'
-import { fetchCredentials } from './common'
+import { fetchArgs, fetchCredentials } from './common'
 
 async function main() {
   const { chainlinkUrl, initiatorUrl } = fetchArgs()
 
   const credentials = fetchCredentials()
   const node = new ChainlinkNode(chainlinkUrl, credentials)
+
   const ei: ExternalInitiator = {
     name: 'mock-client',
     url: url.resolve(initiatorUrl, '/jobs'),
