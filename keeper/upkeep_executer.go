@@ -15,7 +15,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/jinzhu/gorm"
 	"github.com/smartcontractkit/chainlink/core/logger"
-	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/chainlink/core/utils"
 	"github.com/smartcontractkit/external-initiator/chainlink"
 	"github.com/smartcontractkit/external-initiator/keeper/keeper_registry_contract"
@@ -84,26 +83,26 @@ func (executer upkeepExecuter) Start() error {
 	}
 
 	// ----------------- testing only -----------------------------
-	fmt.Println("inserting test data into DB")
-	registryAddress := common.HexToAddress("0xCF5cE402a9D0Bd7F1249d2743Ea101D944Ec63dA")
-	fromAddress := common.HexToAddress("0xEF4464B5eFf2452626f05689888738A2379e6B98")
-	upkeepID := int64(1)
-	jobID, err := models.NewIDFromString("97148ac91df6440eb0c65b42b5fceeab")
-	if err != nil {
-		panic(err)
-	}
-	checkGasLimit := uint64(20_000_000)
-	testReg1 := upkeepRegistration{
-		UpkeepID:      upkeepID,
-		Address:       registryAddress,
-		From:          fromAddress,
-		JobID:         jobID,
-		CheckGasLimit: checkGasLimit,
-	}
-	err = executer.registrationManager.Upsert(testReg1)
-	if err != nil {
-		panic(err)
-	}
+	// fmt.Println("inserting test data into DB")
+	// registryAddress := common.HexToAddress("0xCF5cE402a9D0Bd7F1249d2743Ea101D944Ec63dA")
+	// fromAddress := common.HexToAddress("0xEF4464B5eFf2452626f05689888738A2379e6B98")
+	// upkeepID := int64(1)
+	// jobID, err := models.NewIDFromString("97148ac91df6440eb0c65b42b5fceeab")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// checkGasLimit := uint64(20_000_000)
+	// testReg1 := upkeepRegistration{
+	// 	UpkeepID:      upkeepID,
+	// 	Address:       registryAddress,
+	// 	From:          fromAddress,
+	// 	JobID:         jobID,
+	// 	CheckGasLimit: checkGasLimit,
+	// }
+	// err = executer.registrationManager.Upsert(testReg1)
+	// if err != nil {
+	// 	panic(err)
+	// }
 	// ------------------------------------------------------------
 
 	go executer.run()
@@ -159,7 +158,7 @@ func (executer upkeepExecuter) execute(registration upkeepRegistration) {
 		<-executer.executionQueue
 	}()
 
-	checkPayload, err := upkeepRegistryABI.Pack(checkUpkeep, big.NewInt(registration.UpkeepID), registration.From)
+	checkPayload, err := upkeepRegistryABI.Pack(checkUpkeep, big.NewInt(registration.UpkeepID), registration.Registry.From)
 	if err != nil {
 		logger.Error(err)
 		return
@@ -167,7 +166,7 @@ func (executer upkeepExecuter) execute(registration upkeepRegistration) {
 
 	msg := ethereum.CallMsg{
 		From: utils.ZeroAddress,
-		To:   &registration.Address,
+		To:   &registration.Registry.Address,
 		Gas:  registration.CheckGasLimit,
 		Data: checkPayload,
 	}
@@ -191,7 +190,7 @@ func (executer upkeepExecuter) execute(registration upkeepRegistration) {
 		return
 	}
 
-	logger.Debugf("Performing upkeep on registry %s, ID %d", registration.Address.Hex(), registration.UpkeepID)
+	logger.Debugf("Performing upkeep on registry %s, ID %d", registration.Registry.Address.Hex(), registration.UpkeepID)
 
 	performPayload, err := upkeepRegistryABI.Pack(performUpkeep, big.NewInt(registration.UpkeepID), performData)
 	if err != nil {
@@ -203,10 +202,10 @@ func (executer upkeepExecuter) execute(registration upkeepRegistration) {
 
 	chainlinkPayloadJSON := map[string]interface{}{
 		"format":           "preformatted",
-		"address":          registration.Address.Hex(),
+		"address":          registration.Registry.Address.Hex(),
 		"functionSelector": performUpkeepHex,
 		"result":           performPayloadString,
-		"fromAddresses":    []string{registration.From.Hex()},
+		"fromAddresses":    []string{registration.Registry.From.Hex()},
 	}
 
 	chainlinkPayload, err := json.Marshal(chainlinkPayloadJSON)
@@ -215,7 +214,7 @@ func (executer upkeepExecuter) execute(registration upkeepRegistration) {
 		return
 	}
 
-	err = executer.chainlinkNode.TriggerJob(registration.JobID.String(), chainlinkPayload)
+	err = executer.chainlinkNode.TriggerJob(registration.Registry.JobID.String(), chainlinkPayload)
 	if err != nil {
 		logger.Errorf("Unable to trigger job on chainlink node: %v", err)
 	}

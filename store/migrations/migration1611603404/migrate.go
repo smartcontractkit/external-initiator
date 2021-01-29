@@ -6,16 +6,24 @@ import (
 
 func Migrate(tx *gorm.DB) error {
 	return tx.Exec(`
-		CREATE TABLE upkeep_registrations (
+		CREATE TABLE keeper_registries (
+			id SERIAL PRIMARY KEY,
 			address bytea NOT NULL,
-			check_gas_limit int NOT NULL,
 			"from" bytea NOT NULL,
-			job_id uuid NOT NULL,
+			job_id uuid NOT NULL
+		);
+
+		CREATE UNIQUE INDEX idx_keepers_unique_address ON keeper_registries(address);
+
+		CREATE TABLE upkeep_registrations (
+			id SERIAL PRIMARY KEY,
+			registry_id INT NOT NULL REFERENCES keeper_registries (id) ON DELETE CASCADE,
+			check_gas_limit int NOT NULL,
 			last_run_block_height bigInt DEFAULT 0 NOT NULL,
 			upkeep_id bigint NOT NULL
 		);
 
-		CREATE UNIQUE INDEX idx_upkeep_registrations_unique_upkeep_ids_per_address ON upkeep_registrations(address, upkeep_id);
+		CREATE UNIQUE INDEX idx_upkeep_registrations_unique_upkeep_ids_per_keeper ON upkeep_registrations(registry_id, upkeep_id);
 	`).Error
 }
 

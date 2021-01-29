@@ -3,7 +3,6 @@ package keeper
 import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jinzhu/gorm"
-	"github.com/smartcontractkit/chainlink/core/store/models"
 )
 
 type RegistrationManager interface {
@@ -27,15 +26,6 @@ type registrationManager struct {
 	coolDown uint64
 }
 
-type upkeepRegistration struct {
-	Address            common.Address `gorm:"default:null"`
-	CheckGasLimit      uint64         `gorm:"default:null"`
-	From               common.Address `gorm:"default:null"`
-	JobID              *models.ID     `gorm:"default:null"`
-	LastRunBlockHeight int64          `gorm:"not null;default:0"`
-	UpkeepID           int64
-}
-
 // upkeepRegistration conforms to RegistrationManager interface
 var _ RegistrationManager = registrationManager{}
 
@@ -48,7 +38,7 @@ func (rm registrationManager) Upsert(registration upkeepRegistration) error {
 	return rm.dbClient.
 		Set(
 			"gorm:insert_option",
-			`ON CONFLICT (address, upkeep_id)
+			`ON CONFLICT (registry_id, upkeep_id)
 			DO UPDATE SET check_gas_limit = excluded.check_gas_limit, last_run_block_height = excluded.last_run_block_height`,
 		).
 		Create(&registration).
@@ -61,17 +51,25 @@ func (rm registrationManager) SetRanAt(registration upkeepRegistration, chainHei
 }
 
 func (rm registrationManager) Delete(address common.Address, upkeepID int64) error {
+	var registry keeperRegistry
+	err := rm.dbClient.Where("address = ?", address).Find(&registry).Error
+	if err != nil {
+		return err
+	}
+
 	return rm.dbClient.
-		Where("address = ? AND upkeep_id = ?", address, upkeepID).
-		Delete(upkeepRegistration{}).
+		Table("upkeep_registrations").
+		Where("registry_id = ? AND upkeep_id = ?", registry.ID, upkeepID).
+		Delete("*").
 		Error
 }
 
 func (rm registrationManager) BatchDelete(address common.Address, upkeedIDs []int64) error {
-	return rm.dbClient.
-		Where("address = ? AND upkeep_id IN (?)", address, upkeedIDs).
-		Delete(upkeepRegistration{}).
-		Error
+	// return rm.dbClient.
+	// 	Where("address = ? AND upkeep_id IN (?)", address, upkeedIDs).
+	// 	Delete(upkeepRegistration{}).
+	// 	Error
+	return nil
 }
 
 func (rm registrationManager) Active(chainHeight uint64) (result []upkeepRegistration, _ error) {
