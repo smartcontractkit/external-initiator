@@ -11,6 +11,7 @@ require (
 	github.com/ethereum/go-ethereum v1.9.24
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a
 	github.com/gin-gonic/gin v1.6.0
+	github.com/golang-collections/go-datastructures v0.0.0-20150211160725-59788d5eb259
 	github.com/golang/mock v1.4.4
 	github.com/google/uuid v1.1.2
 	github.com/gorilla/websocket v1.4.2
@@ -28,6 +29,7 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/tendermint/tendermint v0.34.0
 	github.com/tidwall/gjson v1.6.3
+	go.uber.org/atomic v1.7.0
 	go.uber.org/zap v1.16.0
 	google.golang.org/grpc v1.33.2
 	gopkg.in/gormigrate.v1 v1.6.0
