@@ -12,7 +12,8 @@ import * as Substrate from './substrate'
 
 const integrations = [ETH, HMY, XTZ, ONT, BSC, IOTX, CFX, Keeper, BIRITA, NEAR, Substrate]
 
-export const defaultEvmAddress = '0x0000000000000000000000000000000000000000'
+export const defaultEvmAddress = '0x2aD9B7b9386c2f45223dDFc4A4d81C2957bAE19A'
+export const zeroEvmAddress = '0x0000000000000000000000000000000000000000'
 export const evmAddressEnvVar = 'EVM_SUBSCRIBED_ADDRESS'
 
 export interface Test {

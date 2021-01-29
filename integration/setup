@@ -4,8 +4,6 @@ set -e
 
 source ./integration/common
 
-source_mock_env
-
 run_setup() {
   mkdir -p "$LOG_PATH"
 

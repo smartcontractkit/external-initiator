@@ -1,4 +1,4 @@
-import { defaultEvmAddress, evmAddressEnvVar, Test } from './index'
+import { Test } from './index'
 
 const blockchain = 'CFX'
 
@@ -6,7 +6,7 @@ const cfxAddressEnvVar = 'CFX_EVM_SUBSCRIBED_ADDRESS'
 const defaultCfxAddress = 'cfxtest:acdjv47k166p1pt4e8yph9rbcumrpbn2u69wyemxv0'
 
 export const getTests = (): Test[] => {
-  const addresses = [process.env[evmAddressEnvVar] || defaultCfxAddress]
+  const addresses = [process.env[cfxAddressEnvVar] || defaultCfxAddress]
 
   const tests = [
     {

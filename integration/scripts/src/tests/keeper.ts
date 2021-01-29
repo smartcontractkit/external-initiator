@@ -1,10 +1,10 @@
-import { defaultEvmAddress, evmAddressEnvVar, Test } from './index'
+import { defaultEvmAddress, evmAddressEnvVar, Test, zeroEvmAddress } from './index'
 
 const blockchain = 'Keeper'
 
 export const getTests = (): Test[] => {
   const address = process.env[evmAddressEnvVar] || defaultEvmAddress
-  const from = defaultEvmAddress
+  const from = zeroEvmAddress
   const upkeepId = '123'
 
   const tests = [

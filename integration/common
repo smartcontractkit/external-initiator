@@ -4,13 +4,6 @@ CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 LOG_PATH="$CUR_DIR/tmp/logs"
 mkdir -p "$LOG_PATH"
 
-source_mock_env() {
-  source ./integration/mock-env/evm.env
-  source ./integration/mock-env/near.env
-  source ./integration/mock-env/substrate.env
-  source ./integration/mock-env/birita.env
-}
-
 waitFor() {
   [ -z "$2" ] && timeout=60 || timeout=$2
   sleepCount=0

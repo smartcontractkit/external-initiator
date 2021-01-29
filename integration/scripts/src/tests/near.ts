@@ -2,7 +2,7 @@ import { Test } from './index'
 
 const blockchain = 'NEAR'
 
-const defaultAccountId = 'oracle'
+const defaultAccountId = 'oracle.oracle.testnet'
 const accountIdEnvVar = 'NEAR_ORACLE_ACCOUNT_ID'
 
 export const getTests = (): Test[] => {

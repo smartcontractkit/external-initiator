@@ -23,8 +23,6 @@ run_test() {
 
   login_chainlink
 
-  source_mock_env
-
   run_tests
 
   stop_docker
