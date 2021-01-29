@@ -150,7 +150,6 @@ func GetValidations(t string, params Params) []int {
 	case Keeper:
 		return []int{
 			len(params.Address),
-			len(params.UpkeepID),
 			len(params.From),
 		}
 	case BIRITA:
@@ -197,9 +196,8 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 	case Keeper:
 		from := common.HexToAddress(params.From)
 		sub.Keeper = store.KeeperSubscription{
-			Address:  params.Address,
-			UpkeepID: params.UpkeepID,
-			From:     from,
+			Address: params.Address,
+			From:    from,
 		}
 	case BIRITA:
 		sub.BSNIrita = store.BSNIritaSubscription{

@@ -140,6 +140,13 @@ func (srv *HttpService) CreateSubscription(c *gin.Context) {
 		return
 	}
 
+	// HACK - making an exception to the normal workflow for keepers
+	// since they will be removed from EI at a later date
+	if req.Type == "keeper" {
+		srv.createKeeperSubscription(req, c)
+		return
+	}
+
 	endpoint, err := srv.Store.GetEndpoint(req.Params.Endpoint)
 	if err != nil {
 		logger.Error(err)
@@ -284,4 +291,30 @@ func readSanitizedJSON(buf *bytes.Buffer) (string, error) {
 		return "", err
 	}
 	return string(b), err
+}
+
+func (srv *HttpService) createKeeperSubscription(req CreateSubscriptionReq, c *gin.Context) {
+	// TODO - RYAN - validate
+	// if err := validateRequest(&req, endpoint.Type); err != nil {
+	// 	logger.Error(err)
+	// 	c.JSON(http.StatusBadRequest, nil)
+	// 	return
+	// }
+
+	sub := &store.Subscription{
+		ReferenceId:  uuid.New().String(),
+		Job:          req.JobID,
+		EndpointName: req.Params.Endpoint,
+	}
+
+	blockchain.CreateSubscription(sub, req.Params)
+
+	if err := srv.Store.SaveSubscription(sub); err != nil {
+		logger.Error(err)
+		c.JSON(http.StatusInternalServerError, nil)
+		return
+	}
+
+	c.JSON(http.StatusCreated, resp{ID: sub.ReferenceId})
+
 }
