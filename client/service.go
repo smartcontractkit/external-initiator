@@ -142,7 +142,7 @@ func NewService(
 		clNode:         clNode,
 		subscriptions:  make(map[string]*activeSubscription),
 		runtimeConfig:  runtimeConfig,
-		upkeepExecuter: keeper.NewUpkeepExecuter(dbClient.DB(), runtimeConfig),
+		upkeepExecuter: keeper.NewUpkeepExecuter(dbClient.DB(), clNode, runtimeConfig),
 	}
 }
 
