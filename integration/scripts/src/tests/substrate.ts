@@ -2,16 +2,17 @@ import { Test } from './index'
 
 const blockchain = 'Substrate'
 
-const accountIdEnvVar = (i: number) => `SUBSTRATE_OPERATOR_${i}_ACCOUNT_ID`
-
 export const getTests = (): Test[] => {
+  const _accountIdEnvVar = (i: number) => `SUBSTRATE_OPERATOR_${i}_ACCOUNT_ID`
+  const getAccountIds = (i: number) => [process.env[_accountIdEnvVar(i)]]
+
   const tests = [
     {
       name: 'WS mock with account #1',
       expectedRuns: 1,
       params: {
         endpoint: 'substrate-mock-ws',
-        accountIds: [process.env[accountIdEnvVar(1)]],
+        accountIds: getAccountIds(1),
       },
     },
     {
@@ -19,7 +20,7 @@ export const getTests = (): Test[] => {
       expectedRuns: 1,
       params: {
         endpoint: 'substrate-mock-ws',
-        accountIds: [process.env[accountIdEnvVar(2)]],
+        accountIds: getAccountIds(2),
       },
     },
     {
@@ -27,7 +28,7 @@ export const getTests = (): Test[] => {
       expectedRuns: 1,
       params: {
         endpoint: 'substrate-mock-ws',
-        accountIds: [process.env[accountIdEnvVar(3)]],
+        accountIds: getAccountIds(3),
       },
     },
   ]

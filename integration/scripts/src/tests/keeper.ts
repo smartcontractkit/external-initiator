@@ -4,6 +4,8 @@ const blockchain = 'Keeper'
 
 export const getTests = (): Test[] => {
   const address = process.env[evmAddressEnvVar] || defaultEvmAddress
+  const from = defaultEvmAddress
+  const upkeepId = '123'
 
   const tests = [
     {
@@ -12,8 +14,8 @@ export const getTests = (): Test[] => {
       params: {
         endpoint: 'keeper-mock-http',
         address,
-        from: defaultEvmAddress,
-        upkeepId: '123',
+        from,
+        upkeepId,
       },
     },
     {
@@ -22,8 +24,8 @@ export const getTests = (): Test[] => {
       params: {
         endpoint: 'keeper-mock-ws',
         address,
-        from: defaultEvmAddress,
-        upkeepId: '123',
+        from,
+        upkeepId,
       },
     },
   ]

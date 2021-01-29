@@ -4,6 +4,7 @@ const blockchain = 'BIRITA'
 
 export const getTests = (): Test[] => {
   const addresses = [process.env['BIRITA_PROVIDER_ADDRESS']]
+  const serviceName = 'oracle'
 
   const tests = [
     {
@@ -12,7 +13,7 @@ export const getTests = (): Test[] => {
       params: {
         endpoint: 'birita-mock-http',
         addresses,
-        serviceName: 'oracle',
+        serviceName,
       },
     },
   ]
