@@ -151,9 +151,9 @@ const extractCookiesFromHeader = (cookiesHeader: string[]): Record<string, Cooki
     cookies[name] = { value: props[0] }
 
     for (let j = 1; j < props.length; j++) {
-      const propParts = props[i].split('=')
+      const propParts = props[j].split('=')
       const propName = propParts[0]
-      switch (propName.toLowerCase()) {
+      switch (propName.toLowerCase().trim()) {
         case 'expires':
           cookies[name].expires = moment(propParts[1])
           break
