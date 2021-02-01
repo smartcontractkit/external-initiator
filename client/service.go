@@ -324,6 +324,11 @@ func (srv *Service) SaveEndpoint(e *store.Endpoint) error {
 	return srv.store.SaveEndpoint(e)
 }
 
+// SaveEndpoint validates and stores the store.Endpoint provided.
+func (srv *Service) DB() *gorm.DB {
+	return srv.store.DB()
+}
+
 func getSubscriber(sub store.Subscription) (subscriber.ISubscriber, error) {
 	connType, err := blockchain.GetConnectionType(sub.Endpoint)
 	if err != nil {

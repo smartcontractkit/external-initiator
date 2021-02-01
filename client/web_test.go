@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/stretchr/testify/assert"
@@ -33,6 +34,10 @@ func (s storeFailer) GetEndpoint(string) (*store.Endpoint, error) {
 
 func (s storeFailer) SaveEndpoint(*store.Endpoint) error {
 	return s.error
+}
+
+func (s storeFailer) DB() *gorm.DB {
+	return nil
 }
 
 func generateCreateSubscriptionReq(id, endpoint string, addresses, topics, accountIds []string) CreateSubscriptionReq {

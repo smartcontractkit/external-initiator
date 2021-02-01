@@ -9,11 +9,15 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink/core/logger"
+	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/blockchain"
+	"github.com/smartcontractkit/external-initiator/keeper"
 	"github.com/smartcontractkit/external-initiator/store"
 )
 
@@ -27,6 +31,7 @@ type subscriptionStorer interface {
 	DeleteJob(jobid string) error
 	GetEndpoint(name string) (*store.Endpoint, error)
 	SaveEndpoint(endpoint *store.Endpoint) error
+	DB() *gorm.DB
 }
 
 // RunWebserver starts a new web server using the access key
@@ -142,7 +147,7 @@ func (srv *HttpService) CreateSubscription(c *gin.Context) {
 
 	// HACK - making an exception to the normal workflow for keepers
 	// since they will be removed from EI at a later date
-	if req.Type == "keeper" {
+	if req.Params.Endpoint == "keeper" {
 		srv.createKeeperSubscription(req, c)
 		return
 	}
@@ -294,27 +299,34 @@ func readSanitizedJSON(buf *bytes.Buffer) (string, error) {
 }
 
 func (srv *HttpService) createKeeperSubscription(req CreateSubscriptionReq, c *gin.Context) {
-	// TODO - RYAN - validate
-	// if err := validateRequest(&req, endpoint.Type); err != nil {
-	// 	logger.Error(err)
-	// 	c.JSON(http.StatusBadRequest, nil)
-	// 	return
-	// }
-
-	sub := &store.Subscription{
-		ReferenceId:  uuid.New().String(),
-		Job:          req.JobID,
-		EndpointName: req.Params.Endpoint,
+	if err := validateKeeperRequest(&req); err != nil {
+		logger.Error(err)
+		c.JSON(http.StatusBadRequest, nil)
+		return
 	}
 
-	blockchain.CreateSubscription(sub, req.Params)
-
-	if err := srv.Store.SaveSubscription(sub); err != nil {
+	jobID, err := models.NewIDFromString(req.JobID)
+	if err != nil {
+		logger.Error(err)
+		c.JSON(http.StatusInternalServerError, nil)
+		return
+	}
+	address := common.HexToAddress(req.Params.Address)
+	from := common.HexToAddress(req.Params.From)
+	reg := keeper.NewRegistry(address, from, jobID)
+	err = srv.Store.DB().Create(&reg).Error
+	if err != nil {
 		logger.Error(err)
 		c.JSON(http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusCreated, resp{ID: sub.ReferenceId})
+	c.JSON(http.StatusCreated, resp{ID: reg.ReferenceID})
+}
 
+func validateKeeperRequest(req *CreateSubscriptionReq) error {
+	if req.Params.Address == "" || req.Params.From == "" || req.JobID == "" {
+		return errors.New("missing required fields")
+	}
+	return nil
 }

@@ -147,11 +147,6 @@ func GetValidations(t string, params Params) []int {
 		return []int{
 			len(params.Addresses) + len(params.Topics),
 		}
-	case Keeper:
-		return []int{
-			len(params.Address),
-			len(params.From),
-		}
 	case BIRITA:
 		return []int{
 			len(params.Addresses),
