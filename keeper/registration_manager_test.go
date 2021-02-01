@@ -13,6 +13,8 @@ import (
 
 var registryAddress = common.HexToAddress("0x0000000000000000000000000000000000000123")
 var fromAddress = common.HexToAddress("0x0000000000000000000000000000000000000ABC")
+var checkDataStr = "ABC123"
+var checkData = common.Hex2Bytes(checkDataStr)
 var jobID = models.NewID()
 var executeGas = uint32(10_000)
 var cooldown = uint64(3)
@@ -37,6 +39,7 @@ func newRegistration(reg keeperRegistry, upkeepID uint64) upkeepRegistration {
 		UpkeepID:   upkeepID,
 		ExecuteGas: executeGas,
 		Registry:   reg,
+		CheckData:  checkData,
 	}
 }
 
@@ -83,14 +86,14 @@ func TestRegistrationManager_Upsert(t *testing.T) {
 	err = db.DB().First(&existingRegistration).Error
 	require.NoError(t, err)
 	require.Equal(t, executeGas, existingRegistration.ExecuteGas)
-	require.Equal(t, uint64(0), existingRegistration.LastRunBlockHeight)
+	require.Equal(t, checkData, existingRegistration.CheckData)
 
 	// update registration
 	updatedRegistration := upkeepRegistration{
-		Registry:           reg,
-		UpkeepID:           0,
-		ExecuteGas:         20_000,
-		LastRunBlockHeight: 100,
+		Registry:   reg,
+		UpkeepID:   0,
+		ExecuteGas: 20_000,
+		CheckData:  common.Hex2Bytes("8888"),
 	}
 	err = rm.Upsert(updatedRegistration)
 	require.NoError(t, err)
@@ -98,7 +101,7 @@ func TestRegistrationManager_Upsert(t *testing.T) {
 	err = db.DB().First(&existingRegistration).Error
 	require.NoError(t, err)
 	require.Equal(t, uint32(20_000), existingRegistration.ExecuteGas)
-	require.Equal(t, uint64(100), existingRegistration.LastRunBlockHeight)
+	require.Equal(t, "8888", common.Bytes2Hex(existingRegistration.CheckData))
 }
 
 func TestRegistrationManager_Delete(t *testing.T) {

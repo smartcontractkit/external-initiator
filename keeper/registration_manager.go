@@ -59,7 +59,6 @@ func (rm registrationManager) Upsert(registration upkeepRegistration) error {
 			`ON CONFLICT (registry_id, upkeep_id)
 			DO UPDATE SET
 				execute_gas = excluded.execute_gas,
-				last_run_block_height = excluded.last_run_block_height,
 				check_data = excluded.check_data
 			`,
 		).
@@ -69,7 +68,7 @@ func (rm registrationManager) Upsert(registration upkeepRegistration) error {
 
 func (rm registrationManager) SetRanAt(registration upkeepRegistration, chainHeight uint64) error {
 	registration.LastRunBlockHeight = chainHeight
-	return rm.Upsert(registration)
+	return rm.dbClient.Save(&registration).Error
 }
 
 func (rm registrationManager) Delete(address common.Address, upkeepID uint64) error {
