@@ -19,7 +19,6 @@ import (
 	"github.com/smartcontractkit/external-initiator/chainlink"
 	"github.com/smartcontractkit/external-initiator/keeper/keeper_registry_contract"
 	"github.com/smartcontractkit/external-initiator/store"
-	"github.com/smartcontractkit/external-initiator/subscriber"
 	"go.uber.org/atomic"
 )
 
@@ -55,7 +54,6 @@ func NewUpkeepExecuter(dbClient *gorm.DB, clNode chainlink.Node, config store.Ru
 type upkeepExecuter struct {
 	blockHeight         *atomic.Uint64
 	chainlinkNode       chainlink.Node
-	connectionType      subscriber.Type
 	endpoint            string
 	ethClient           *ethclient.Client
 	registrationManager RegistrationManager
@@ -118,14 +116,8 @@ func (executer upkeepExecuter) processActiveRegistrations() {
 }
 
 func (executer upkeepExecuter) concurrentExecute(registration upkeepRegistration) {
-	for {
-		select {
-		case executer.executionQueue <- struct{}{}:
-			go executer.execute(registration)
-			return
-		default:
-		}
-	}
+	executer.executionQueue <- struct{}{}
+	go executer.execute(registration)
 }
 
 // execute will call checkForUpkeep and, if it succeeds, triger a job on the CL node

@@ -1,14 +1,11 @@
 package blockchain
 
 import (
-	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
-	"net/http"
-	"net/url"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -184,16 +181,4 @@ func GetBlockNumberPayload() ([]byte, error) {
 		Method:  "eth_blockNumber",
 	}
 	return json.Marshal(msg)
-}
-
-func sendEthNodePost(endpoint url.URL, payload []byte) (*http.Response, error) {
-	resp, err := http.Post(endpoint.String(), "application/json", bytes.NewReader(payload))
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode >= 400 {
-		_ = resp.Body.Close()
-		return nil, fmt.Errorf("unexpected status code %v from endpoint %s", resp.StatusCode, endpoint.String())
-	}
-	return resp, nil
 }
