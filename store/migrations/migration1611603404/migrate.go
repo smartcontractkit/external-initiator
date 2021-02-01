@@ -8,10 +8,10 @@ func Migrate(tx *gorm.DB) error {
 	return tx.Exec(`
 		CREATE TABLE keeper_registries (
 			id SERIAL PRIMARY KEY,
-			reference_id UUID NOT NULL,
-			address bytea NOT NULL,
+			reference_id uuid UNIQUE NOT NULL,
+			address bytea UNIQUE NOT NULL,
 			"from" bytea NOT NULL,
-			job_id uuid NOT NULL
+			job_id uuid UNIQUE NOT NULL
 		);
 
 		CREATE UNIQUE INDEX idx_keepers_unique_address ON keeper_registries(address);
@@ -25,16 +25,12 @@ func Migrate(tx *gorm.DB) error {
 		);
 
 		CREATE UNIQUE INDEX idx_upkeep_registrations_unique_upkeep_ids_per_keeper ON upkeep_registrations(registry_id, upkeep_id);
-		CREATE UNIQUE INDEX idx_keeper_registries_unique_reference_id ON keeper_registries(reference_id);
 	`).Error
 }
 
-// TODO - shorthand for unique column?
-// TODO - RYAN - add indexes on other columns
-// TODO - RYAN - drop keeper subscriptios table
-
 func Rollback(tx *gorm.DB) error {
 	return tx.Exec(`
+		DROP TABLE IF EXISTS keeper_registries;
 		DROP TABLE IF EXISTS upkeep_registrations;
 	`).Error
 }
