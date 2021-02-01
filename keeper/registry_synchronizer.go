@@ -69,7 +69,8 @@ func (rs registrySynchronizer) run() {
 		case <-rs.chDone:
 			return
 		case <-ticker.C:
-			rs.performFullSync() // TODO - RYAN - if sync takes too long?
+			// TODO - RYAN - if sync takes too long? need a queue approach like in executer
+			rs.performFullSync()
 		}
 	}
 }
