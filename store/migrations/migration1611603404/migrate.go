@@ -11,6 +11,7 @@ func Migrate(tx *gorm.DB) error {
 			reference_id uuid UNIQUE NOT NULL,
 			address bytea UNIQUE NOT NULL,
 			"from" bytea NOT NULL,
+			check_gas int NOT NULL,
 			job_id uuid UNIQUE NOT NULL
 		);
 

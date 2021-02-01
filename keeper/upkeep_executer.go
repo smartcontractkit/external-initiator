@@ -41,22 +41,22 @@ type UpkeepExecuter interface {
 
 func NewUpkeepExecuter(dbClient *gorm.DB, clNode chainlink.Node, config store.RuntimeConfig) UpkeepExecuter {
 	return upkeepExecuter{
-		blockHeight:         atomic.NewUint64(0),
-		chainlinkNode:       clNode,
-		endpoint:            config.KeeperEthEndpoint,
-		registrationManager: NewRegistrationManager(dbClient, uint64(config.KeeperBlockCooldown)),
-		executionQueue:      make(chan struct{}, executionQueueSize),
-		chDone:              make(chan struct{}),
-		chSignalRun:         make(chan struct{}, 1),
+		blockHeight:     atomic.NewUint64(0),
+		chainlinkNode:   clNode,
+		endpoint:        config.KeeperEthEndpoint,
+		registryManager: NewRegistryManager(dbClient, uint64(config.KeeperBlockCooldown)),
+		executionQueue:  make(chan struct{}, executionQueueSize),
+		chDone:          make(chan struct{}),
+		chSignalRun:     make(chan struct{}, 1),
 	}
 }
 
 type upkeepExecuter struct {
-	blockHeight         *atomic.Uint64
-	chainlinkNode       chainlink.Node
-	endpoint            string
-	ethClient           *ethclient.Client
-	registrationManager RegistrationManager
+	blockHeight     *atomic.Uint64
+	chainlinkNode   chainlink.Node
+	endpoint        string
+	ethClient       *ethclient.Client
+	registryManager RegistryManager
 
 	executionQueue chan struct{}
 	chDone         chan struct{}
@@ -104,7 +104,7 @@ func (executer upkeepExecuter) processActiveRegistrations() {
 	// TODO - RYAN - this should be batched to avoid congestgion
 	logger.Debug("received new block, running checkUpkeep for keeper registrations")
 
-	activeRegistrations, err := executer.registrationManager.Active(executer.blockHeight.Load())
+	activeRegistrations, err := executer.registryManager.Active(executer.blockHeight.Load())
 	if err != nil {
 		logger.Errorf("unable to load active registrations: %v", err)
 		return
@@ -198,7 +198,7 @@ func (executer upkeepExecuter) execute(registration upkeepRegistration) {
 		logger.Errorf("Unable to trigger job on chainlink node: %v", err)
 	}
 
-	err = executer.registrationManager.SetRanAt(registration, executer.blockHeight.Load())
+	err = executer.registryManager.SetRanAt(registration, executer.blockHeight.Load())
 	if err != nil {
 		logger.Error(err)
 		return

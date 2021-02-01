@@ -24,15 +24,15 @@ type RegistrySynchronizer interface {
 
 func NewRegistrySynchronizer(dbClient *gorm.DB, config store.RuntimeConfig) RegistrySynchronizer {
 	return registrySynchronizer{
-		endpoint:            config.KeeperEthEndpoint,
-		registrationManager: NewRegistrationManager(dbClient, uint64(config.KeeperBlockCooldown)),
+		endpoint:        config.KeeperEthEndpoint,
+		registryManager: NewRegistryManager(dbClient, uint64(config.KeeperBlockCooldown)),
 	}
 }
 
 type registrySynchronizer struct {
-	endpoint            string
-	ethClient           *ethclient.Client
-	registrationManager RegistrationManager
+	endpoint        string
+	ethClient       *ethclient.Client
+	registryManager RegistryManager
 
 	chDone chan struct{}
 }
@@ -76,7 +76,7 @@ func (rs registrySynchronizer) run() {
 func (rs registrySynchronizer) performFullSync() {
 	logger.Debug("performing full sync")
 
-	registries, err := rs.registrationManager.Registries()
+	registries, err := rs.registryManager.Registries()
 	if err != nil {
 		logger.Error(err)
 	}
@@ -96,12 +96,20 @@ func (rs registrySynchronizer) syncRegistry(registry keeperRegistry) {
 		return
 	}
 
-	count, err := contract.GetUpkeepCount(nil)
+	// update registry config
+	config, err := contract.GetConfig(nil)
+	if err != nil {
+		logger.Error(err)
+		return
+	}
+	registry.CheckGas = config.CheckGasLimit
+	err = rs.registryManager.UpdateRegistry(registry)
 	if err != nil {
 		logger.Error(err)
 		return
 	}
 
+	// delete cancelled upkeeps
 	cancelledBigs, err := contract.GetCanceledUpkeepList(nil)
 	if err != nil {
 		logger.Error(err)
@@ -111,24 +119,27 @@ func (rs registrySynchronizer) syncRegistry(registry keeperRegistry) {
 	for idx, upkeepID := range cancelledBigs {
 		cancelled[idx] = upkeepID.Uint64()
 	}
-
 	cancelledSet := make(map[uint64]bool)
 	for _, upkeepID := range cancelled {
 		cancelledSet[upkeepID] = true
 	}
-
-	err = rs.registrationManager.BatchDelete(registry.ID, cancelled)
+	err = rs.registryManager.BatchDelete(registry.ID, cancelled)
 	if err != nil {
 		logger.Error(err)
 	}
 
+	// add new upkeeps, update existing upkeeps
+	count, err := contract.GetUpkeepCount(nil)
+	if err != nil {
+		logger.Error(err)
+		return
+	}
 	var needToUpsert []uint64
 	for upkeepID := uint64(0); upkeepID < count.Uint64(); upkeepID++ {
 		if !cancelledSet[upkeepID] {
 			needToUpsert = append(needToUpsert, upkeepID)
 		}
 	}
-
 	for _, upkeepID := range needToUpsert {
 		upkeepConfig, err := contract.GetUpkeep(nil, big.NewInt(int64(upkeepID)))
 		if err != nil {
@@ -142,7 +153,7 @@ func (rs registrySynchronizer) syncRegistry(registry keeperRegistry) {
 			UpkeepID:   upkeepID,
 		}
 		// TODO - RYAN - n+1 - parallelize
-		err = rs.registrationManager.Upsert(newUpkeep)
+		err = rs.registryManager.Upsert(newUpkeep)
 		if err != nil {
 			logger.Error(err)
 		}

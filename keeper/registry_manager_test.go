@@ -17,17 +17,19 @@ var checkDataStr = "ABC123"
 var checkData = common.Hex2Bytes(checkDataStr)
 var jobID = models.NewID()
 var executeGas = uint32(10_000)
+var checkGas = uint32(2_000_000)
 var cooldown = uint64(3)
 
-func setupRegistrationManager(t *testing.T) (*store.Client, RegistrationManager, func()) {
+func setupRegistryManager(t *testing.T) (*store.Client, RegistryManager, func()) {
 	db, cleanup := store.SetupTestDB(t)
-	rm := NewRegistrationManager(db.DB(), cooldown)
+	rm := NewRegistryManager(db.DB(), cooldown)
 	return db, rm, cleanup
 }
 
 func newRegistry() keeperRegistry {
 	return keeperRegistry{
 		Address:     registryAddress,
+		CheckGas:    checkGas,
 		JobID:       jobID,
 		From:        fromAddress,
 		ReferenceID: uuid.New().String(),
@@ -43,8 +45,8 @@ func newRegistration(reg keeperRegistry, upkeepID uint64) upkeepRegistration {
 	}
 }
 
-func TestRegistrationManager_Registries(t *testing.T) {
-	db, rm, cleanup := setupRegistrationManager(t)
+func TestRegistryManager_Registries(t *testing.T) {
+	db, rm, cleanup := setupRegistryManager(t)
 	defer cleanup()
 
 	reg := newRegistry()
@@ -53,6 +55,7 @@ func TestRegistrationManager_Registries(t *testing.T) {
 
 	reg2 := keeperRegistry{
 		Address:     common.HexToAddress("0x0000000000000000000000000000000000000456"),
+		CheckGas:    checkGas,
 		JobID:       models.NewID(),
 		From:        fromAddress,
 		ReferenceID: uuid.New().String(),
@@ -66,8 +69,8 @@ func TestRegistrationManager_Registries(t *testing.T) {
 	require.Equal(t, 2, len(existingRegistries))
 }
 
-func TestRegistrationManager_Upsert(t *testing.T) {
-	db, rm, cleanup := setupRegistrationManager(t)
+func TestRegistryManager_Upsert(t *testing.T) {
+	db, rm, cleanup := setupRegistryManager(t)
 	defer cleanup()
 
 	// create registry
@@ -104,8 +107,8 @@ func TestRegistrationManager_Upsert(t *testing.T) {
 	require.Equal(t, "8888", common.Bytes2Hex(existingRegistration.CheckData))
 }
 
-func TestRegistrationManager_Delete(t *testing.T) {
-	db, rm, cleanup := setupRegistrationManager(t)
+func TestRegistryManager_Delete(t *testing.T) {
+	db, rm, cleanup := setupRegistryManager(t)
 	defer cleanup()
 
 	// create registry
@@ -135,8 +138,8 @@ func TestRegistrationManager_Delete(t *testing.T) {
 	assertRegistrationCount(t, db, 0)
 }
 
-func TestRegistrationManager_BatchDelete(t *testing.T) {
-	// db, rm, cleanup := setupRegistrationManager(t)
+func TestRegistryManager_BatchDelete(t *testing.T) {
+	// db, rm, cleanup := setupRegistryManager(t)
 	// defer cleanup()
 
 	// registrations := [3]upkeepRegistration{
@@ -158,8 +161,8 @@ func TestRegistrationManager_BatchDelete(t *testing.T) {
 	// assertRegistrationCount(t, db, 1)
 }
 
-func TestRegistrationManager_Active(t *testing.T) {
-	db, rm, cleanup := setupRegistrationManager(t)
+func TestRegistryManager_Active(t *testing.T) {
+	db, rm, cleanup := setupRegistryManager(t)
 	defer cleanup()
 
 	// create registry
