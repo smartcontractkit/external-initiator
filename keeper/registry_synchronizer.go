@@ -22,21 +22,19 @@ type RegistrySynchronizer interface {
 	Stop()
 }
 
+func NewRegistrySynchronizer(dbClient *gorm.DB, config store.RuntimeConfig) RegistrySynchronizer {
+	return registrySynchronizer{
+		endpoint:            config.KeeperEthEndpoint,
+		registrationManager: NewRegistrationManager(dbClient, uint64(config.KeeperBlockCooldown)),
+	}
+}
+
 type registrySynchronizer struct {
 	endpoint            string
 	ethClient           *ethclient.Client
 	registrationManager RegistrationManager
 
 	chDone chan struct{}
-}
-
-var _ RegistrySynchronizer = registrySynchronizer{}
-
-func NewRegistrySynchronizer(dbClient *gorm.DB, config store.RuntimeConfig) RegistrySynchronizer {
-	return registrySynchronizer{
-		endpoint:            config.KeeperEthEndpoint,
-		registrationManager: NewRegistrationManager(dbClient, uint64(config.KeeperBlockCooldown)),
-	}
 }
 
 func (rs registrySynchronizer) Start() error {
@@ -91,15 +89,6 @@ func (rs registrySynchronizer) performFullSync() {
 
 func (rs registrySynchronizer) syncRegistry(registry keeperRegistry) {
 	// WARN - this could get memory intensive depending on how many upkeeps there are
-	existing, err := rs.registrationManager.UpkeepIDsForRegistry(registry)
-	if err != nil {
-		logger.Error(err)
-	}
-
-	existingSet := make(map[uint64]bool)
-	for _, upkeepID := range existing {
-		existingSet[upkeepID] = true
-	}
 
 	contract, err := keeper_registry_contract.NewKeeperRegistryContract(registry.Address, rs.ethClient)
 	if err != nil {
@@ -107,33 +96,31 @@ func (rs registrySynchronizer) syncRegistry(registry keeperRegistry) {
 		return
 	}
 
-	// TODO - RYAN - DELETE can be done without loading eqisting id into memory
-	// just do a delete where in (...)
-
 	count, err := contract.GetUpkeepCount(nil)
 	if err != nil {
 		logger.Error(err)
 		return
 	}
 
-	cancelled, err := contract.GetCanceledUpkeepList(nil)
+	cancelledBigs, err := contract.GetCanceledUpkeepList(nil)
 	if err != nil {
 		logger.Error(err)
 		return
 	}
+	cancelled := make([]uint64, len(cancelledBigs))
+	for idx, upkeepID := range cancelledBigs {
+		cancelled[idx] = upkeepID.Uint64()
+	}
 
 	cancelledSet := make(map[uint64]bool)
 	for _, upkeepID := range cancelled {
-		cancelledSet[upkeepID.Uint64()] = true
+		cancelledSet[upkeepID] = true
 	}
 
-	var needToDelete []uint64
-	for _, upkeepID := range existing {
-		if cancelledSet[upkeepID] {
-			needToDelete = append(needToDelete, upkeepID)
-		}
+	err = rs.registrationManager.BatchDelete(registry.ID, cancelled)
+	if err != nil {
+		logger.Error(err)
 	}
-	rs.registrationManager.BatchDelete(registry.ID, needToDelete)
 
 	var needToUpsert []uint64
 	for upkeepID := uint64(0); upkeepID < count.Uint64(); upkeepID++ {
@@ -158,3 +145,15 @@ func (rs registrySynchronizer) syncRegistry(registry keeperRegistry) {
 		rs.registrationManager.Upsert(newUpkeep)
 	}
 }
+
+func NewNoOpRegistrySynchronizer() RegistrySynchronizer {
+	return noOpRegistrySynchronizer{}
+}
+
+type noOpRegistrySynchronizer struct{}
+
+func (noOpRegistrySynchronizer) Start() error {
+	return nil
+}
+
+func (noOpRegistrySynchronizer) Stop() {}

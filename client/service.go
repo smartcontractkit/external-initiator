@@ -138,18 +138,27 @@ func NewService(
 	clNode chainlink.Node,
 	runtimeConfig store.RuntimeConfig,
 ) *Service {
+	upkeepExecuter := keeper.NewNoOpUpkeepExecuter()
+	registrySynchronizer := keeper.NewNoOpRegistrySynchronizer()
+	if runtimeConfig.KeeperEthEndpoint != "" {
+		logger.Info("Enabling Keeper Service")
+		upkeepExecuter = keeper.NewUpkeepExecuter(dbClient.DB(), clNode, runtimeConfig)
+		registrySynchronizer = keeper.NewRegistrySynchronizer(dbClient.DB(), runtimeConfig)
+	}
+
 	return &Service{
 		store:                dbClient,
 		clNode:               clNode,
 		subscriptions:        make(map[string]*activeSubscription),
 		runtimeConfig:        runtimeConfig,
-		upkeepExecuter:       keeper.NewUpkeepExecuter(dbClient.DB(), clNode, runtimeConfig),
-		registrySynchronizer: keeper.NewRegistrySynchronizer(dbClient.DB(), runtimeConfig),
+		upkeepExecuter:       upkeepExecuter,
+		registrySynchronizer: registrySynchronizer,
 	}
 }
 
 // Run loads subscriptions, validates and subscribes to them.
 func (srv *Service) Run() error {
+
 	err := srv.upkeepExecuter.Start()
 	if err != nil {
 		return err

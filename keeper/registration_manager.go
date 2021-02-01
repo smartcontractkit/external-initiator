@@ -7,7 +7,6 @@ import (
 
 type RegistrationManager interface {
 	Registries() ([]keeperRegistry, error)
-	UpkeepIDsForRegistry(keeperRegistry) ([]uint64, error)
 	Upsert(upkeepRegistration) error
 	SetRanAt(upkeepRegistration, uint64) error
 	Delete(common.Address, uint64) error
@@ -34,22 +33,6 @@ var _ RegistrationManager = registrationManager{}
 func (rm registrationManager) Registries() (registries []keeperRegistry, _ error) {
 	err := rm.dbClient.Find(&registries).Error
 	return registries, err
-}
-
-func (rm registrationManager) UpkeepIDsForRegistry(registry keeperRegistry) ([]uint64, error) {
-	// TODO - there's a more efficient way of doing this
-	var registrations []upkeepRegistration
-	err := rm.dbClient.Where("registry_id = ?", registry.ID).Find(&registrations).Error
-	if err != nil {
-		return nil, err
-	}
-
-	ids := make([]uint64, len(registrations))
-	for idx, registration := range registrations {
-		ids[idx] = registration.UpkeepID
-	}
-
-	return ids, nil
 }
 
 func (rm registrationManager) Upsert(registration upkeepRegistration) error {

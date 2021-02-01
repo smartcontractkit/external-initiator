@@ -270,3 +270,15 @@ func mustGetABI(json string) abi.ABI {
 	}
 	return abi
 }
+
+func NewNoOpUpkeepExecuter() UpkeepExecuter {
+	return noOpUpkeepExecuter{}
+}
+
+type noOpUpkeepExecuter struct{}
+
+func (noOpUpkeepExecuter) Start() error {
+	return nil
+}
+
+func (noOpUpkeepExecuter) Stop() {}
