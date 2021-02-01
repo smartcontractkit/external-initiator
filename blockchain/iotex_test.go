@@ -12,6 +12,7 @@ import (
 	"github.com/iotexproject/iotex-proto/golang/iotexapi"
 	"github.com/iotexproject/iotex-proto/golang/iotexapi/mock_iotexapi"
 	"github.com/iotexproject/iotex-proto/golang/iotextypes"
+	"github.com/smartcontractkit/external-initiator/eitest"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/stretchr/testify/assert"
@@ -284,9 +285,10 @@ func newIoTeXMockServer(t *testing.T) (*mock_iotexapi.MockAPIServiceServer, cont
 	iotexapi.RegisterAPIServiceServer(server, serv)
 	listener, err := net.Listen("tcp", iotexMockServerHost())
 	require.NoError(t, err)
-	go server.Serve(listener)
+	go func() {
+		eitest.Must(server.Serve(listener))
+	}()
 	return serv, func() {
 		server.Stop()
-		listener.Close()
 	}
 }

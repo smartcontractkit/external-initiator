@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/smartcontractkit/external-initiator/eitest"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -146,7 +147,7 @@ func readTestGetAllRequestsResult() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer eitest.MustClose(file)
 
 	resultJSON, err := ioutil.ReadAll(file)
 	if err != nil {
