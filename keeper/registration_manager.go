@@ -6,6 +6,7 @@ import (
 )
 
 type RegistrationManager interface {
+	Registries() ([]keeperRegistry, error)
 	PerformFullSync() error
 	Upsert(upkeepRegistration) error
 	SetRanAt(upkeepRegistration, uint64) error
@@ -34,6 +35,11 @@ func (registrationManager) PerformFullSync() error {
 	return nil
 }
 
+func (rm registrationManager) Registries() (registries []keeperRegistry, _ error) {
+	err := rm.dbClient.Find(&registries).Error
+	return registries, err
+}
+
 func (rm registrationManager) Upsert(registration upkeepRegistration) error {
 	return rm.dbClient.
 		Set(
@@ -52,7 +58,7 @@ func (rm registrationManager) SetRanAt(registration upkeepRegistration, chainHei
 
 func (rm registrationManager) Delete(address common.Address, upkeepID int64) error {
 	var registry keeperRegistry
-	err := rm.dbClient.Where("address = ?", address).Find(&registry).Error
+	err := rm.dbClient.Where("address = ?", address).First(&registry).Error
 	if err != nil {
 		return err
 	}

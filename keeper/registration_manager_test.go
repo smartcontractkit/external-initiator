@@ -50,6 +50,29 @@ func newRegistration(reg keeperRegistry, upkeepID int64) upkeepRegistration {
 // 	assertRegistrationCount(t, db, 3)
 // }
 
+func TestRegistrationManager_Registries(t *testing.T) {
+	db, rm, cleanup := setupRegistrationManager(t)
+	defer cleanup()
+
+	reg := newRegistry()
+	err := db.DB().Create(&reg).Error
+	require.NoError(t, err)
+
+	reg2 := keeperRegistry{
+		Address:     common.HexToAddress("0x0000000000000000000000000000000000000456"),
+		JobID:       models.NewID(),
+		From:        fromAddress,
+		ReferenceID: uuid.New().String(),
+	}
+
+	err = db.DB().Create(&reg2).Error
+	require.NoError(t, err)
+
+	existingRegistries, err := rm.Registries()
+	require.NoError(t, err)
+	require.Equal(t, 2, len(existingRegistries))
+}
+
 func TestRegistrationManager_Upsert(t *testing.T) {
 	db, rm, cleanup := setupRegistrationManager(t)
 	defer cleanup()
