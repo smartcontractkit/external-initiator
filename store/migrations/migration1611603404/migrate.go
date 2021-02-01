@@ -19,7 +19,7 @@ func Migrate(tx *gorm.DB) error {
 		CREATE TABLE upkeep_registrations (
 			id SERIAL PRIMARY KEY,
 			registry_id INT NOT NULL REFERENCES keeper_registries (id) ON DELETE CASCADE,
-			check_gas_limit int NOT NULL,
+			execute_gas int NOT NULL,
 			last_run_block_height bigInt DEFAULT 0 NOT NULL,
 			upkeep_id bigint NOT NULL
 		);

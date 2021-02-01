@@ -82,29 +82,6 @@ func (executer upkeepExecuter) Start() error {
 		return fmt.Errorf("unknown endpoint protocol: %+v", executer.endpoint)
 	}
 
-	// ----------------- testing only -----------------------------
-	// fmt.Println("inserting test data into DB")
-	// registryAddress := common.HexToAddress("0xCF5cE402a9D0Bd7F1249d2743Ea101D944Ec63dA")
-	// fromAddress := common.HexToAddress("0xEF4464B5eFf2452626f05689888738A2379e6B98")
-	// upkeepID := int64(1)
-	// jobID, err := models.NewIDFromString("97148ac91df6440eb0c65b42b5fceeab")
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// checkGasLimit := uint64(20_000_000)
-	// testReg1 := upkeepRegistration{
-	// 	UpkeepID:      upkeepID,
-	// 	Address:       registryAddress,
-	// 	From:          fromAddress,
-	// 	JobID:         jobID,
-	// 	CheckGasLimit: checkGasLimit,
-	// }
-	// err = executer.registrationManager.Upsert(testReg1)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// ------------------------------------------------------------
-
 	go executer.run()
 
 	return nil

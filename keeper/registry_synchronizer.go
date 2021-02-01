@@ -149,9 +149,9 @@ func (rs registrySynchronizer) syncRegistry(registry keeperRegistry) {
 			continue
 		}
 		newUpkeep := upkeepRegistration{
-			CheckGasLimit: uint64(upkeepConfig.ExecuteGas), // TODO - change to uint32?
-			RegistryID:    uint32(registry.ID),
-			UpkeepID:      upkeepID,
+			ExecuteGas: upkeepConfig.ExecuteGas,
+			RegistryID: uint32(registry.ID),
+			UpkeepID:   upkeepID,
 		}
 		// TODO - RYAN - n+1 - parallelize
 		rs.registrationManager.Upsert(newUpkeep)

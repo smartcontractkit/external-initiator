@@ -14,7 +14,7 @@ import (
 var registryAddress = common.HexToAddress("0x0000000000000000000000000000000000000123")
 var fromAddress = common.HexToAddress("0x0000000000000000000000000000000000000ABC")
 var jobID = models.NewID()
-var checkGasLimit = uint64(10_000)
+var executeGas = uint32(10_000)
 var cooldown = uint64(3)
 
 func setupRegistrationManager(t *testing.T) (*store.Client, RegistrationManager, func()) {
@@ -34,9 +34,9 @@ func newRegistry() keeperRegistry {
 
 func newRegistration(reg keeperRegistry, upkeepID int64) upkeepRegistration {
 	return upkeepRegistration{
-		UpkeepID:      upkeepID,
-		CheckGasLimit: checkGasLimit,
-		Registry:      reg,
+		UpkeepID:   upkeepID,
+		ExecuteGas: executeGas,
+		Registry:   reg,
 	}
 }
 
@@ -82,14 +82,14 @@ func TestRegistrationManager_Upsert(t *testing.T) {
 	var existingRegistration upkeepRegistration
 	err = db.DB().First(&existingRegistration).Error
 	require.NoError(t, err)
-	require.Equal(t, checkGasLimit, existingRegistration.CheckGasLimit)
+	require.Equal(t, executeGas, existingRegistration.ExecuteGas)
 	require.Equal(t, int64(0), existingRegistration.LastRunBlockHeight)
 
 	// update registration
 	updatedRegistration := upkeepRegistration{
 		Registry:           reg,
 		UpkeepID:           0,
-		CheckGasLimit:      20_000,
+		ExecuteGas:         20_000,
 		LastRunBlockHeight: 100,
 	}
 	err = rm.Upsert(updatedRegistration)
@@ -97,7 +97,7 @@ func TestRegistrationManager_Upsert(t *testing.T) {
 	assertRegistrationCount(t, db, 1)
 	err = db.DB().First(&existingRegistration).Error
 	require.NoError(t, err)
-	require.Equal(t, uint64(20_000), existingRegistration.CheckGasLimit)
+	require.Equal(t, uint64(20_000), existingRegistration.ExecuteGas)
 	require.Equal(t, int64(100), existingRegistration.LastRunBlockHeight)
 }
 
@@ -168,17 +168,17 @@ func TestRegistrationManager_Active(t *testing.T) {
 		{ // valid
 			UpkeepID:           0,
 			LastRunBlockHeight: 0, // 0 means never
-			CheckGasLimit:      checkGasLimit,
+			ExecuteGas:         executeGas,
 			Registry:           reg,
 		}, { // valid
 			UpkeepID:           1,
 			LastRunBlockHeight: 6,
-			CheckGasLimit:      checkGasLimit,
+			ExecuteGas:         executeGas,
 			Registry:           reg,
 		}, { // too recent
 			UpkeepID:           2,
 			LastRunBlockHeight: 7,
-			CheckGasLimit:      checkGasLimit,
+			ExecuteGas:         executeGas,
 			Registry:           reg,
 		},
 	}

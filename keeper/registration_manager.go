@@ -57,7 +57,7 @@ func (rm registrationManager) Upsert(registration upkeepRegistration) error {
 		Set(
 			"gorm:insert_option",
 			`ON CONFLICT (registry_id, upkeep_id)
-			DO UPDATE SET check_gas_limit = excluded.check_gas_limit, last_run_block_height = excluded.last_run_block_height`,
+			DO UPDATE SET execute_gas = excluded.execute_gas, last_run_block_height = excluded.last_run_block_height`,
 		).
 		Create(&registration).
 		Error
