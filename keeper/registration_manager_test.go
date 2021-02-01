@@ -187,8 +187,8 @@ func TestRegistrationManager_Active(t *testing.T) {
 	}
 
 	for _, reg := range registrations {
-		err := db.DB().Create(&reg).Error
-		require.NoError(t, err)
+		err2 := db.DB().Create(&reg).Error
+		require.NoError(t, err2)
 	}
 
 	assertRegistrationCount(t, db, 3)
