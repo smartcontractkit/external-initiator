@@ -177,6 +177,8 @@ func (executer upkeepExecuter) execute(registration upkeepRegistration) {
 
 	performPayloadString := utils.AddHexPrefix(common.Bytes2Hex(performPayload[4:]))
 
+	// TODO - RYAN - need to include gas here
+	// https://www.pivotaltracker.com/story/show/176391267
 	chainlinkPayloadJSON := map[string]interface{}{
 		"format":           "preformatted",
 		"address":          registration.Registry.Address.Hex(),

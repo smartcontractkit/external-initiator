@@ -64,7 +64,7 @@ func (rm registrationManager) Upsert(registration upkeepRegistration) error {
 }
 
 func (rm registrationManager) SetRanAt(registration upkeepRegistration, chainHeight uint64) error {
-	registration.LastRunBlockHeight = int64(chainHeight) // TODO - RYAN
+	registration.LastRunBlockHeight = chainHeight
 	return rm.Upsert(registration)
 }
 
