@@ -40,16 +40,6 @@ func newRegistration(reg keeperRegistry, upkeepID int64) upkeepRegistration {
 	}
 }
 
-// func TestRegistrationManager_PerformFullSync(t *testing.T) {
-// 	db, rm, cleanup := setupRegistrationManager(t)
-// 	defer cleanup()
-
-// 	rm.PerformFullSync()
-// 	// TODO - add client mocks
-
-// 	assertRegistrationCount(t, db, 3)
-// }
-
 func TestRegistrationManager_Registries(t *testing.T) {
 	db, rm, cleanup := setupRegistrationManager(t)
 	defer cleanup()

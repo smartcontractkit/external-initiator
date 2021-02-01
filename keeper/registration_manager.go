@@ -8,7 +8,6 @@ import (
 type RegistrationManager interface {
 	Registries() ([]keeperRegistry, error)
 	UpkeepIDsForRegistry(keeperRegistry) ([]int64, error)
-	PerformFullSync() error
 	Upsert(upkeepRegistration) error
 	SetRanAt(upkeepRegistration, uint64) error
 	Delete(common.Address, int64) error
@@ -31,11 +30,6 @@ type registrationManager struct {
 
 // upkeepRegistration conforms to RegistrationManager interface
 var _ RegistrationManager = registrationManager{}
-
-func (registrationManager) PerformFullSync() error {
-	// TODO
-	return nil
-}
 
 func (rm registrationManager) Registries() (registries []keeperRegistry, _ error) {
 	err := rm.dbClient.Find(&registries).Error
