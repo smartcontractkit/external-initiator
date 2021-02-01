@@ -144,7 +144,7 @@ func NewService(
 		subscriptions:        make(map[string]*activeSubscription),
 		runtimeConfig:        runtimeConfig,
 		upkeepExecuter:       keeper.NewUpkeepExecuter(dbClient.DB(), clNode, runtimeConfig),
-		registrySynchronizer: keeper.NewRegistrySynchronizer(runtimeConfig),
+		registrySynchronizer: keeper.NewRegistrySynchronizer(dbClient.DB(), runtimeConfig),
 	}
 }
 

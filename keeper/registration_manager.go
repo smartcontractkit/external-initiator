@@ -7,11 +7,13 @@ import (
 
 type RegistrationManager interface {
 	Registries() ([]keeperRegistry, error)
+	UpkeepIDsForRegistry(keeperRegistry) ([]int64, error)
 	PerformFullSync() error
 	Upsert(upkeepRegistration) error
 	SetRanAt(upkeepRegistration, uint64) error
 	Delete(common.Address, int64) error
-	BatchDelete(common.Address, []int64) error
+	BatchDelete(int32, []int64) error
+	BatchCreate([]upkeepRegistration) error
 	Active(chainHeight uint64) ([]upkeepRegistration, error)
 }
 
@@ -38,6 +40,22 @@ func (registrationManager) PerformFullSync() error {
 func (rm registrationManager) Registries() (registries []keeperRegistry, _ error) {
 	err := rm.dbClient.Find(&registries).Error
 	return registries, err
+}
+
+func (rm registrationManager) UpkeepIDsForRegistry(registry keeperRegistry) ([]int64, error) {
+	// TODO - there's a more efficient way of doing this
+	var registrations []upkeepRegistration
+	err := rm.dbClient.Where("registry_id = ?", registry.ID).Find(&registrations).Error
+	if err != nil {
+		return nil, err
+	}
+
+	ids := make([]int64, len(registrations))
+	for idx, registration := range registrations {
+		ids[idx] = registration.UpkeepID
+	}
+
+	return ids, nil
 }
 
 func (rm registrationManager) Upsert(registration upkeepRegistration) error {
@@ -70,12 +88,17 @@ func (rm registrationManager) Delete(address common.Address, upkeepID int64) err
 		Error
 }
 
-func (rm registrationManager) BatchDelete(address common.Address, upkeedIDs []int64) error {
-	// return rm.dbClient.
-	// 	Where("address = ? AND upkeep_id IN (?)", address, upkeedIDs).
-	// 	Delete(upkeepRegistration{}).
-	// 	Error
-	return nil
+func (rm registrationManager) BatchDelete(registryID int32, upkeedIDs []int64) error {
+	return rm.dbClient.
+		Where("registry_id = ? AND upkeep_id IN (?)", registryID, upkeedIDs).
+		Delete(upkeepRegistration{}).
+		Error
+}
+
+func (rm registrationManager) BatchCreate(registrations []upkeepRegistration) error {
+	return rm.dbClient.
+		Create(&registrations).
+		Error
 }
 
 func (rm registrationManager) Active(chainHeight uint64) (result []upkeepRegistration, _ error) {

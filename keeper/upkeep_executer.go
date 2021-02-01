@@ -167,7 +167,7 @@ func (executer upkeepExecuter) execute(registration upkeepRegistration) {
 	msg := ethereum.CallMsg{
 		From: utils.ZeroAddress,
 		To:   &registration.Registry.Address,
-		Gas:  registration.CheckGasLimit,
+		Gas:  20000000, // TODO - RYAN - https://www.pivotaltracker.com/story/show/176391267
 		Data: checkPayload,
 	}
 
