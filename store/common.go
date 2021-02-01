@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink/core/store/orm"
+	"github.com/smartcontractkit/external-initiator/eitest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,7 +27,7 @@ func SetupTestDB(t *testing.T) (*Client, func()) {
 	db, err := ConnectToDb(config.DatabaseURL)
 	require.NoError(t, err)
 
-	return db, func() { cleanupDB(); db.Close() }
+	return db, func() { cleanupDB(); eitest.MustClose(db) }
 }
 
 // DropAndCreateThrowawayTestDB takes a database URL and appends the postfix to create a new database
@@ -51,7 +52,7 @@ func DropAndCreateThrowawayTestDB(databaseURL string, postfix string) (string, e
 	if err != nil {
 		return "", fmt.Errorf("unable to open postgres database for creating test db: %+v", err)
 	}
-	defer db.Close()
+	defer eitest.MustClose(db)
 
 	_, err = db.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %s", dbname))
 	if err != nil {
@@ -78,7 +79,7 @@ func createTestDB(t *testing.T, parsed *url.URL) string {
 	if err != nil {
 		t.Fatalf("unable to open postgres database for creating test db: %+v", err)
 	}
-	defer db.Close()
+	defer eitest.MustClose(db)
 
 	return path
 }
@@ -88,7 +89,7 @@ func seedTestDB(config Config) error {
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer eitest.MustClose(db)
 
 	return db.db.Create(&Endpoint{Name: "test", Type: "ethereum", Url: "ws://localhost:8546/"}).Error
 }

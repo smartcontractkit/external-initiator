@@ -142,7 +142,10 @@ func (rs registrySynchronizer) syncRegistry(registry keeperRegistry) {
 			UpkeepID:   upkeepID,
 		}
 		// TODO - RYAN - n+1 - parallelize
-		rs.registrationManager.Upsert(newUpkeep)
+		err = rs.registrationManager.Upsert(newUpkeep)
+		if err != nil {
+			logger.Error(err)
+		}
 	}
 }
 

@@ -198,7 +198,11 @@ func (executer upkeepExecuter) execute(registration upkeepRegistration) {
 		logger.Errorf("Unable to trigger job on chainlink node: %v", err)
 	}
 
-	executer.registrationManager.SetRanAt(registration, executer.blockHeight.Load())
+	err = executer.registrationManager.SetRanAt(registration, executer.blockHeight.Load())
+	if err != nil {
+		logger.Error(err)
+		return
+	}
 }
 
 func (executer upkeepExecuter) setRunsOnHeadSubscription() {
