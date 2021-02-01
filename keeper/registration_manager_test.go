@@ -32,7 +32,7 @@ func newRegistry() keeperRegistry {
 	}
 }
 
-func newRegistration(reg keeperRegistry, upkeepID int64) upkeepRegistration {
+func newRegistration(reg keeperRegistry, upkeepID uint64) upkeepRegistration {
 	return upkeepRegistration{
 		UpkeepID:   upkeepID,
 		ExecuteGas: executeGas,
@@ -193,8 +193,8 @@ func TestRegistrationManager_Active(t *testing.T) {
 	activeRegistrations, err := rm.Active(10)
 	require.NoError(t, err)
 	require.Len(t, activeRegistrations, 2)
-	require.Equal(t, int64(0), activeRegistrations[0].UpkeepID)
-	require.Equal(t, int64(1), activeRegistrations[1].UpkeepID)
+	require.Equal(t, uint64(0), activeRegistrations[0].UpkeepID)
+	require.Equal(t, uint64(1), activeRegistrations[1].UpkeepID)
 }
 
 func assertRegistrationCount(t *testing.T, db *store.Client, expected int) {

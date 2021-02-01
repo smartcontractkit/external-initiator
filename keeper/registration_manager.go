@@ -7,11 +7,11 @@ import (
 
 type RegistrationManager interface {
 	Registries() ([]keeperRegistry, error)
-	UpkeepIDsForRegistry(keeperRegistry) ([]int64, error)
+	UpkeepIDsForRegistry(keeperRegistry) ([]uint64, error)
 	Upsert(upkeepRegistration) error
 	SetRanAt(upkeepRegistration, uint64) error
-	Delete(common.Address, int64) error
-	BatchDelete(int32, []int64) error
+	Delete(common.Address, uint64) error
+	BatchDelete(int32, []uint64) error
 	BatchCreate([]upkeepRegistration) error
 	Active(chainHeight uint64) ([]upkeepRegistration, error)
 }
@@ -36,7 +36,7 @@ func (rm registrationManager) Registries() (registries []keeperRegistry, _ error
 	return registries, err
 }
 
-func (rm registrationManager) UpkeepIDsForRegistry(registry keeperRegistry) ([]int64, error) {
+func (rm registrationManager) UpkeepIDsForRegistry(registry keeperRegistry) ([]uint64, error) {
 	// TODO - there's a more efficient way of doing this
 	var registrations []upkeepRegistration
 	err := rm.dbClient.Where("registry_id = ?", registry.ID).Find(&registrations).Error
@@ -44,7 +44,7 @@ func (rm registrationManager) UpkeepIDsForRegistry(registry keeperRegistry) ([]i
 		return nil, err
 	}
 
-	ids := make([]int64, len(registrations))
+	ids := make([]uint64, len(registrations))
 	for idx, registration := range registrations {
 		ids[idx] = registration.UpkeepID
 	}
@@ -72,7 +72,7 @@ func (rm registrationManager) SetRanAt(registration upkeepRegistration, chainHei
 	return rm.Upsert(registration)
 }
 
-func (rm registrationManager) Delete(address common.Address, upkeepID int64) error {
+func (rm registrationManager) Delete(address common.Address, upkeepID uint64) error {
 	var registry keeperRegistry
 	err := rm.dbClient.Where("address = ?", address).First(&registry).Error
 	if err != nil {
@@ -86,7 +86,7 @@ func (rm registrationManager) Delete(address common.Address, upkeepID int64) err
 		Error
 }
 
-func (rm registrationManager) BatchDelete(registryID int32, upkeedIDs []int64) error {
+func (rm registrationManager) BatchDelete(registryID int32, upkeedIDs []uint64) error {
 	return rm.dbClient.
 		Where("registry_id = ? AND upkeep_id IN (?)", registryID, upkeedIDs).
 		Delete(upkeepRegistration{}).

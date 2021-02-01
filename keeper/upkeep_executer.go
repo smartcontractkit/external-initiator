@@ -135,7 +135,11 @@ func (executer upkeepExecuter) execute(registration upkeepRegistration) {
 		<-executer.executionQueue
 	}()
 
-	checkPayload, err := upkeepRegistryABI.Pack(checkUpkeep, big.NewInt(registration.UpkeepID), registration.Registry.From)
+	checkPayload, err := upkeepRegistryABI.Pack(
+		checkUpkeep,
+		big.NewInt(int64(registration.UpkeepID)),
+		registration.Registry.From,
+	)
 	if err != nil {
 		logger.Error(err)
 		return
@@ -169,7 +173,11 @@ func (executer upkeepExecuter) execute(registration upkeepRegistration) {
 
 	logger.Debugf("Performing upkeep on registry %s, ID %d", registration.Registry.Address.Hex(), registration.UpkeepID)
 
-	performPayload, err := upkeepRegistryABI.Pack(performUpkeep, big.NewInt(registration.UpkeepID), performData)
+	performPayload, err := upkeepRegistryABI.Pack(
+		performUpkeep,
+		big.NewInt(int64(registration.UpkeepID)),
+		performData,
+	)
 	if err != nil {
 		logger.Error(err)
 		return

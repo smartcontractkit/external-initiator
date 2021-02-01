@@ -96,7 +96,7 @@ func (rs registrySynchronizer) syncRegistry(registry keeperRegistry) {
 		logger.Error(err)
 	}
 
-	existingSet := make(map[int64]bool)
+	existingSet := make(map[uint64]bool)
 	for _, upkeepID := range existing {
 		existingSet[upkeepID] = true
 	}
@@ -122,12 +122,12 @@ func (rs registrySynchronizer) syncRegistry(registry keeperRegistry) {
 		return
 	}
 
-	cancelledSet := make(map[int64]bool)
+	cancelledSet := make(map[uint64]bool)
 	for _, upkeepID := range cancelled {
-		cancelledSet[upkeepID.Int64()] = true
+		cancelledSet[upkeepID.Uint64()] = true
 	}
 
-	var needToDelete []int64
+	var needToDelete []uint64
 	for _, upkeepID := range existing {
 		if cancelledSet[upkeepID] {
 			needToDelete = append(needToDelete, upkeepID)
@@ -135,15 +135,15 @@ func (rs registrySynchronizer) syncRegistry(registry keeperRegistry) {
 	}
 	rs.registrationManager.BatchDelete(registry.ID, needToDelete)
 
-	var needToUpsert []int64
-	for upkeepID := int64(0); upkeepID < count.Int64(); upkeepID++ {
+	var needToUpsert []uint64
+	for upkeepID := uint64(0); upkeepID < count.Uint64(); upkeepID++ {
 		if !cancelledSet[upkeepID] {
 			needToUpsert = append(needToUpsert, upkeepID)
 		}
 	}
 
 	for _, upkeepID := range needToUpsert {
-		upkeepConfig, err := contract.GetUpkeep(nil, big.NewInt(upkeepID))
+		upkeepConfig, err := contract.GetUpkeep(nil, big.NewInt(int64(upkeepID)))
 		if err != nil {
 			logger.Error(err)
 			continue

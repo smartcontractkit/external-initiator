@@ -7,5 +7,5 @@ type upkeepRegistration struct {
 	LastRunBlockHeight uint64 `gorm:"not null;default:0"`
 	RegistryID         uint32
 	Registry           keeperRegistry
-	UpkeepID           int64
+	UpkeepID           uint64
 }
