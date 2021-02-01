@@ -20,6 +20,7 @@ require (
 	github.com/magiconair/properties v1.8.1
 	github.com/mattn/go-sqlite3 v2.0.1+incompatible // indirect
 	github.com/ontio/ontology-go-sdk v1.11.1
+	github.com/pborman/uuid v1.2.0
 	github.com/pierrec/xxHash v0.1.5 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/smartcontractkit/chainlink v0.9.5-0.20201214122441-66aaea171293

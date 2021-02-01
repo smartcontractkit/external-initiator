@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/google/uuid"
 	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/stretchr/testify/require"
@@ -24,9 +25,10 @@ func setupRegistrationManager(t *testing.T) (*store.Client, RegistrationManager,
 
 func newRegistry() keeperRegistry {
 	return keeperRegistry{
-		Address: registryAddress,
-		JobID:   jobID,
-		From:    fromAddress,
+		Address:     registryAddress,
+		JobID:       jobID,
+		From:        fromAddress,
+		ReferenceID: uuid.New().String(),
 	}
 }
 
