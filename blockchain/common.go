@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 )
@@ -32,7 +31,6 @@ var blockchains = []string{
 	NEAR,
 	IOTX,
 	CFX,
-	Keeper,
 	BIRITA,
 }
 
@@ -78,8 +76,6 @@ func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error)
 		return createOntSubscriber(sub), nil
 	case IOTX:
 		return createIoTeXSubscriber(sub)
-	case Keeper:
-		return createKeeperSubscriber(sub)
 	case BIRITA:
 		return createBSNIritaSubscriber(sub)
 	}
@@ -90,7 +86,7 @@ func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error)
 func GetConnectionType(endpoint store.Endpoint) (subscriber.Type, error) {
 	switch endpoint.Type {
 	// Add blockchain implementations that encapsulate entire connection here
-	case XTZ, ONT, IOTX, Keeper, BIRITA:
+	case XTZ, ONT, IOTX, BIRITA:
 		return subscriber.Client, nil
 	default:
 		u, err := url.Parse(endpoint.Url)
@@ -187,12 +183,6 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 		sub.Conflux = store.CfxSubscription{
 			Addresses: params.Addresses,
 			Topics:    params.Topics,
-		}
-	case Keeper:
-		from := common.HexToAddress(params.From)
-		sub.Keeper = store.KeeperSubscription{
-			Address: params.Address,
-			From:    from,
 		}
 	case BIRITA:
 		sub.BSNIrita = store.BSNIritaSubscription{
