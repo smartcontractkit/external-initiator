@@ -83,7 +83,7 @@ func TestRegistrationManager_Upsert(t *testing.T) {
 	err = db.DB().First(&existingRegistration).Error
 	require.NoError(t, err)
 	require.Equal(t, executeGas, existingRegistration.ExecuteGas)
-	require.Equal(t, int64(0), existingRegistration.LastRunBlockHeight)
+	require.Equal(t, uint64(0), existingRegistration.LastRunBlockHeight)
 
 	// update registration
 	updatedRegistration := upkeepRegistration{
@@ -97,8 +97,8 @@ func TestRegistrationManager_Upsert(t *testing.T) {
 	assertRegistrationCount(t, db, 1)
 	err = db.DB().First(&existingRegistration).Error
 	require.NoError(t, err)
-	require.Equal(t, uint64(20_000), existingRegistration.ExecuteGas)
-	require.Equal(t, int64(100), existingRegistration.LastRunBlockHeight)
+	require.Equal(t, uint32(20_000), existingRegistration.ExecuteGas)
+	require.Equal(t, uint64(100), existingRegistration.LastRunBlockHeight)
 }
 
 func TestRegistrationManager_Delete(t *testing.T) {
