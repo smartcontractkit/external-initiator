@@ -106,11 +106,12 @@ func startService(
 // Service holds the main process for running
 // the external initiator.
 type Service struct {
-	clNode         chainlink.Node
-	store          storeInterface
-	subscriptions  map[string]*activeSubscription
-	runtimeConfig  store.RuntimeConfig
-	upkeepExecuter keeper.UpkeepExecuter
+	clNode               chainlink.Node
+	store                storeInterface
+	subscriptions        map[string]*activeSubscription
+	runtimeConfig        store.RuntimeConfig
+	upkeepExecuter       keeper.UpkeepExecuter
+	registrySynchronizer keeper.RegistrySynchronizer
 }
 
 func validateEndpoint(endpoint store.Endpoint) error {
@@ -138,17 +139,23 @@ func NewService(
 	runtimeConfig store.RuntimeConfig,
 ) *Service {
 	return &Service{
-		store:          dbClient,
-		clNode:         clNode,
-		subscriptions:  make(map[string]*activeSubscription),
-		runtimeConfig:  runtimeConfig,
-		upkeepExecuter: keeper.NewUpkeepExecuter(dbClient.DB(), clNode, runtimeConfig),
+		store:                dbClient,
+		clNode:               clNode,
+		subscriptions:        make(map[string]*activeSubscription),
+		runtimeConfig:        runtimeConfig,
+		upkeepExecuter:       keeper.NewUpkeepExecuter(dbClient.DB(), clNode, runtimeConfig),
+		registrySynchronizer: keeper.NewRegistrySynchronizer(runtimeConfig),
 	}
 }
 
 // Run loads subscriptions, validates and subscribes to them.
 func (srv *Service) Run() error {
 	err := srv.upkeepExecuter.Start()
+	if err != nil {
+		return err
+	}
+
+	err = srv.registrySynchronizer.Start()
 	if err != nil {
 		return err
 	}
