@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/gorilla/websocket"
+	"github.com/smartcontractkit/external-initiator/eitest"
 )
 
 var rpcMockUrl *url.URL
@@ -66,7 +67,7 @@ func TestMain(m *testing.M) {
 			log.Print("upgrade:", err)
 			return
 		}
-		defer c.Close()
+		defer eitest.MustClose(c)
 		for {
 			var mt int
 			var message []byte

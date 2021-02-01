@@ -6,6 +6,7 @@ import (
 	"path"
 	"testing"
 
+	"github.com/smartcontractkit/external-initiator/eitest"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/stretchr/testify/assert"
@@ -73,12 +74,12 @@ func Test_extractEventsFromBlock(t *testing.T) {
 	ui := path.Join(wd, "testdata/tezos_test_block_operations_user_initiated.json")
 	userInitiatedSampleFile, err := os.Open(ui)
 	require.NoError(t, err)
-	defer userInitiatedSampleFile.Close()
+	defer eitest.MustClose(userInitiatedSampleFile)
 
 	sci := path.Join(wd, "testdata/tezos_test_block_operations_sc_initiated.json")
 	scInitiatedSampleFile, err := os.Open(sci)
 	require.NoError(t, err)
-	defer scInitiatedSampleFile.Close()
+	defer eitest.MustClose(scInitiatedSampleFile)
 
 	userInitiatedSampleJSON, err := ioutil.ReadAll(userInitiatedSampleFile)
 	require.NoError(t, err)
