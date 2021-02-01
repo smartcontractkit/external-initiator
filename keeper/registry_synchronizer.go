@@ -149,6 +149,7 @@ func (rs registrySynchronizer) syncRegistry(registry keeperRegistry) {
 			continue
 		}
 		newUpkeep := upkeepRegistration{
+			CheckData:  upkeepConfig.CheckData,
 			ExecuteGas: upkeepConfig.ExecuteGas,
 			RegistryID: uint32(registry.ID),
 			UpkeepID:   upkeepID,

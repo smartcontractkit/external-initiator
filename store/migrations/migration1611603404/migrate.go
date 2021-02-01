@@ -20,10 +20,12 @@ func Migrate(tx *gorm.DB) error {
 			id SERIAL PRIMARY KEY,
 			registry_id INT NOT NULL REFERENCES keeper_registries (id) ON DELETE CASCADE,
 			execute_gas int NOT NULL,
+			check_data bytea NOT NULL,
 			last_run_block_height bigInt DEFAULT 0 NOT NULL,
 			upkeep_id bigint NOT NULL
 		);
 
+		CREATE UNIQUE INDEX idx_keeper_registries_unique_jobs_per_registry ON keeper_registries(address, job_id);
 		CREATE UNIQUE INDEX idx_upkeep_registrations_unique_upkeep_ids_per_keeper ON upkeep_registrations(registry_id, upkeep_id);
 	`).Error
 }

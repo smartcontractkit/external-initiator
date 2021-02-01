@@ -234,7 +234,7 @@ func (executer upkeepExecuter) setRunsOnTimer() {
 		case <-executer.chDone:
 			return
 		case <-ticker.C:
-			height, err := executer.ethClient.BlockNumber(context.TODO()) // TODO - RYAN
+			height, err := executer.ethClient.BlockNumber(context.TODO())
 			if err != nil {
 				logger.Errorf("unable to determine latest block height: %v", err)
 				continue
