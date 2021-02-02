@@ -24,15 +24,15 @@ type RegistrySynchronizer interface {
 
 func NewRegistrySynchronizer(dbClient *gorm.DB, config store.RuntimeConfig) RegistrySynchronizer {
 	return registrySynchronizer{
-		endpoint:        config.KeeperEthEndpoint,
-		registryManager: NewRegistryManager(dbClient, uint64(config.KeeperBlockCooldown)),
+		endpoint:      config.KeeperEthEndpoint,
+		registryStore: NewRegistryStore(dbClient, uint64(config.KeeperBlockCooldown)),
 	}
 }
 
 type registrySynchronizer struct {
-	endpoint        string
-	ethClient       *ethclient.Client
-	registryManager RegistryManager
+	endpoint      string
+	ethClient     *ethclient.Client
+	registryStore RegistryStore
 
 	chDone chan struct{}
 }
@@ -76,7 +76,7 @@ func (rs registrySynchronizer) run() {
 func (rs registrySynchronizer) performFullSync() {
 	logger.Debug("performing full sync")
 
-	registries, err := rs.registryManager.Registries()
+	registries, err := rs.registryStore.Registries()
 	if err != nil {
 		logger.Error(err)
 	}
@@ -103,7 +103,8 @@ func (rs registrySynchronizer) syncRegistry(registry keeperRegistry) {
 		return
 	}
 	registry.CheckGas = config.CheckGasLimit
-	err = rs.registryManager.UpdateRegistry(registry)
+	registry.BlockCountPerTurn = uint32(config.BlockCountPerTurn.Uint64())
+	err = rs.registryStore.UpdateRegistry(registry)
 	if err != nil {
 		logger.Error(err)
 		return
@@ -123,7 +124,7 @@ func (rs registrySynchronizer) syncRegistry(registry keeperRegistry) {
 	for _, upkeepID := range cancelled {
 		cancelledSet[upkeepID] = true
 	}
-	err = rs.registryManager.BatchDelete(registry.ID, cancelled)
+	err = rs.registryStore.BatchDelete(registry.ID, cancelled)
 	if err != nil {
 		logger.Error(err)
 	}
@@ -153,7 +154,7 @@ func (rs registrySynchronizer) syncRegistry(registry keeperRegistry) {
 			UpkeepID:   upkeepID,
 		}
 		// TODO - RYAN - n+1 - parallelize
-		err = rs.registryManager.Upsert(newUpkeep)
+		err = rs.registryStore.Upsert(newUpkeep)
 		if err != nil {
 			logger.Error(err)
 		}
