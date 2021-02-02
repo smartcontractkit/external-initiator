@@ -72,7 +72,7 @@ func (rs registrySynchronizer) run() {
 }
 
 func (rs registrySynchronizer) performFullSync() {
-	logger.Debug("performing full sync")
+	logger.Debug("performing full sync of keeper registries")
 
 	registries, err := rs.registryStore.Registries()
 	if err != nil {
