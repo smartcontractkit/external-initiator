@@ -2,6 +2,8 @@ package migration1611603404
 
 import (
 	"github.com/jinzhu/gorm"
+	"github.com/pkg/errors"
+	"github.com/smartcontractkit/external-initiator/store/migrations/migration1608026935"
 )
 
 func Migrate(tx *gorm.DB) error {
@@ -29,12 +31,30 @@ func Migrate(tx *gorm.DB) error {
 
 		CREATE UNIQUE INDEX idx_keeper_registries_unique_jobs_per_registry ON keeper_registries(address, job_id);
 		CREATE UNIQUE INDEX idx_keeper_registrations_unique_upkeep_ids_per_keeper ON keeper_registrations(registry_id, upkeep_id);
+
+		DROP TABLE IF EXISTS keeper_subscriptions;
 	`).Error
 }
 
 func Rollback(tx *gorm.DB) error {
-	return tx.Exec(`
+	err := tx.Exec(`
 		DROP TABLE IF EXISTS keeper_registries;
 		DROP TABLE IF EXISTS keeper_registrations;
 	`).Error
+
+	if err != nil {
+		return err
+	}
+
+	err = tx.AutoMigrate(&migration1608026935.Subscription{}).Error
+	if err != nil {
+		return errors.Wrap(err, "failed to auto migrate Subscription")
+	}
+
+	err = tx.AutoMigrate(&migration1608026935.KeeperSubscription{}).AddForeignKey("subscription_id", "subscriptions(id)", "CASCADE", "CASCADE").Error
+	if err != nil {
+		return errors.Wrap(err, "failed to auto migrate EthQaeSubscription")
+	}
+
+	return nil
 }
