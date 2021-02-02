@@ -122,7 +122,7 @@ func TestRegistryStore_BatchDelete(t *testing.T) {
 	}
 
 	for _, reg := range registrations {
-		err := db.DB().Create(&reg).Error
+		err = db.DB().Create(&reg).Error
 		require.NoError(t, err)
 	}
 
@@ -163,8 +163,8 @@ func TestRegistryStore_Active(t *testing.T) {
 	}
 
 	for _, reg := range registrations {
-		err2 := db.DB().Create(&reg).Error
-		require.NoError(t, err2)
+		err = db.DB().Create(&reg).Error
+		require.NoError(t, err)
 	}
 
 	assertRegistrationCount(t, db, 3)
