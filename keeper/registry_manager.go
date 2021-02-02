@@ -9,9 +9,7 @@ type RegistryStore interface {
 	UpdateRegistry(registry keeperRegistry) error
 	Upsert(upkeepRegistration) error
 	SetRanAt(upkeepRegistration, uint64) error
-	// Delete(common.Address, uint64) error
-	BatchDelete(int32, []uint64) error
-	// BatchCreate([]upkeepRegistration) error
+	BatchDelete(registryID int32, upkeedIDs []uint64) error
 	Active(chainHeight uint64) ([]upkeepRegistration, error)
 }
 
@@ -58,32 +56,12 @@ func (rm registryStore) SetRanAt(registration upkeepRegistration, chainHeight ui
 	return rm.dbClient.Save(&registration).Error
 }
 
-// func (rm registryStore) Delete(address common.Address, upkeepID uint64) error {
-// 	var registry keeperRegistry
-// 	err := rm.dbClient.Where("address = ?", address).First(&registry).Error
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	return rm.dbClient.
-// 		Table("upkeep_registrations").
-// 		Where("registry_id = ? AND upkeep_id = ?", registry.ID, upkeepID).
-// 		Delete("*").
-// 		Error
-// }
-
 func (rm registryStore) BatchDelete(registryID int32, upkeedIDs []uint64) error {
 	return rm.dbClient.
 		Where("registry_id = ? AND upkeep_id IN (?)", registryID, upkeedIDs).
 		Delete(upkeepRegistration{}).
 		Error
 }
-
-// func (rm registryStore) BatchCreate(registrations []upkeepRegistration) error {
-// 	return rm.dbClient.
-// 		Create(&registrations).
-// 		Error
-// }
 
 func (rm registryStore) Active(chainHeight uint64) (result []upkeepRegistration, _ error) {
 	err := rm.dbClient.

@@ -107,58 +107,31 @@ func TestRegistryStore_Upsert(t *testing.T) {
 	require.Equal(t, "8888", common.Bytes2Hex(existingRegistration.CheckData))
 }
 
-// func TestRegistryStore_Delete(t *testing.T) {
-// 	db, rm, cleanup := setupRegistryStore(t)
-// 	defer cleanup()
-
-// 	// create registry
-// 	reg := newRegistry()
-// 	err := db.DB().Create(&reg).Error
-// 	require.NoError(t, err)
-
-// 	// create registration
-// 	registration := newRegistration(reg, 0)
-// 	err = db.DB().Create(&registration).Error
-// 	require.NoError(t, err)
-// 	assertRegistrationCount(t, db, 1)
-
-// 	// delete
-// 	err = rm.Delete(registration.Registry.Address, 0)
-// 	require.NoError(t, err)
-// 	assertRegistrationCount(t, db, 0)
-
-// 	// delete again (we don't want it to error)
-// 	err = rm.Delete(registration.Registry.Address, 0)
-// 	require.NoError(t, err)
-// 	assertRegistrationCount(t, db, 0)
-
-// 	// delete a non-existent registration
-// 	err = rm.Delete(registration.Registry.Address, 1234)
-// 	require.NoError(t, err)
-// 	assertRegistrationCount(t, db, 0)
-// }
-
 func TestRegistryStore_BatchDelete(t *testing.T) {
-	// db, rm, cleanup := setupRegistryStore(t)
-	// defer cleanup()
+	db, rm, cleanup := setupRegistryStore(t)
+	defer cleanup()
 
-	// registrations := [3]upkeepRegistration{
-	// 	newRegistrationWithUpkeepID(0),
-	// 	newRegistrationWithUpkeepID(1),
-	// 	newRegistrationWithUpkeepID(2),
-	// }
+	reg := newRegistry()
+	err := db.DB().Create(&reg).Error
+	require.NoError(t, err)
 
-	// for _, reg := range registrations {
-	// 	err := db.DB().Create(&reg).Error
-	// 	require.NoError(t, err)
-	// }
+	registrations := [3]upkeepRegistration{
+		newRegistration(reg, 0),
+		newRegistration(reg, 1),
+		newRegistration(reg, 2),
+	}
 
-	// assertRegistrationCount(t, db, 3)
+	for _, reg := range registrations {
+		err := db.DB().Create(&reg).Error
+		require.NoError(t, err)
+	}
 
-	// err := rm.BatchDelete(registryAddress, []int64{0, 2})
-	// require.NoError(t, err)
+	assertRegistrationCount(t, db, 3)
 
-	// assertRegistrationCount(t, db, 1)
+	err = rm.BatchDelete(reg.ID, []uint64{0, 2})
+	require.NoError(t, err)
+
+	assertRegistrationCount(t, db, 1)
 }
 
 func TestRegistryStore_Active(t *testing.T) {
