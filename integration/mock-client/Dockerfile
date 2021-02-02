@@ -1,4 +1,4 @@
-FROM golang:alpine as build-env
+FROM golang:1.15-alpine as build-env
 
 RUN apk add build-base linux-headers
 
@@ -13,9 +13,9 @@ RUN go mod download
 WORKDIR /external-initiator
 COPY . .
 WORKDIR /external-initiator/integration/mock-client
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o /go/bin/mock-client
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o /go/bin/mock-client
 
-FROM scratch
+FROM alpine:latest
 COPY --from=build-env /go/bin/mock-client /go/bin/mock-client
 COPY --from=build-env /external-initiator/integration/mock-client/blockchain/static /blockchain/static
 
