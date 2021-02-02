@@ -58,8 +58,9 @@ func startService(
 			Delay:    config.ChainlinkRetryDelay,
 		},
 	}, store.RuntimeConfig{
-		KeeperBlockCooldown: config.KeeperBlockCooldown,
-		KeeperEthEndpoint:   config.KeeperEthEndpoint,
+		KeeperBlockCooldown:        config.KeeperBlockCooldown,
+		KeeperEthEndpoint:          config.KeeperEthEndpoint,
+		KeeperRegistrySyncInterval: config.KeeperRegistrySyncInterval,
 	})
 
 	var names []string

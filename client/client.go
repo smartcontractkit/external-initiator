@@ -70,6 +70,9 @@ func generateCmd() *cobra.Command {
 	newcmd.Flags().String("keeper_eth_endpoint", "", "The ethereum endpoint to use for keeper jobs")
 	must(v.BindPFlag("keeper_eth_endpoint", newcmd.Flags().Lookup("keeper_eth_endpoint")))
 
+	newcmd.Flags().Duration("keeper_registry_sync_interval", 5*time.Minute, "The ethereum endpoint to use for keeper jobs")
+	must(v.BindPFlag("keeper_registry_sync_interval", newcmd.Flags().Lookup("keeper_registry_sync_interval")))
+
 	v.SetEnvPrefix("EI")
 	v.AutomaticEnv()
 

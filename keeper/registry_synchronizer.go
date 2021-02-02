@@ -13,10 +13,6 @@ import (
 	"github.com/smartcontractkit/external-initiator/store"
 )
 
-// TODO - RYAN - this should be an ENV VAR
-// const registrySyncInterval = 5 * time.Minute
-const registrySyncInterval = 10 * time.Second
-
 type RegistrySynchronizer interface {
 	Start() error
 	Stop()
@@ -26,12 +22,14 @@ func NewRegistrySynchronizer(dbClient *gorm.DB, config store.RuntimeConfig) Regi
 	return registrySynchronizer{
 		endpoint:      config.KeeperEthEndpoint,
 		registryStore: NewRegistryStore(dbClient, uint64(config.KeeperBlockCooldown)),
+		interval:      config.KeeperRegistrySyncInterval,
 	}
 }
 
 type registrySynchronizer struct {
 	endpoint      string
 	ethClient     *ethclient.Client
+	interval      time.Duration
 	registryStore RegistryStore
 
 	chDone chan struct{}
@@ -59,7 +57,7 @@ func (rs registrySynchronizer) Stop() {
 }
 
 func (rs registrySynchronizer) run() {
-	ticker := time.NewTicker(registrySyncInterval)
+	ticker := time.NewTicker(rs.interval)
 	defer ticker.Stop()
 
 	for {
