@@ -26,8 +26,8 @@ func setupRegistryStore(t *testing.T) (*store.Client, RegistryStore, func()) {
 	return db, rm, cleanup
 }
 
-func newRegistry() keeperRegistry {
-	return keeperRegistry{
+func newRegistry() registry {
+	return registry{
 		Address:     registryAddress,
 		CheckGas:    checkGas,
 		JobID:       jobID,
@@ -36,8 +36,8 @@ func newRegistry() keeperRegistry {
 	}
 }
 
-func newRegistration(reg keeperRegistry, upkeepID uint64) upkeepRegistration {
-	return upkeepRegistration{
+func newRegistration(reg registry, upkeepID uint64) registration {
+	return registration{
 		UpkeepID:   upkeepID,
 		ExecuteGas: executeGas,
 		Registry:   reg,
@@ -53,7 +53,7 @@ func TestRegistryStore_Registries(t *testing.T) {
 	err := db.DB().Create(&reg).Error
 	require.NoError(t, err)
 
-	reg2 := keeperRegistry{
+	reg2 := registry{
 		Address:     common.HexToAddress("0x0000000000000000000000000000000000000456"),
 		CheckGas:    checkGas,
 		JobID:       models.NewID(),
@@ -85,14 +85,14 @@ func TestRegistryStore_Upsert(t *testing.T) {
 	require.NoError(t, err)
 
 	assertRegistrationCount(t, db, 1)
-	var existingRegistration upkeepRegistration
+	var existingRegistration registration
 	err = db.DB().First(&existingRegistration).Error
 	require.NoError(t, err)
 	require.Equal(t, executeGas, existingRegistration.ExecuteGas)
 	require.Equal(t, checkData, existingRegistration.CheckData)
 
 	// update registration
-	updatedRegistration := upkeepRegistration{
+	updatedRegistration := registration{
 		Registry:   reg,
 		UpkeepID:   0,
 		ExecuteGas: 20_000,
@@ -115,7 +115,7 @@ func TestRegistryStore_BatchDelete(t *testing.T) {
 	err := db.DB().Create(&reg).Error
 	require.NoError(t, err)
 
-	registrations := [3]upkeepRegistration{
+	registrations := [3]registration{
 		newRegistration(reg, 0),
 		newRegistration(reg, 1),
 		newRegistration(reg, 2),
@@ -143,7 +143,7 @@ func TestRegistryStore_Active(t *testing.T) {
 	err := db.DB().Create(&reg).Error
 	require.NoError(t, err)
 
-	registrations := [3]upkeepRegistration{
+	registrations := [3]registration{
 		{ // valid
 			UpkeepID:           0,
 			LastRunBlockHeight: 0, // 0 means never
@@ -178,6 +178,6 @@ func TestRegistryStore_Active(t *testing.T) {
 
 func assertRegistrationCount(t *testing.T, db *store.Client, expected int) {
 	var count int
-	db.DB().Model(&upkeepRegistration{}).Count(&count)
+	db.DB().Model(&registration{}).Count(&count)
 	require.Equal(t, expected, count)
 }

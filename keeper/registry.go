@@ -6,7 +6,7 @@ import (
 	"github.com/smartcontractkit/chainlink/core/store/models"
 )
 
-type keeperRegistry struct {
+type registry struct {
 	ID                int32          `gorm:"primary_key"`
 	Address           common.Address `gorm:"default:null"`
 	BlockCountPerTurn uint32
@@ -16,11 +16,15 @@ type keeperRegistry struct {
 	ReferenceID       string         `gorm:"default:null"`
 }
 
-func NewRegistry(address common.Address, from common.Address, jobID *models.ID) keeperRegistry {
-	return keeperRegistry{
+func NewRegistry(address common.Address, from common.Address, jobID *models.ID) registry {
+	return registry{
 		Address:     address,
 		From:        from,
 		JobID:       jobID,
 		ReferenceID: uuid.New(),
 	}
+}
+
+func (registry) TableName() string {
+	return "keeper_registries"
 }

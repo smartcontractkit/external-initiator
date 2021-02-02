@@ -87,7 +87,7 @@ func (rs registrySynchronizer) performFullSync() {
 	}
 }
 
-func (rs registrySynchronizer) syncRegistry(registry keeperRegistry) {
+func (rs registrySynchronizer) syncRegistry(registry registry) {
 	// WARN - this could get memory intensive depending on how many upkeeps there are
 
 	contract, err := keeper_registry_contract.NewKeeperRegistryContract(registry.Address, rs.ethClient)
@@ -147,7 +147,7 @@ func (rs registrySynchronizer) syncRegistry(registry keeperRegistry) {
 			logger.Error(err)
 			continue
 		}
-		newUpkeep := upkeepRegistration{
+		newUpkeep := registration{
 			CheckData:  upkeepConfig.CheckData,
 			ExecuteGas: upkeepConfig.ExecuteGas,
 			RegistryID: uint32(registry.ID),

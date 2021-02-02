@@ -115,13 +115,13 @@ func (executer upkeepExecuter) processActiveRegistrations() {
 	}
 }
 
-func (executer upkeepExecuter) concurrentExecute(registration upkeepRegistration) {
+func (executer upkeepExecuter) concurrentExecute(registration registration) {
 	executer.executionQueue <- struct{}{}
 	go executer.execute(registration)
 }
 
 // execute will call checkForUpkeep and, if it succeeds, triger a job on the CL node
-func (executer upkeepExecuter) execute(registration upkeepRegistration) {
+func (executer upkeepExecuter) execute(registration registration) {
 	// pop queue when done executing
 	defer func() {
 		<-executer.executionQueue

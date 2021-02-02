@@ -18,7 +18,7 @@ func Migrate(tx *gorm.DB) error {
 
 		CREATE UNIQUE INDEX idx_keepers_unique_address ON keeper_registries(address);
 
-		CREATE TABLE upkeep_registrations (
+		CREATE TABLE keeper_registrations (
 			id SERIAL PRIMARY KEY,
 			registry_id INT NOT NULL REFERENCES keeper_registries (id) ON DELETE CASCADE,
 			execute_gas int NOT NULL,
@@ -28,13 +28,13 @@ func Migrate(tx *gorm.DB) error {
 		);
 
 		CREATE UNIQUE INDEX idx_keeper_registries_unique_jobs_per_registry ON keeper_registries(address, job_id);
-		CREATE UNIQUE INDEX idx_upkeep_registrations_unique_upkeep_ids_per_keeper ON upkeep_registrations(registry_id, upkeep_id);
+		CREATE UNIQUE INDEX idx_keeper_registrations_unique_upkeep_ids_per_keeper ON keeper_registrations(registry_id, upkeep_id);
 	`).Error
 }
 
 func Rollback(tx *gorm.DB) error {
 	return tx.Exec(`
 		DROP TABLE IF EXISTS keeper_registries;
-		DROP TABLE IF EXISTS upkeep_registrations;
+		DROP TABLE IF EXISTS keeper_registrations;
 	`).Error
 }

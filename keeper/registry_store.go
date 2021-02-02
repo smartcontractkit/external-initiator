@@ -5,12 +5,12 @@ import (
 )
 
 type RegistryStore interface {
-	Registries() ([]keeperRegistry, error)
-	UpdateRegistry(registry keeperRegistry) error
-	Upsert(upkeepRegistration) error
-	SetRanAt(upkeepRegistration, uint64) error
+	Registries() ([]registry, error)
+	UpdateRegistry(registry registry) error
+	Upsert(registration) error
+	SetRanAt(registration, uint64) error
 	BatchDelete(registryID int32, upkeedIDs []uint64) error
-	Active(chainHeight uint64) ([]upkeepRegistration, error)
+	Active(chainHeight uint64) ([]registration, error)
 }
 
 func NewRegistryStore(dbClient *gorm.DB, coolDown uint64) RegistryStore {
@@ -25,19 +25,16 @@ type registryStore struct {
 	coolDown uint64
 }
 
-// upkeepRegistration conforms to RegistryStore interface
-var _ RegistryStore = registryStore{}
-
-func (rm registryStore) Registries() (registries []keeperRegistry, _ error) {
+func (rm registryStore) Registries() (registries []registry, _ error) {
 	err := rm.dbClient.Find(&registries).Error
 	return registries, err
 }
 
-func (rm registryStore) UpdateRegistry(registry keeperRegistry) error {
+func (rm registryStore) UpdateRegistry(registry registry) error {
 	return rm.dbClient.Save(&registry).Error
 }
 
-func (rm registryStore) Upsert(registration upkeepRegistration) error {
+func (rm registryStore) Upsert(registration registration) error {
 	return rm.dbClient.
 		Set(
 			"gorm:insert_option",
@@ -51,7 +48,7 @@ func (rm registryStore) Upsert(registration upkeepRegistration) error {
 		Error
 }
 
-func (rm registryStore) SetRanAt(registration upkeepRegistration, chainHeight uint64) error {
+func (rm registryStore) SetRanAt(registration registration, chainHeight uint64) error {
 	registration.LastRunBlockHeight = chainHeight
 	return rm.dbClient.Save(&registration).Error
 }
@@ -59,11 +56,11 @@ func (rm registryStore) SetRanAt(registration upkeepRegistration, chainHeight ui
 func (rm registryStore) BatchDelete(registryID int32, upkeedIDs []uint64) error {
 	return rm.dbClient.
 		Where("registry_id = ? AND upkeep_id IN (?)", registryID, upkeedIDs).
-		Delete(upkeepRegistration{}).
+		Delete(registration{}).
 		Error
 }
 
-func (rm registryStore) Active(chainHeight uint64) (result []upkeepRegistration, _ error) {
+func (rm registryStore) Active(chainHeight uint64) (result []registration, _ error) {
 	err := rm.dbClient.
 		Where("last_run_block_height < ?", rm.runnableHeight(chainHeight)).
 		Find(&result).
