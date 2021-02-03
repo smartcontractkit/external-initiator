@@ -63,6 +63,8 @@ func CreateJsonManager(t subscriber.Type, sub store.Subscription) (subscriber.Js
 		return createNearManager(t, sub)
 	case CFX:
 		return createCfxManager(t, sub), nil
+	case Klaytn:
+		return createKlaytnManager(t, sub), nil
 	}
 
 	return nil, fmt.Errorf("unknown blockchain type %v for JSON manager", sub.Endpoint.Type)
@@ -164,7 +166,7 @@ func GetValidations(t string, params Params) []int {
 
 func CreateSubscription(sub *store.Subscription, params Params) {
 	switch sub.Endpoint.Type {
-	case ETH, HMY, IOTX:
+	case ETH, HMY, IOTX, Klaytn:
 		sub.Ethereum = store.EthSubscription{
 			Addresses: params.Addresses,
 			Topics:    params.Topics,
