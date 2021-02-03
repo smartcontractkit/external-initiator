@@ -7,7 +7,7 @@ import (
 )
 
 type registry struct {
-	ID                int32          `gorm:"primary_key"`
+	ID                uint32         `gorm:"primary_key"`
 	Address           common.Address `gorm:"default:null"`
 	BlockCountPerTurn uint32
 	CheckGas          uint32

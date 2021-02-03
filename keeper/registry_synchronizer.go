@@ -65,7 +65,8 @@ func (rs registrySynchronizer) run() {
 		case <-rs.chDone:
 			return
 		case <-ticker.C:
-			// TODO - RYAN - if sync takes too long? need a queue approach like in executer
+			// TODO - if sync takes too long? need a queue approach like in executer
+			// https://www.pivotaltracker.com/story/show/176747117
 			rs.performFullSync()
 		}
 	}
@@ -80,6 +81,7 @@ func (rs registrySynchronizer) performFullSync() {
 	}
 
 	// TODO - parallellize this
+	// https://www.pivotaltracker.com/story/show/176747117
 	for _, registry := range registries {
 		rs.syncRegistry(registry)
 	}
@@ -151,7 +153,8 @@ func (rs registrySynchronizer) syncRegistry(registry registry) {
 			RegistryID: uint32(registry.ID),
 			UpkeepID:   upkeepID,
 		}
-		// TODO - RYAN - n+1 - parallelize
+		// TODO - parallelize
+		// https://www.pivotaltracker.com/story/show/176747117
 		err = rs.registryStore.Upsert(newUpkeep)
 		if err != nil {
 			logger.Error(err)

@@ -8,8 +8,8 @@ type RegistryStore interface {
 	Registries() ([]registry, error)
 	UpdateRegistry(registry registry) error
 	Upsert(registration) error
-	SetRanAt(registration, uint64) error
-	BatchDelete(registryID int32, upkeedIDs []uint64) error
+	UpdateRanAt(registration, uint64) error
+	BatchDelete(registryID uint32, upkeedIDs []uint64) error
 	Active(chainHeight uint64) ([]registration, error)
 }
 
@@ -44,16 +44,17 @@ func (rm registryStore) Upsert(registration registration) error {
 				check_data = excluded.check_data
 			`,
 		).
+		Set("gorm:save_associations", false).
 		Create(&registration).
 		Error
 }
 
-func (rm registryStore) SetRanAt(registration registration, chainHeight uint64) error {
+func (rm registryStore) UpdateRanAt(registration registration, chainHeight uint64) error {
 	registration.LastRunBlockHeight = chainHeight
 	return rm.dbClient.Save(&registration).Error
 }
 
-func (rm registryStore) BatchDelete(registryID int32, upkeedIDs []uint64) error {
+func (rm registryStore) BatchDelete(registryID uint32, upkeedIDs []uint64) error {
 	return rm.dbClient.
 		Where("registry_id = ? AND upkeep_id IN (?)", registryID, upkeedIDs).
 		Delete(registration{}).

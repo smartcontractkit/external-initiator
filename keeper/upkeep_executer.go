@@ -140,7 +140,7 @@ func (executer upkeepExecuter) execute(registration registration) {
 	msg := ethereum.CallMsg{
 		From: utils.ZeroAddress,
 		To:   &registration.Registry.Address,
-		Gas:  20000000, // TODO - RYAN - https://www.pivotaltracker.com/story/show/176391267
+		Gas:  uint64(registration.Registry.CheckGas), // TODO - RYAN - https://www.pivotaltracker.com/story/show/176391267
 		Data: checkPayload,
 	}
 
@@ -198,7 +198,7 @@ func (executer upkeepExecuter) execute(registration registration) {
 		logger.Errorf("Unable to trigger job on chainlink node: %v", err)
 	}
 
-	err = executer.registryStore.SetRanAt(registration, executer.blockHeight.Load())
+	err = executer.registryStore.UpdateRanAt(registration, executer.blockHeight.Load())
 	if err != nil {
 		logger.Error(err)
 		return

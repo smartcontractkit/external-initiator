@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/store"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,8 +23,8 @@ var cooldown = uint64(3)
 
 func setupRegistryStore(t *testing.T) (*store.Client, RegistryStore, func()) {
 	db, cleanup := store.SetupTestDB(t)
-	rm := NewRegistryStore(db.DB(), cooldown)
-	return db, rm, cleanup
+	regStore := NewRegistryStore(db.DB(), cooldown)
+	return db, regStore, cleanup
 }
 
 func newRegistry() registry {
@@ -46,7 +47,7 @@ func newRegistration(reg registry, upkeepID uint64) registration {
 }
 
 func TestRegistryStore_Registries(t *testing.T) {
-	db, rm, cleanup := setupRegistryStore(t)
+	db, regStore, cleanup := setupRegistryStore(t)
 	defer cleanup()
 
 	reg := newRegistry()
@@ -64,13 +65,13 @@ func TestRegistryStore_Registries(t *testing.T) {
 	err = db.DB().Create(&reg2).Error
 	require.NoError(t, err)
 
-	existingRegistries, err := rm.Registries()
+	existingRegistries, err := regStore.Registries()
 	require.NoError(t, err)
 	require.Equal(t, 2, len(existingRegistries))
 }
 
 func TestRegistryStore_Upsert(t *testing.T) {
-	db, rm, cleanup := setupRegistryStore(t)
+	db, regStore, cleanup := setupRegistryStore(t)
 	defer cleanup()
 
 	// create registry
@@ -81,7 +82,7 @@ func TestRegistryStore_Upsert(t *testing.T) {
 	// create registration
 	newRegistration := newRegistration(reg, 0)
 	fmt.Println("newRegistration.Registry.ID", newRegistration.Registry.ID)
-	err = rm.Upsert(newRegistration)
+	err = regStore.Upsert(newRegistration)
 	require.NoError(t, err)
 
 	assertRegistrationCount(t, db, 1)
@@ -98,7 +99,7 @@ func TestRegistryStore_Upsert(t *testing.T) {
 		ExecuteGas: 20_000,
 		CheckData:  common.Hex2Bytes("8888"),
 	}
-	err = rm.Upsert(updatedRegistration)
+	err = regStore.Upsert(updatedRegistration)
 	require.NoError(t, err)
 	assertRegistrationCount(t, db, 1)
 	err = db.DB().First(&existingRegistration).Error
@@ -108,7 +109,7 @@ func TestRegistryStore_Upsert(t *testing.T) {
 }
 
 func TestRegistryStore_BatchDelete(t *testing.T) {
-	db, rm, cleanup := setupRegistryStore(t)
+	db, regStore, cleanup := setupRegistryStore(t)
 	defer cleanup()
 
 	reg := newRegistry()
@@ -128,15 +129,17 @@ func TestRegistryStore_BatchDelete(t *testing.T) {
 
 	assertRegistrationCount(t, db, 3)
 
-	err = rm.BatchDelete(reg.ID, []uint64{0, 2})
+	err = regStore.BatchDelete(reg.ID, []uint64{0, 2})
 	require.NoError(t, err)
 
 	assertRegistrationCount(t, db, 1)
 }
 
 func TestRegistryStore_Active(t *testing.T) {
-	db, rm, cleanup := setupRegistryStore(t)
+	db, regStore, cleanup := setupRegistryStore(t)
 	defer cleanup()
+
+	db.DB().LogMode(true)
 
 	// create registry
 	reg := newRegistry()
@@ -163,17 +166,25 @@ func TestRegistryStore_Active(t *testing.T) {
 	}
 
 	for _, reg := range registrations {
-		err = db.DB().Create(&reg).Error
+		err = regStore.Upsert(reg)
 		require.NoError(t, err)
 	}
 
 	assertRegistrationCount(t, db, 3)
 
-	activeRegistrations, err := rm.Active(10)
-	require.NoError(t, err)
-	require.Len(t, activeRegistrations, 2)
-	require.Equal(t, uint64(0), activeRegistrations[0].UpkeepID)
-	require.Equal(t, uint64(1), activeRegistrations[1].UpkeepID)
+	activeRegistrations, err := regStore.Active(10)
+	assert.NoError(t, err)
+	assert.Len(t, activeRegistrations, 2)
+	assert.Equal(t, uint64(0), activeRegistrations[0].UpkeepID)
+	assert.Equal(t, uint64(1), activeRegistrations[1].UpkeepID)
+
+	// preloads registry data
+	assert.Equal(t, reg.ID, activeRegistrations[0].RegistryID)
+	assert.Equal(t, reg.ID, activeRegistrations[1].RegistryID)
+	assert.Equal(t, reg.CheckGas, activeRegistrations[0].Registry.CheckGas)
+	assert.Equal(t, reg.CheckGas, activeRegistrations[1].Registry.CheckGas)
+	assert.Equal(t, reg.Address, activeRegistrations[0].Registry.Address)
+	assert.Equal(t, reg.Address, activeRegistrations[1].Registry.Address)
 }
 
 func assertRegistrationCount(t *testing.T, db *store.Client, expected int) {
