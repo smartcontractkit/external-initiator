@@ -258,7 +258,7 @@ func Test_cfxFilterQuery_toMapInterface(t *testing.T) {
 		BlockHash *common.Hash
 		FromEpoch string
 		ToEpoch   string
-		Addresses []common.Address
+		Addresses []string
 		Topics    [][]common.Hash
 	}
 	tests := []struct {
@@ -271,7 +271,7 @@ func Test_cfxFilterQuery_toMapInterface(t *testing.T) {
 			"empty toEpoch becomes latest_state",
 			fields{},
 			map[string]interface{}{
-				"address":   []common.Address{},
+				"address":   []string{},
 				"topics":    [][]common.Hash{},
 				"fromEpoch": "0x0",
 				"toEpoch":   "latest_state",
@@ -282,7 +282,7 @@ func Test_cfxFilterQuery_toMapInterface(t *testing.T) {
 			"uses non-empty toEpoch",
 			fields{ToEpoch: "0x1"},
 			map[string]interface{}{
-				"address":   []common.Address{},
+				"address":   []string{},
 				"topics":    [][]common.Hash{},
 				"fromEpoch": "0x0",
 				"toEpoch":   "0x1",
@@ -293,7 +293,7 @@ func Test_cfxFilterQuery_toMapInterface(t *testing.T) {
 			"empty fromEpoch becomes 0x0",
 			fields{},
 			map[string]interface{}{
-				"address":   []common.Address{},
+				"address":   []string{},
 				"topics":    [][]common.Hash{},
 				"fromEpoch": "0x0",
 				"toEpoch":   "latest_state",
@@ -304,7 +304,7 @@ func Test_cfxFilterQuery_toMapInterface(t *testing.T) {
 			"uses non-empty fromEpoch",
 			fields{FromEpoch: "0x1"},
 			map[string]interface{}{
-				"address":   []common.Address{},
+				"address":   []string{},
 				"topics":    [][]common.Hash{},
 				"fromEpoch": "0x1",
 				"toEpoch":   "latest_state",

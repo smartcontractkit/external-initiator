@@ -3,12 +3,13 @@ module github.com/smartcontractkit/external-initiator
 go 1.15
 
 require (
+	github.com/Conflux-Chain/go-conflux-sdk v1.0.1
 	github.com/FactomProject/basen v0.0.0-20150613233007-fe3947df716e // indirect
 	github.com/avast/retry-go v2.6.0+incompatible
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869
 	github.com/centrifuge/go-substrate-rpc-client v2.0.0+incompatible
 	github.com/cmars/basen v0.0.0-20150613233007-fe3947df716e // indirect
-	github.com/ethereum/go-ethereum v1.9.24
+	github.com/ethereum/go-ethereum v1.9.25
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a
 	github.com/gin-gonic/gin v1.6.0
 	github.com/golang/mock v1.4.4
