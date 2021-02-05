@@ -12,6 +12,16 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+)
+
+var (
+	promLastSourcePing = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "ei_last_source_ping",
+		Help: "The timestamp of the last source of life from the source",
+	}, []string{"endpoint", "jobid"})
 )
 
 var (

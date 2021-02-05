@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
@@ -24,35 +25,39 @@ const (
 
 func createTezosSubscriber(sub store.Subscription) tezosSubscriber {
 	return tezosSubscriber{
-		Endpoint:  strings.TrimSuffix(sub.Endpoint.Url, "/"),
-		Addresses: sub.Tezos.Addresses,
-		JobID:     sub.Job,
+		Endpoint:     strings.TrimSuffix(sub.Endpoint.Url, "/"),
+		EndpointName: sub.EndpointName,
+		Addresses:    sub.Tezos.Addresses,
+		JobID:        sub.Job,
 	}
 }
 
 type tezosSubscriber struct {
-	Endpoint  string
-	Addresses []string
-	JobID     string
+	Endpoint     string
+	EndpointName string
+	Addresses    []string
+	JobID        string
 }
 
 type tezosSubscription struct {
-	endpoint    string
-	events      chan<- subscriber.Event
-	addresses   []string
-	monitorResp *http.Response
-	isDone      bool
-	jobid       string
+	endpoint     string
+	endpointName string
+	events       chan<- subscriber.Event
+	addresses    []string
+	monitorResp  *http.Response
+	isDone       bool
+	jobid        string
 }
 
 func (tz tezosSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ store.RuntimeConfig) (subscriber.ISubscription, error) {
 	logger.Infof("Using Tezos RPC endpoint: %s\nListening for events on addresses: %v", tz.Endpoint, tz.Addresses)
 
 	tzs := tezosSubscription{
-		endpoint:  tz.Endpoint,
-		events:    channel,
-		addresses: tz.Addresses,
-		jobid:     tz.JobID,
+		endpoint:     tz.Endpoint,
+		endpointName: tz.EndpointName,
+		events:       channel,
+		addresses:    tz.Addresses,
+		jobid:        tz.JobID,
 	}
 
 	go tzs.readMessagesWithRetry()
@@ -98,6 +103,7 @@ func (tzs tezosSubscription) readMessages() {
 		if !ok {
 			return
 		}
+		promLastSourcePing.With(prometheus.Labels{"endpoint": tzs.endpointName, "jobid": tzs.jobid}).SetToCurrentTime()
 
 		blockID, err := extractBlockIDFromHeaderJSON(line)
 		if err != nil {
