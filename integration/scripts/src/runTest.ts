@@ -18,22 +18,21 @@ const main = async () => {
         let jobId: string
         await assert.it('creates job', ctx, async () => {
           jobId = await addJob(node, test.params)
-          assert.isFalse(test, !jobId, 'got a job ID')
+          assert.isFalse(!jobId, 'got a job ID')
           const newJobCount = (await node.getJobs()).meta?.count
-          assert.equals(test, newJobCount, jobCount + 1, 'job count should increase by 1')
+          assert.equals(newJobCount, jobCount + 1, 'job count should increase by 1')
         })
 
         await assert.it('runs job successfully', ctx, async () => {
           await assert.withRetry(async () => {
             const jobRuns = (await node.getJobRuns(jobId!)).meta?.count
-            assert.equals(test, jobRuns, test.expectedRuns, 'job runs should increase')
+            assert.equals(jobRuns, test.expectedRuns, 'job runs should increase')
           }, 30)
 
           await assert.withRetry(async () => {
             const jobRunStatus = (await node.getJobRuns(jobId!)).data[test.expectedRuns - 1]
               .attributes.status
             assert.equals(
-              test,
               jobRunStatus,
               'completed',
               'last job run should be marked as completed',

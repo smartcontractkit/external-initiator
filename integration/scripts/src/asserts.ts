@@ -60,17 +60,17 @@ export const it = async (name: string, ctx: Context, func: () => Promise<void>) 
     })
 }
 
-type Assertion<T> = (test: Test, got: T, expect: T, name: string) => void
+type Assertion<T> = (got: T, expect: T, name: string) => void
 
-type AssertionImplied<T> = (test: Test, got: T, name: string) => void
+type AssertionImplied<T> = (got: T, name: string) => void
 
-export const equals: Assertion<any> = (test, got, expect, name) => {
+export const equals: Assertion<any> = (got, expect, name) => {
   if (got !== expect) {
     throw new AssertionError(name, got, expect)
   }
 }
 
-export const isFalse: AssertionImplied<boolean> = (test, got, name) => {
+export const isFalse: AssertionImplied<boolean> = (got, name) => {
   if (got) {
     throw new AssertionError(name, got, false)
   }
