@@ -1,4 +1,4 @@
-package migration1606327145
+package migration1613356332
 
 import (
 	"github.com/jinzhu/gorm"
@@ -10,7 +10,8 @@ import (
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1592829052"
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1594317706"
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1599849837"
-	"github.com/smartcontractkit/external-initiator/store/migrations/migration1603803454"
+	"github.com/smartcontractkit/external-initiator/store/migrations/migration1608026935"
+	"github.com/smartcontractkit/external-initiator/store/migrations/migration1610281978"
 )
 
 type AgoricSubscription struct {
@@ -30,7 +31,8 @@ type Subscription struct {
 	BinanceSmartChain migration1592829052.BinanceSmartChainSubscription
 	NEAR              migration1594317706.NEARSubscription
 	Conflux           migration1599849837.CfxSubscription
-	EthQae            migration1603803454.EthCallSubscription
+	Keeper            migration1608026935.KeeperSubscription
+	BSNIrita          migration1610281978.BSNIritaSubscription
 	Agoric            AgoricSubscription
 }
 
