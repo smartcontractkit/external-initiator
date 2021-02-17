@@ -16,7 +16,7 @@ func handleKlaytnRequest(conn string, msg JsonrpcMessage) ([]JsonrpcMessage, err
 	} else {
 		switch msg.Method {
 		case "klay_getLogs":
-			return handleEthGetLogs(msg)
+			return handleKlaytnGetLogs(msg)
 		}
 	}
 
@@ -73,6 +73,56 @@ func handleKlaytnSubscribe(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 			ID:      msg.ID,
 			Method:  "klay_subscribe",
 			Params:  subBz,
+		},
+	}, nil
+}
+
+type klaytnLogResponse struct {
+	LogIndex         string   `json:"logIndex"`
+	BlockNumber      string   `json:"blockNumber"`
+	BlockHash        string   `json:"blockHash"`
+	TransactionHash  string   `json:"transactionHash"`
+	TransactionIndex string   `json:"transactionIndex"`
+	Address          string   `json:"address"`
+	Data             string   `json:"data"`
+	Topics           []string `json:"topics"`
+}
+
+func klaytnLogRequestToResponse(msg JsonrpcMessage) (klaytnLogResponse, error) {
+	var reqs []map[string]json.RawMessage
+	err := json.Unmarshal(msg.Params, &reqs)
+	if err != nil {
+		return klaytnLogResponse{}, err
+	}
+
+	if len(reqs) != 1 {
+		return klaytnLogResponse{}, fmt.Errorf("expected exactly 1 filter in request, got %d", len(reqs))
+	}
+
+	if r, err := handleMapStringInterface(reqs[0]); err != nil {
+		return klaytnLogResponse{}, err
+	} else {
+		return klaytnLogResponse(r), nil
+	}
+}
+
+func handleKlaytnGetLogs(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
+	log, err := klaytnLogRequestToResponse(msg)
+	if err != nil {
+		return nil, err
+	}
+
+	logs := []klaytnLogResponse{log}
+	data, err := json.Marshal(logs)
+	if err != nil {
+		return nil, err
+	}
+
+	return []JsonrpcMessage{
+		{
+			Version: "2.0",
+			ID:      msg.ID,
+			Result:  data,
 		},
 	}, nil
 }
