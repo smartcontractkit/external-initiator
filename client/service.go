@@ -10,11 +10,20 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/blockchain"
 	"github.com/smartcontractkit/external-initiator/chainlink"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
+)
+
+var (
+	promActiveSubscriptions = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "ei_subscriptions_active",
+		Help: "The total number of active subscriptions",
+	}, []string{"endpoint"})
 )
 
 type storeInterface interface {
@@ -233,7 +242,12 @@ func (srv *Service) subscribe(sub *store.Subscription, iSubscriber subscriber.IS
 	}
 	srv.subscriptions[sub.Job] = as
 
+	counter := promActiveSubscriptions.With(prometheus.Labels{"endpoint": sub.EndpointName})
+	counter.Inc()
+
 	go func() {
+		defer counter.Dec()
+
 		// Add a second of delay to let services (Chainlink core)
 		// sync up before sending the first job run trigger.
 		time.Sleep(1 * time.Second)

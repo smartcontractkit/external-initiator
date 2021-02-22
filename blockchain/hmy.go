@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/store"
@@ -16,16 +17,20 @@ const HMY = "harmony"
 // The hmyManager implements the subscriber.JsonManager interface and allows
 // for interacting with HMY nodes over RPC or WS.
 type hmyManager struct {
-	fq *filterQuery
-	p  subscriber.Type
+	fq           *filterQuery
+	p            subscriber.Type
+	endpointName string
+	jobid        string
 }
 
 // createHmyManager creates a new instance of hmyManager with the provided
 // connection type and store.EthSubscription config.
 func createHmyManager(p subscriber.Type, config store.Subscription) hmyManager {
 	return hmyManager{
-		fq: createEvmFilterQuery(config.Job, config.Ethereum.Addresses),
-		p:  p,
+		fq:           createEvmFilterQuery(config.Job, config.Ethereum.Addresses),
+		p:            p,
+		endpointName: config.EndpointName,
+		jobid:        config.Job,
 	}
 }
 
@@ -138,6 +143,7 @@ func (h hmyManager) ParseTestResponse(data []byte) error {
 // If there are new events, update hmyManager with
 // the latest block number it sees.
 func (h hmyManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
+	promLastSourcePing.With(prometheus.Labels{"endpoint": h.endpointName, "jobid": h.jobid}).SetToCurrentTime()
 	logger.Debugw("Parsing response", "ExpectsMock", ExpectsMock)
 
 	var msg JsonrpcMessage

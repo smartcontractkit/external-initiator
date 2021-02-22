@@ -16,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
@@ -93,14 +94,15 @@ const UpkeepRegistryInterface = `[
 ]`
 
 type keeperSubscriber struct {
-	Endpoint   url.URL
-	Address    common.Address
-	Abi        abi.ABI
-	UpkeepID   *big.Int
-	From       common.Address
-	JobID      string
-	Connection subscriber.Type
-	Interval   time.Duration
+	Endpoint     url.URL
+	EndpointName string
+	Address      common.Address
+	Abi          abi.ABI
+	UpkeepID     *big.Int
+	From         common.Address
+	JobID        string
+	Connection   subscriber.Type
+	Interval     time.Duration
 }
 
 func createKeeperSubscriber(sub store.Subscription) (*keeperSubscriber, error) {
@@ -131,19 +133,21 @@ func createKeeperSubscriber(sub store.Subscription) (*keeperSubscriber, error) {
 	}
 
 	return &keeperSubscriber{
-		Endpoint:   *u,
-		Address:    common.HexToAddress(sub.Keeper.Address),
-		Abi:        contractAbi,
-		UpkeepID:   upkeepId,
-		From:       sub.Keeper.From,
-		JobID:      sub.Job,
-		Connection: t,
-		Interval:   time.Duration(sub.Endpoint.RefreshInt) * time.Second,
+		Endpoint:     *u,
+		EndpointName: sub.EndpointName,
+		Address:      common.HexToAddress(sub.Keeper.Address),
+		Abi:          contractAbi,
+		UpkeepID:     upkeepId,
+		From:         sub.Keeper.From,
+		JobID:        sub.Job,
+		Connection:   t,
+		Interval:     time.Duration(sub.Endpoint.RefreshInt) * time.Second,
 	}, nil
 }
 
 type keeperSubscription struct {
 	endpoint         url.URL
+	endpointName     string
 	events           chan<- subscriber.Event
 	address          common.Address
 	abi              abi.ABI
@@ -159,6 +163,7 @@ type keeperSubscription struct {
 func (keeper keeperSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, runtimeConfig store.RuntimeConfig) (subscriber.ISubscription, error) {
 	sub := keeperSubscription{
 		endpoint:         keeper.Endpoint,
+		endpointName:     keeper.EndpointName,
 		events:           channel,
 		jobID:            keeper.JobID,
 		address:          keeper.Address,
@@ -357,6 +362,7 @@ func (keeper *keeperSubscription) query() {
 		logger.Error("Unable to get the current block height:", err)
 		return
 	}
+	promLastSourcePing.With(prometheus.Labels{"endpoint": keeper.endpointName, "jobid": keeper.jobID}).SetToCurrentTime()
 	if blockHeight.Cmp(keeper.blockHeight) < 1 {
 		// No new blocks...
 		return
@@ -497,6 +503,7 @@ func (keeper keeperSubscription) subscribeToNewHeads() {
 			logger.Error(errors.Wrap(err, "failed reading messages"))
 			return
 		}
+		promLastSourcePing.With(prometheus.Labels{"endpoint": keeper.endpointName, "jobid": keeper.jobID}).SetToCurrentTime()
 
 		var msg JsonrpcMessage
 		err = json.Unmarshal(rawMsg, &msg)

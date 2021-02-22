@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tidwall/gjson"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -30,22 +31,24 @@ const (
 )
 
 type biritaSubscriber struct {
-	Client      *tmrpc.HTTP
-	Interval    time.Duration
-	JobID       string
-	Addresses   []string
-	ServiceName string
+	Client       *tmrpc.HTTP
+	Interval     time.Duration
+	JobID        string
+	Addresses    []string
+	ServiceName  string
+	EndpointName string
 }
 
 type biritaSubscription struct {
-	client      *tmrpc.HTTP
-	events      chan<- subscriber.Event
-	interval    time.Duration
-	jobID       string
-	addresses   map[string]bool
-	serviceName string
-	lastHeight  int64
-	done        bool
+	client       *tmrpc.HTTP
+	events       chan<- subscriber.Event
+	interval     time.Duration
+	jobID        string
+	endpointName string
+	addresses    map[string]bool
+	serviceName  string
+	lastHeight   int64
+	done         bool
 }
 
 type biritaTriggerEvent struct {
@@ -76,11 +79,12 @@ func createBSNIritaSubscriber(sub store.Subscription) (*biritaSubscriber, error)
 	}
 
 	return &biritaSubscriber{
-		Client:      client,
-		Interval:    time.Duration(interval) * time.Second,
-		JobID:       sub.Job,
-		Addresses:   sub.BSNIrita.Addresses,
-		ServiceName: sub.BSNIrita.ServiceName,
+		Client:       client,
+		Interval:     time.Duration(interval) * time.Second,
+		JobID:        sub.Job,
+		Addresses:    sub.BSNIrita.Addresses,
+		ServiceName:  sub.BSNIrita.ServiceName,
+		EndpointName: sub.EndpointName,
 	}, nil
 }
 
@@ -93,12 +97,13 @@ func (bs *biritaSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _
 	}
 
 	biritaSubscription := &biritaSubscription{
-		client:      bs.Client,
-		events:      channel,
-		interval:    bs.Interval,
-		jobID:       bs.JobID,
-		addresses:   addressMap,
-		serviceName: bs.ServiceName,
+		client:       bs.Client,
+		events:       channel,
+		interval:     bs.Interval,
+		jobID:        bs.JobID,
+		endpointName: bs.EndpointName,
+		addresses:    addressMap,
+		serviceName:  bs.ServiceName,
 	}
 
 	go biritaSubscription.start()
@@ -133,6 +138,7 @@ func (bs *biritaSubscription) scan() {
 		logger.Errorf("BSN-IRITA: failed to retrieve the latest block height: %s", err)
 		return
 	}
+	promLastSourcePing.With(prometheus.Labels{"endpoint": bs.endpointName, "jobid": bs.jobID}).SetToCurrentTime()
 
 	if bs.lastHeight == 0 {
 		bs.lastHeight = currentHeight - 1

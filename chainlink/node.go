@@ -12,7 +12,24 @@ import (
 	"time"
 
 	"github.com/avast/retry-go"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/smartcontractkit/chainlink/core/logger"
+)
+
+var (
+	promJobrunsTotalErrors = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ei_jobruns_total_errored_attempts",
+		Help: "The total number of jobrun trigger attempts that errored",
+	})
+	promJobrunsFailed = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ei_jobruns_failed",
+		Help: "The number of failed jobruns",
+	}, []string{"jobid"})
+	promJobrunsSuccess = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ei_jobruns_success",
+		Help: "The number of successful jobruns",
+	}, []string{"jobid"})
 )
 
 const (
@@ -40,6 +57,17 @@ type Node struct {
 func (cl Node) TriggerJob(jobId string, data []byte) error {
 	logger.Infof("Sending a job run trigger to %s for job %s\n", cl.Endpoint.String(), jobId)
 
+	err := cl.sendJobrunTrigger(jobId, data)
+	if err != nil {
+		promJobrunsFailed.With(prometheus.Labels{"jobid": jobId}).Inc()
+		return err
+	}
+
+	promJobrunsSuccess.With(prometheus.Labels{"jobid": jobId}).Inc()
+	return nil
+}
+
+func (cl Node) sendJobrunTrigger(jobId string, data []byte) error {
 	u := cl.Endpoint
 	u.Path = fmt.Sprintf("/v2/specs/%s/runs", jobId)
 
@@ -105,9 +133,13 @@ func (config RetryConfig) withRetry(client *http.Client, request *http.Request) 
 		retry.Delay(config.Delay),
 		retry.Attempts(config.Attempts),
 		retry.OnRetry(func(n uint, err error) {
+			promJobrunsTotalErrors.Inc()
 			logger.Debugw("job run trigger error, will retry", "error", err.Error(), "attempt", n, "timeout", config.Timeout)
 		}),
 	)
+	if err != nil {
+		promJobrunsTotalErrors.Inc()
+	}
 
 	return responseBody, statusCode, err
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/iotexproject/iotex-proto/golang/iotextypes"
 
 	"github.com/facebookgo/clock"
+	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
@@ -70,13 +71,17 @@ func createIoTeXSubscriber(sub store.Subscription) (*iotexSubscriber, error) {
 			endpoint:   u.Host,
 			secureConn: u.Scheme == "https",
 		},
-		filter: createIoTeXLogFilter(sub.Job, sub.Ethereum.Addresses),
+		filter:       createIoTeXLogFilter(sub.Job, sub.Ethereum.Addresses),
+		endpointName: sub.EndpointName,
+		jobid:        sub.Job,
 	}, nil
 }
 
 type iotexSubscriber struct {
-	conn   *iotexConnection
-	filter *iotexapi.LogsFilter
+	conn         *iotexConnection
+	filter       *iotexapi.LogsFilter
+	endpointName string
+	jobid        string
 }
 
 func (io *iotexSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ store.RuntimeConfig) (subscriber.ISubscription, error) {
@@ -94,6 +99,8 @@ func (io *iotexSubscriber) newSubscription(channel chan<- subscriber.Event, canc
 		eventChannel: channel,
 		filter:       io.filter,
 		clock:        clk,
+		endpointName: io.endpointName,
+		jobid:        io.jobid,
 	}
 }
 
@@ -115,6 +122,9 @@ type iotexSubscription struct {
 
 	ticker          *clock.Ticker
 	requestedHeight uint64
+
+	endpointName string
+	jobid        string
 }
 
 func (io *iotexSubscription) run(ctx context.Context) {
@@ -141,6 +151,8 @@ func (io *iotexSubscription) poll(ctx context.Context) {
 		logger.Error("failed to get iotex chain meta:", err)
 		return
 	}
+	promLastSourcePing.With(prometheus.Labels{"endpoint": io.endpointName, "jobid": io.jobid}).SetToCurrentTime()
+
 	currentHeight := cm.GetChainMeta().GetHeight()
 	fromHeight := currentHeight
 	count := uint64(1)
