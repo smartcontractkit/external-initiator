@@ -31,9 +31,10 @@ type cfxManager struct {
 // createCfxManager creates a new instance of cfxManager with the provided
 // connection type and store.cfxSubscription config.
 func createCfxManager(p subscriber.Type, config store.Subscription) cfxManager {
-	var addresses []string
+	var addresses []cfxaddress.Address
 	for _, a := range config.Conflux.Addresses {
-		addresses = append(addresses, a)
+		base32Addr := cfxaddress.MustNewFromBase32(a) // NOTE: if configured an invalid base32 address, will panic here
+		addresses = append(addresses, base32Addr)
 	}
 
 	// Hard-set the topics to match the OracleRequest()
@@ -148,14 +149,14 @@ func (e cfxManager) ParseTestResponse(data []byte) error {
 }
 
 type cfxLogResponse struct {
-	LogIndex         string        `json:"logIndex"`
-	EpochNumber      string        `json:"epochNumber"`
-	BlockHash        common.Hash   `json:"blockHash"`
-	TransactionHash  common.Hash   `json:"transactionHash"`
-	TransactionIndex string        `json:"transactionIndex"`
-	Address          string        `json:"address"`
-	Data             string        `json:"data"`
-	Topics           []common.Hash `json:"topics"`
+	LogIndex         string             `json:"logIndex"`
+	EpochNumber      string             `json:"epochNumber"`
+	BlockHash        common.Hash        `json:"blockHash"`
+	TransactionHash  common.Hash        `json:"transactionHash"`
+	TransactionIndex string             `json:"transactionIndex"`
+	Address          cfxaddress.Address `json:"address"`
+	Data             string             `json:"data"`
+	Topics           []common.Hash      `json:"topics"`
 }
 
 //convert cfxLogResponse type to eth.Log type
@@ -176,12 +177,8 @@ func Cfx2EthResponse(cfx cfxLogResponse) (models.Log, error) {
 	}
 
 	data := common.Hex2Bytes(cfx.Data[2:])
-	base32Addr, err := cfxaddress.NewFromBase32(cfx.Address)
-	if err != nil {
-		return models.Log{}, err
-	}
 	return models.Log{
-		Address:     common.HexToAddress(base32Addr.GetHexAddress()),
+		Address:     common.HexToAddress(cfx.Address.GetHexAddress()),
 		Topics:      cfx.Topics,
 		Data:        data,
 		BlockNumber: blockNumber,
@@ -309,10 +306,10 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 }
 
 type cfxFilterQuery struct {
-	BlockHash *common.Hash // used by cfx_getLogs, return logs only from block with this hash
-	FromEpoch string       // beginning of the queried range, nil means genesis block
-	ToEpoch   string       // end of the range, nil means latest block
-	Addresses []string     // restricts matches to events created by specific contracts
+	BlockHash *common.Hash         // used by cfx_getLogs, return logs only from block with this hash
+	FromEpoch string               // beginning of the queried range, nil means genesis block
+	ToEpoch   string               // end of the range, nil means latest block
+	Addresses []cfxaddress.Address // restricts matches to events created by specific contracts
 
 	// The Topic list restricts matches to particular event topics. Each event has a list
 	// of topics. Topics matches a prefix of that list. An empty element slice matches any
