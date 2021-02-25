@@ -1,13 +1,13 @@
-import { defaultEvmAddress, evmAddressEnvVar, Test, zeroEvmAddress } from './index'
+import { defaultEvmAddress, evmAddressEnvVar, zeroEvmAddress } from './index'
 
-const blockchain = 'Keeper'
+export const name = 'Keeper'
 
-export const getTests = (): Test[] => {
+export const getTests = () => {
   const address = process.env[evmAddressEnvVar] || defaultEvmAddress
   const from = zeroEvmAddress
   const upkeepId = '123'
 
-  const tests = [
+  return [
     {
       name: 'connection over HTTP RPC',
       expectedRuns: 1,
@@ -29,8 +29,4 @@ export const getTests = (): Test[] => {
       },
     },
   ]
-
-  return tests.map((t) => {
-    return { ...t, blockchain } as Test
-  })
 }

@@ -1,6 +1,8 @@
 import url from 'url'
-import axios from 'axios'
+import axios, { AxiosRequestConfig } from "axios";
 import moment from 'moment'
+
+const COOKIE_NAME = 'clsession'
 
 export interface Credentials {
   email: string
@@ -82,10 +84,10 @@ export class ChainlinkNode {
       withCredentials: true,
     })
     const cookies = extractCookiesFromHeader(response.headers['set-cookie'])
-    if (!cookies['clsession']) {
+    if (!cookies[COOKIE_NAME]) {
       throw Error('Could not authenticate')
     }
-    const clsession = cookies['clsession']
+    const clsession = cookies[COOKIE_NAME]
 
     let expiresAt
     if (clsession.maxAge) {
@@ -114,10 +116,7 @@ export class ChainlinkNode {
     await this.mustAuthenticate()
     const fullUrl = url.resolve(this.url, path)
     return await axios.post(fullUrl, data, {
-      withCredentials: true,
-      headers: {
-        cookie: `clsession=${this.session?.cookie}`,
-      },
+      ...this.withAuth(),
       params,
     })
   }
@@ -126,14 +125,21 @@ export class ChainlinkNode {
     await this.mustAuthenticate()
     const fullUrl = url.resolve(this.url, path)
     return await axios.get(fullUrl, {
-      withCredentials: true,
-      headers: {
-        cookie: `clsession=${this.session?.cookie}`,
-      },
+      ...this.withAuth(),
       params,
     })
   }
+
+  private withAuth(): Partial<AxiosRequestConfig> {
+    return {
+      withCredentials: true,
+      headers: {
+        cookie: `${COOKIE_NAME}=${this.session?.cookie}`,
+      },
+    }
+  }
 }
+
 
 interface Cookie {
   value: string
@@ -143,26 +149,28 @@ interface Cookie {
 
 const extractCookiesFromHeader = (cookiesHeader: string[]): Record<string, Cookie> => {
   const cookies: Record<string, Cookie> = {}
-  for (let i = 0; i < cookiesHeader.length; i++) {
-    const parts = cookiesHeader[i].split(/=(.+)/)
-    const name = parts[0]
-    if (name !== 'clsession') continue
-    const props = parts[1].split(';')
-    cookies[name] = { value: props[0] }
 
-    for (let j = 1; j < props.length; j++) {
-      const propParts = props[j].split('=')
-      const propName = propParts[0]
-      switch (propName.toLowerCase().trim()) {
+  const filteredCookies = cookiesHeader
+    .map((header) => header.split(/=(.+)/))
+    .filter((header) => header[0] === COOKIE_NAME)
+  if (filteredCookies.length === 0) return cookies
+
+  const cookie = filteredCookies[0]
+  const props = cookie[1].split(';')
+  cookies[COOKIE_NAME] = { value: props[0] }
+
+  props
+    .map((prop) => prop.split('='))
+    .forEach((parts) => {
+      switch (parts[0].toLowerCase().trim()) {
         case 'expires':
-          cookies[name].expires = moment(propParts[1])
-          break
+          cookies[COOKIE_NAME].expires = moment(parts[1])
+          return
         case 'max-age':
-          cookies[name].maxAge = Number(propParts[1])
-          break
+          cookies[COOKIE_NAME].maxAge = Number(parts[1])
+          return
       }
-    }
-  }
+    })
 
   return cookies
 }

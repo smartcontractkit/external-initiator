@@ -10,7 +10,12 @@ import * as BIRITA from './birita'
 import * as NEAR from './near'
 import * as Substrate from './substrate'
 
-const integrations = [ETH, HMY, XTZ, ONT, BSC, IOTX, CFX, Keeper, BIRITA, NEAR, Substrate]
+interface TestInterface {
+  name: string
+  getTests(): Partial<Test>[]
+}
+
+const integrations: TestInterface[] = [ETH, HMY, XTZ, ONT, BSC, IOTX, CFX, Keeper, BIRITA, NEAR, Substrate]
 
 export const defaultEvmAddress = '0x2aD9B7b9386c2f45223dDFc4A4d81C2957bAE19A'
 export const zeroEvmAddress = '0x0000000000000000000000000000000000000000'
@@ -23,10 +28,9 @@ export interface Test {
   params: Record<string, any>
 }
 
-export const fetchTests = (): Test[] => {
-  const tests = []
-  for (let i = 0; i < integrations.length; i++) {
-    tests.push(...integrations[i].getTests())
-  }
-  return tests
-}
+export const fetchTests = (): Test[] =>
+  integrations.map((blockchain) =>
+    blockchain.getTests().map((t) => {
+      return { ...t, blockchain: blockchain.name } as Test
+    })
+  ).flat()

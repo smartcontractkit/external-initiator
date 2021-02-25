@@ -11,8 +11,7 @@ const main = async () => {
   const node = new ChainlinkNode(chainlinkUrl, credentials)
 
   const ctx = await assert.context(async (ctx) => {
-    for (let i = 0; i < tests.length; i++) {
-      const test = tests[i]
+    for (const test of tests) {
       await assert.newTest(test, async () => {
         const jobCount = (await node.getJobs()).meta?.count || 0
         let jobId: string

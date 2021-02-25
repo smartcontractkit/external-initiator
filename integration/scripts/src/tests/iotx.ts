@@ -1,11 +1,11 @@
-import { defaultEvmAddress, evmAddressEnvVar, Test } from './index'
+import { defaultEvmAddress, evmAddressEnvVar } from './index'
 
-const blockchain = 'IOTX'
+export const name = 'IOTX'
 
-export const getTests = (): Test[] => {
+export const getTests = () => {
   const addresses = [process.env[evmAddressEnvVar] || defaultEvmAddress]
 
-  const tests = [
+  return [
     {
       name: 'connection over gRPC',
       expectedRuns: 1,
@@ -15,8 +15,4 @@ export const getTests = (): Test[] => {
       },
     },
   ]
-
-  return tests.map((t) => {
-    return { ...t, blockchain } as Test
-  })
 }

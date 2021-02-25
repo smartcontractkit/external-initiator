@@ -1,14 +1,12 @@
-import { Test } from './index'
-
-const blockchain = 'NEAR'
+export const name = 'NEAR'
 
 const defaultAccountId = 'oracle.oracle.testnet'
 const accountIdEnvVar = 'NEAR_ORACLE_ACCOUNT_ID'
 
-export const getTests = (): Test[] => {
+export const getTests = () => {
   const accountIds = [process.env[accountIdEnvVar] || defaultAccountId]
 
-  const tests = [
+  return [
     {
       name: 'connection over HTTP RPC',
       expectedRuns: 3,
@@ -18,8 +16,4 @@ export const getTests = (): Test[] => {
       },
     },
   ]
-
-  return tests.map((t) => {
-    return { ...t, blockchain } as Test
-  })
 }

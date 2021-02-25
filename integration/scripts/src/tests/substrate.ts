@@ -1,9 +1,7 @@
-import { Test } from './index'
+export const name = 'Substrate'
 
-const blockchain = 'Substrate'
-
-export const getTests = (): Test[] => {
-  const tests = [
+export const getTests = () => {
+  return [
     {
       name: 'WS mock with account #1',
       expectedRuns: 1,
@@ -29,10 +27,6 @@ export const getTests = (): Test[] => {
       },
     },
   ]
-
-  return tests.map((t) => {
-    return { ...t, blockchain } as Test
-  })
 }
 
 const getAccountId = (i: number): string[] => {
