@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"github.com/Conflux-Chain/go-conflux-sdk/types/cfxaddress"
 	"reflect"
 	"testing"
 
@@ -26,9 +27,9 @@ func TestCreateCfxFilterMessage(t *testing.T) {
 		},
 		{
 			"address only",
-			store.CfxSubscription{Addresses: []string{"0x049bd8c3adc3fe7d3fc2a44541d955a537c2a484"}},
+			store.CfxSubscription{Addresses: []string{"cfxtest:acdjv47k166p1pt4e8yph9rbcumrpbn2u69wyemxv0"}},
 			subscriber.WS,
-			[]byte(`{"jsonrpc":"2.0","id":1,"method":"cfx_subscribe","params":["logs",{"address":["0x049bd8c3adc3fe7d3fc2a44541d955a537c2a484"],"fromEpoch":"0x0","toEpoch":"latest_state","topics":[["0xd8d7ecc4800d25fa53ce0372f13a416d98907a7ef3d8d3bdd79cf4fe75529c65"],["0x0000000000000000000000000000000000000000000000000000000000000000"]]}]}`),
+			[]byte(`{"jsonrpc":"2.0","id":1,"method":"cfx_subscribe","params":["logs",{"address":["CFXTEST:TYPE.CONTRACT:ACDJV47K166P1PT4E8YPH9RBCUMRPBN2U69WYEMXV0"],"fromEpoch":"0x0","toEpoch":"latest_state","topics":[["0xd8d7ecc4800d25fa53ce0372f13a416d98907a7ef3d8d3bdd79cf4fe75529c65"],["0x0000000000000000000000000000000000000000000000000000000000000000"]]}]}`),
 		},
 		{
 			"empty RPC",
@@ -259,7 +260,7 @@ func Test_cfxFilterQuery_toMapInterface(t *testing.T) {
 		BlockHash *common.Hash
 		FromEpoch string
 		ToEpoch   string
-		Addresses []string
+		Addresses []cfxaddress.Address
 		Topics    [][]common.Hash
 	}
 	tests := []struct {
@@ -272,7 +273,7 @@ func Test_cfxFilterQuery_toMapInterface(t *testing.T) {
 			"empty toEpoch becomes latest_state",
 			fields{},
 			map[string]interface{}{
-				"address":   []string{},
+				"address":   []cfxaddress.Address{},
 				"topics":    [][]common.Hash{},
 				"fromEpoch": "0x0",
 				"toEpoch":   "latest_state",
@@ -283,7 +284,7 @@ func Test_cfxFilterQuery_toMapInterface(t *testing.T) {
 			"uses non-empty toEpoch",
 			fields{ToEpoch: "0x1"},
 			map[string]interface{}{
-				"address":   []string{},
+				"address":   []cfxaddress.Address{},
 				"topics":    [][]common.Hash{},
 				"fromEpoch": "0x0",
 				"toEpoch":   "0x1",
@@ -294,7 +295,7 @@ func Test_cfxFilterQuery_toMapInterface(t *testing.T) {
 			"empty fromEpoch becomes 0x0",
 			fields{},
 			map[string]interface{}{
-				"address":   []string{},
+				"address":   []cfxaddress.Address{},
 				"topics":    [][]common.Hash{},
 				"fromEpoch": "0x0",
 				"toEpoch":   "latest_state",
@@ -305,7 +306,7 @@ func Test_cfxFilterQuery_toMapInterface(t *testing.T) {
 			"uses non-empty fromEpoch",
 			fields{FromEpoch: "0x1"},
 			map[string]interface{}{
-				"address":   []string{},
+				"address":   []cfxaddress.Address{},
 				"topics":    [][]common.Hash{},
 				"fromEpoch": "0x1",
 				"toEpoch":   "latest_state",
