@@ -3,7 +3,7 @@ import path from 'path'
 import fs from 'fs'
 import os from 'os'
 
-export interface Args {
+export interface Config {
   chainlinkUrl: string
   initiatorUrl: string
 }
@@ -14,12 +14,15 @@ const chainlinkUrlEnvVar = 'CHAINLINK_URL'
 const defaultInitiatorUrl = 'http://external-initiator:8080/'
 const initiatorUrlEnvVar = 'EXTERNAL_INITIATOR_URL'
 
-export const fetchArgs = (): Args => {
+export const fetchConfig = (): Config => {
   return {
     chainlinkUrl: process.env[chainlinkUrlEnvVar] || defaultChainlinkUrl,
     initiatorUrl: process.env[initiatorUrlEnvVar] || defaultInitiatorUrl,
   }
 }
+
+export const fetchArgs = (): string[] =>
+  process.argv.slice(2)
 
 export const fetchCredentials = (file = '../../secrets/apicredentials'): Credentials => {
   const filePath = path.resolve(__dirname, file)

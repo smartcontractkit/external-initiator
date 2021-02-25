@@ -1,12 +1,15 @@
 import { ChainlinkNode } from './chainlinkNode'
-import { fetchTests } from './tests'
-import { fetchArgs, fetchCredentials } from './common'
+import { fetchTests, Test } from "./tests";
+import { fetchArgs, fetchConfig, fetchCredentials } from "./common";
 import * as assert from './asserts'
 
 const main = async () => {
-  const tests = fetchTests()
+  const args = fetchArgs().map((arg) => arg.toLowerCase())
+  const _filterBlockchain = (t: Test) =>
+    args.length === 0 || args.includes(t.blockchain.toLowerCase())
+  const tests = fetchTests().filter(_filterBlockchain)
 
-  const { chainlinkUrl } = fetchArgs()
+  const { chainlinkUrl } = fetchConfig()
   const credentials = fetchCredentials()
   const node = new ChainlinkNode(chainlinkUrl, credentials)
 

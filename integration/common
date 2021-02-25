@@ -76,7 +76,7 @@ run_tests() {
   title "Running the tests..."
   pushd integration/scripts >/dev/null || exit
   local log=$LOG_PATH/run_tests.log
-  yarn run-test
+  yarn run-test "$@"
   popd >/dev/null || exit
   title "Done running tests"
 }

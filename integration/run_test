@@ -23,11 +23,11 @@ run_test() {
 
   login_chainlink
 
-  run_tests
+  run_tests "$@"
 
   stop_docker
 
   title "Done running tests"
 }
 
-run_test
+run_test "$@"

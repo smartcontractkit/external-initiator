@@ -1,9 +1,9 @@
 import url from 'url'
 import { ChainlinkNode, ExternalInitiator } from './chainlinkNode'
-import { fetchArgs, fetchCredentials } from './common'
+import { fetchConfig, fetchCredentials } from './common'
 
 async function main() {
-  const { chainlinkUrl, initiatorUrl } = fetchArgs()
+  const { chainlinkUrl, initiatorUrl } = fetchConfig()
 
   const credentials = fetchCredentials()
   const node = new ChainlinkNode(chainlinkUrl, credentials)
