@@ -1,9 +1,10 @@
 package blockchain
 
 import (
-	"github.com/Conflux-Chain/go-conflux-sdk/types/cfxaddress"
 	"reflect"
 	"testing"
+
+	"github.com/Conflux-Chain/go-conflux-sdk/types/cfxaddress"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/magiconair/properties/assert"
