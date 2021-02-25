@@ -15,7 +15,19 @@ interface TestInterface {
   getTests(): Partial<Test>[]
 }
 
-const integrations: TestInterface[] = [ETH, HMY, XTZ, ONT, BSC, IOTX, CFX, Keeper, BIRITA, NEAR, Substrate]
+const integrations: TestInterface[] = [
+  ETH,
+  HMY,
+  XTZ,
+  ONT,
+  BSC,
+  IOTX,
+  CFX,
+  Keeper,
+  BIRITA,
+  NEAR,
+  Substrate,
+]
 
 export const defaultEvmAddress = '0x2aD9B7b9386c2f45223dDFc4A4d81C2957bAE19A'
 export const zeroEvmAddress = '0x0000000000000000000000000000000000000000'
@@ -29,8 +41,10 @@ export interface Test {
 }
 
 export const fetchTests = (): Test[] =>
-  integrations.map((blockchain) =>
-    blockchain.getTests().map((t) => {
-      return { ...t, blockchain: blockchain.name } as Test
-    })
-  ).flat()
+  integrations
+    .map((blockchain) =>
+      blockchain.getTests().map((t) => {
+        return { ...t, blockchain: blockchain.name } as Test
+      }),
+    )
+    .flat()

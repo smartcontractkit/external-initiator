@@ -1,5 +1,5 @@
 import url from 'url'
-import axios, { AxiosRequestConfig } from "axios";
+import axios, { AxiosRequestConfig } from 'axios'
 import moment from 'moment'
 
 const COOKIE_NAME = 'clsession'
@@ -139,7 +139,6 @@ export class ChainlinkNode {
     }
   }
 }
-
 
 interface Cookie {
   value: string

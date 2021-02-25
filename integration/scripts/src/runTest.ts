@@ -1,6 +1,6 @@
 import { ChainlinkNode } from './chainlinkNode'
-import { fetchTests, Test } from "./tests";
-import { fetchArgs, fetchConfig, fetchCredentials } from "./common";
+import { fetchTests, Test } from './tests'
+import { fetchArgs, fetchConfig, fetchCredentials } from './common'
 import * as assert from './asserts'
 
 const main = async () => {
@@ -34,11 +34,7 @@ const main = async () => {
           await assert.withRetry(async () => {
             const jobRunStatus = (await node.getJobRuns(jobId!)).data[test.expectedRuns - 1]
               .attributes.status
-            assert.equals(
-              jobRunStatus,
-              'completed',
-              'last job run should be marked as completed',
-            )
+            assert.equals(jobRunStatus, 'completed', 'last job run should be marked as completed')
           }, 5)
         })
       })

@@ -1,4 +1,4 @@
-import { defaultEvmAddress, evmAddressEnvVar } from "./index";
+import { defaultEvmAddress, evmAddressEnvVar } from './index'
 
 export const name = 'BSC'
 

@@ -21,8 +21,7 @@ export const fetchConfig = (): Config => {
   }
 }
 
-export const fetchArgs = (): string[] =>
-  process.argv.slice(2)
+export const fetchArgs = (): string[] => process.argv.slice(2)
 
 export const fetchCredentials = (file = '../../secrets/apicredentials'): Credentials => {
   const filePath = path.resolve(__dirname, file)
