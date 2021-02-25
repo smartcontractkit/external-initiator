@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
@@ -27,7 +28,8 @@ type agoricFilter struct {
 }
 
 type agoricManager struct {
-	filter agoricFilter
+	endpointName string
+	filter       agoricFilter
 }
 
 func init() {
@@ -42,6 +44,7 @@ func createAgoricManager(t subscriber.Type, conf store.Subscription) (*agoricMan
 	}
 
 	return &agoricManager{
+		endpointName: conf.EndpointName,
 		filter: agoricFilter{
 			JobID: conf.Job,
 		},
@@ -69,6 +72,8 @@ type chainlinkQuery struct {
 }
 
 func (sm *agoricManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
+	promLastSourcePing.With(prometheus.Labels{"endpoint": sm.endpointName, "jobid": string(sm.filter.JobID)}).SetToCurrentTime()
+
 	var agEvent agoricEvent
 	err := json.Unmarshal(data, &agEvent)
 	if err != nil {
