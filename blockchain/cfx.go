@@ -84,10 +84,10 @@ func (e cfxManager) GetTriggerJson() []byte {
 	switch e.p {
 	case subscriber.WS:
 		msg.Method = "cfx_subscribe"
-		msg.Params = json.RawMessage(fmt.Sprintf("[%s,%s]", `"logs"`, string(filterBytes)))
+		msg.Params = json.RawMessage(fmt.Sprintf("[%s,%s]", `"logs"`, filterBytes))
 	case subscriber.RPC:
 		msg.Method = "cfx_getLogs"
-		msg.Params = json.RawMessage(fmt.Sprintf("[%s]", string(filterBytes)))
+		msg.Params = json.RawMessage(fmt.Sprintf("[%s]", filterBytes))
 	default:
 		logger.Errorw(ErrSubscriberType.Error(), "type", e.p)
 		return nil
