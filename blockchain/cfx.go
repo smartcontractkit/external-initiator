@@ -3,9 +3,11 @@ package blockchain
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
 	"strings"
 
+	"github.com/Conflux-Chain/go-conflux-sdk/types/cfxaddress"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/prometheus/client_golang/prometheus"
@@ -29,9 +31,10 @@ type cfxManager struct {
 // createCfxManager creates a new instance of cfxManager with the provided
 // connection type and store.cfxSubscription config.
 func createCfxManager(p subscriber.Type, config store.Subscription) cfxManager {
-	var addresses []common.Address
+	var addresses []cfxaddress.Address
 	for _, a := range config.Conflux.Addresses {
-		addresses = append(addresses, common.HexToAddress(a))
+		base32Addr := cfxaddress.MustNewFromBase32(a) // NOTE: if configured an invalid base32 address, will panic here
+		addresses = append(addresses, base32Addr)
 	}
 
 	// Hard-set the topics to match the OracleRequest()
@@ -81,10 +84,10 @@ func (e cfxManager) GetTriggerJson() []byte {
 	switch e.p {
 	case subscriber.WS:
 		msg.Method = "cfx_subscribe"
-		msg.Params = json.RawMessage(`["logs",` + string(filterBytes) + `]`)
+		msg.Params = json.RawMessage(fmt.Sprintf("[%s,%s]", `"logs"`, filterBytes))
 	case subscriber.RPC:
 		msg.Method = "cfx_getLogs"
-		msg.Params = json.RawMessage(`[` + string(filterBytes) + `]`)
+		msg.Params = json.RawMessage(fmt.Sprintf("[%s]", filterBytes))
 	default:
 		logger.Errorw(ErrSubscriberType.Error(), "type", e.p)
 		return nil
@@ -146,14 +149,14 @@ func (e cfxManager) ParseTestResponse(data []byte) error {
 }
 
 type cfxLogResponse struct {
-	LogIndex         string         `json:"logIndex"`
-	EpochNumber      string         `json:"epochNumber"`
-	BlockHash        common.Hash    `json:"blockHash"`
-	TransactionHash  common.Hash    `json:"transactionHash"`
-	TransactionIndex string         `json:"transactionIndex"`
-	Address          common.Address `json:"address"`
-	Data             string         `json:"data"`
-	Topics           []common.Hash  `json:"topics"`
+	LogIndex         string             `json:"logIndex"`
+	EpochNumber      string             `json:"epochNumber"`
+	BlockHash        common.Hash        `json:"blockHash"`
+	TransactionHash  common.Hash        `json:"transactionHash"`
+	TransactionIndex string             `json:"transactionIndex"`
+	Address          cfxaddress.Address `json:"address"`
+	Data             string             `json:"data"`
+	Topics           []common.Hash      `json:"topics"`
 }
 
 //convert cfxLogResponse type to eth.Log type
@@ -174,9 +177,8 @@ func Cfx2EthResponse(cfx cfxLogResponse) (models.Log, error) {
 	}
 
 	data := common.Hex2Bytes(cfx.Data[2:])
-
 	return models.Log{
-		Address:     cfx.Address,
+		Address:     common.HexToAddress(cfx.Address.GetHexAddress()),
 		Topics:      cfx.Topics,
 		Data:        data,
 		BlockNumber: blockNumber,
@@ -304,10 +306,10 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 }
 
 type cfxFilterQuery struct {
-	BlockHash *common.Hash     // used by cfx_getLogs, return logs only from block with this hash
-	FromEpoch string           // beginning of the queried range, nil means genesis block
-	ToEpoch   string           // end of the range, nil means latest block
-	Addresses []common.Address // restricts matches to events created by specific contracts
+	BlockHash *common.Hash         // used by cfx_getLogs, return logs only from block with this hash
+	FromEpoch string               // beginning of the queried range, nil means genesis block
+	ToEpoch   string               // end of the range, nil means latest block
+	Addresses []cfxaddress.Address // restricts matches to events created by specific contracts
 
 	// The Topic list restricts matches to particular event topics. Each event has a list
 	// of topics. Topics matches a prefix of that list. An empty element slice matches any

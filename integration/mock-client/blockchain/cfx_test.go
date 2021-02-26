@@ -104,7 +104,7 @@ func Test_getCfxAddressesFromMap(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    []common.Address
+		want    []string
 		wantErr bool
 	}{
 		{
@@ -114,7 +114,7 @@ func Test_getCfxAddressesFromMap(t *testing.T) {
 					"address": json.RawMessage(fmt.Sprintf(`["%s"]`, cfxAddress.String())),
 				},
 			},
-			[]common.Address{address},
+			[]string{cfxAddress.String()},
 			false,
 		},
 		{
@@ -124,7 +124,7 @@ func Test_getCfxAddressesFromMap(t *testing.T) {
 					"address": json.RawMessage(fmt.Sprintf(`["%s", "%s", "%s"]`, cfxAddress.String(), cfxAddress.String(), cfxAddress.String())),
 				},
 			},
-			[]common.Address{address, address, address},
+			[]string{address.String(), address.String(), address.String()},
 			false,
 		},
 		{
