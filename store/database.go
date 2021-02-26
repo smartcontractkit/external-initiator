@@ -157,6 +157,10 @@ func (client Client) prepareSubscription(rawSub *Subscription) (*Subscription, e
 		if err := client.db.Model(&sub).Related(&sub.BSNIrita).Error; err != nil {
 			return nil, err
 		}
+	case "agoric":
+		if err := client.db.Model(&sub).Related(&sub.Agoric).Error; err != nil {
+			return nil, err
+		}
 	}
 
 	return &sub, nil
@@ -297,6 +301,7 @@ type Subscription struct {
 	Conflux           CfxSubscription
 	Keeper            KeeperSubscription
 	BSNIrita          BSNIritaSubscription
+	Agoric            AgoricSubscription
 }
 
 type EthSubscription struct {
@@ -356,4 +361,9 @@ type BSNIritaSubscription struct {
 	SubscriptionId uint
 	Addresses      SQLStringArray
 	ServiceName    string
+}
+
+type AgoricSubscription struct {
+	gorm.Model
+	SubscriptionId uint
 }
