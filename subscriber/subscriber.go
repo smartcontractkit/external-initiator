@@ -3,7 +3,34 @@
 // subscribes to.
 package subscriber
 
-import "github.com/smartcontractkit/external-initiator/store"
+import (
+	"encoding/json"
+)
+
+// JsonrpcMessage declares JSON-RPC message type
+type JsonrpcMessage struct {
+	Version string          `json:"jsonrpc"`
+	ID      json.RawMessage `json:"id,omitempty"`
+	Method  string          `json:"method,omitempty"`
+	Params  json.RawMessage `json:"params,omitempty"`
+	Error   *interface{}    `json:"error,omitempty"`
+	Result  json.RawMessage `json:"result,omitempty"`
+}
+
+func NewJsonrpcMessage(nonce uint64, method string, params json.RawMessage) ([]byte, error) {
+	id, err := json.Marshal(nonce)
+	if err != nil {
+		return nil, err
+	}
+
+	msg := JsonrpcMessage{
+		Version: "2.0",
+		ID:      id,
+		Method:  method,
+		Params:  params,
+	}
+	return json.Marshal(msg)
+}
 
 // Type holds the connection type for the subscription
 type Type int
@@ -38,36 +65,20 @@ type Event []byte
 // specific payloads and parsing the response for the
 // appropriate blockchain.
 type JsonManager interface {
-	// Get JSON payload to send when opening a new subscription
-	GetTriggerJson() []byte
-	// Parse the response returned after sending GetTriggerJson()
-	ParseResponse(data []byte) ([]Event, bool)
-	// Get JSON payload to send when testing a connection
-	GetTestJson() []byte
-	// Parse the response returned after sending GetTestJson()
-	ParseTestResponse(data []byte) error
+	GetSubscribeParams(t string, params ...interface{}) (method string, requestParams json.RawMessage)
+	ParseNotification(payload json.RawMessage) (response interface{}, ok bool)
+	GetRequestParams(t string) (method string, params json.RawMessage)
+	ParseRequestResponse(payload json.RawMessage) (response interface{}, ok bool)
 }
 
-// ISubscription holds the interface for interacting
-// with an active subscription.
-type ISubscription interface {
-	// Unsubscribe closes the connection to the external endpoint
-	// and stops any processes related to this subscription.
-	Unsubscribe()
-}
-
-// ISubscriber holds the interface for interacting
-// with a not-yet-active subscription.
+// ISubscriber holds the interface for interacting with a blockchain node
 type ISubscriber interface {
-	// SubscribeToEvents subscribes to events using the endpoint and configuration
-	// as set in ISubscriber. All events will be sent in the channel. If anything is
-	// passed as a param after channel, it will not expect to receive any confirmation
-	// message after opening the initial subscription.
-	SubscribeToEvents(channel chan<- Event, runtimeConfig store.RuntimeConfig) (ISubscription, error)
-	// Test attempts to open a connection using the endpoint and configuration
-	// as set in ISubscriber. If connection is succesful, it sends GetTestJson() as a payload
-	// and attempts to parse response with ParseTestResponse().
-	Test() error
+	// Subscribe to events of type t. Events are pushed to ch.
+	Subscribe(t string, ch chan<- interface{}, params ...interface{}) error
+	// Request data of type t.
+	Request(t string, params ...interface{}) (interface{}, error)
+	// Stop the subscriber and close all connections
+	Stop()
 }
 
 // IParser holds the interface for parsing data
