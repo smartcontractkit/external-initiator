@@ -7,7 +7,7 @@ services:
     container_name: integration_chainlink
     restart: on-failure
     ports:
-      - "6688:6688"
+      - "6888:6688"
     depends_on:
       - postgres
       - mock

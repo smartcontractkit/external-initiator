@@ -105,6 +105,12 @@ Simply run the automated integration tests script:
 ./integration/run_test
 ```
 
+If you want to test a subset of the blockchains, you can provide them as arguments:
+
+```bash
+./integration/run_test substrate bsc
+```
+
 ### Stopping
 
 All containers should automatically be stopped. If the integration tests script exits early, containers may not have
