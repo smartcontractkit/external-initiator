@@ -166,6 +166,67 @@ type EventChainlinkKillRequest struct {
 	Topics            []types.Hash
 }
 
+type FeedId types.U32
+type RoundId types.U32
+type Value types.U128
+
+type FeedConfig struct {
+	// Phase types.Phase
+	Owner                   types.AccountID
+	Pending_Owner           *types.AccountID
+	Submission_Value_Bounds []Value
+	Submission_Count_Bounds []types.U32
+	Payment_Amount          types.U128
+	Timeout                 types.BlockNumber
+	Decimals                types.U8
+	Description             types.Text
+	Restart_Delay           RoundId
+	Reporting_Round         RoundId
+	Latest_Round            RoundId
+	First_Valid_Round       *RoundId
+	Oracle_Count            types.U32
+}
+
+type Round struct {
+	Started_At        types.BlockNumber
+	Answer            *Value
+	Updated_At        *types.BlockNumber
+	Answered_In_Round *RoundId
+}
+
+type RoundDetails struct {
+	Submissions             []Value
+	Submission_Count_Bounds []types.U32
+	Payment_Amount          types.U128
+	Timeout                 types.BlockNumber
+}
+
+type OracleMeta struct {
+	Withdrawable  types.U128
+	Admin         types.AccountID
+	Pending_Admin *types.AccountID
+}
+
+type OracleStatus struct {
+	Starting_Round      RoundId
+	Ending_Round        *RoundId
+	Last_Reported_Round *RoundId
+	Last_Started_Round  *RoundId
+	Latest_Submission   *Value
+}
+
+type Requester struct {
+	Delay              RoundId
+	Last_Started_Round *RoundId
+}
+
+type RoundData struct {
+	Started_At        types.BlockNumber
+	Answer            Value
+	Updated_At        types.BlockNumber
+	Answered_In_Round RoundId
+}
+
 type EventRecords struct {
 	types.EventRecords
 	Chainlink_OracleRequest        []EventChainlinkOracleRequest        //nolint:stylecheck,golint
