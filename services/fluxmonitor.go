@@ -24,7 +24,7 @@ type FluxMonitor struct {
 	state  fluxAggregatorState
 	config fluxMonitorConfig
 
-	subscriber subscriber.ISubscriber
+	subscriber subscriber.ISubscriberNew
 
 	adapters []url.URL
 
@@ -36,7 +36,7 @@ type FluxMonitor struct {
 	chClose            chan struct{}
 }
 
-func NewFluxMonitor(subscriber subscriber.ISubscriber) (*FluxMonitor, error) {
+func NewFluxMonitor(subscriber subscriber.ISubscriberNew) (*FluxMonitor, error) {
 	return nil, nil
 }
 
