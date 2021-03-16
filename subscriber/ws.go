@@ -1,210 +1,163 @@
 package subscriber
 
 import (
-	"encoding/json"
 	"errors"
-	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/smartcontractkit/chainlink/core/logger"
-	"go.uber.org/atomic"
+	"github.com/smartcontractkit/external-initiator/store"
 )
-
-const (
-	// Time allowed to write a message to the peer.
-	writeWait = 10 * time.Second
-
-	// Maximum message size allowed from peer.
-	maxMessageSize = 512
-)
-
-var (
-	errorRequestTimeout = errors.New("request timed out")
-)
-
-type subscribeRequest struct {
-	method string
-	params json.RawMessage
-	ch     chan<- json.RawMessage
-}
-
-type websocketConnection struct {
-	requests              []subscribeRequest
-	subscriptionListeners map[string]chan<- json.RawMessage
-	nonceListeners        map[uint64]chan<- json.RawMessage
-
-	conn *websocket.Conn
-
-	quitOnce sync.Once
-
-	writeMutex sync.Mutex
-	nonce      atomic.Uint64
-
-	chSubscriptionIds chan string
-	chClose           chan struct{}
-}
-
-func newWebsocketConnection(endpoint string) (*websocketConnection, error) {
-	conn, _, err := websocket.DefaultDialer.Dial(endpoint, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	wsc := &websocketConnection{
-		conn:              conn,
-		chSubscriptionIds: make(chan string),
-		chClose:           make(chan struct{}),
-	}
-
-	go wsc.read()
-
-	return wsc, nil
-}
-
-func (wsc *websocketConnection) read() {
-	wsc.conn.SetReadLimit(maxMessageSize)
-	for {
-		_, message, err := wsc.conn.ReadMessage()
-		if err != nil {
-			// TODO: Reconnect
-			return
-		}
-
-		go wsc.processIncomingMessage(message)
-	}
-}
-
-func (wsc *websocketConnection) processIncomingMessage(payload json.RawMessage) {
-	var msg JsonrpcMessage
-	err := json.Unmarshal(payload, &msg)
-	if err != nil {
-		logger.Errorf("Unable to unmarshal payload: %s", payload)
-		return
-	}
-
-	var nonce uint64
-	err = json.Unmarshal(msg.ID, &nonce)
-	if err == nil && nonce > 0 {
-		ch, ok := wsc.nonceListeners[nonce]
-		if !ok {
-			logger.Errorf("Could not find listener for nonce: %v", nonce)
-			return
-		}
-		ch <- msg.Result
-	}
-
-	var params struct {
-		Subscription string `json:"subscription"`
-	}
-	err = json.Unmarshal(msg.Params, &params)
-	if err != nil {
-		logger.Errorf("Unable to find subscription ID in message: %s", payload)
-		return
-	}
-
-	ch, ok := wsc.subscriptionListeners[params.Subscription]
-	if !ok {
-		logger.Errorf("Could not find listener for subscription: %s", params.Subscription)
-		return
-	}
-
-	ch <- msg.Params
-}
-
-func (wsc *websocketConnection) subscribe(method string, params json.RawMessage, ch chan<- json.RawMessage) error {
-	wsc.requests = append(wsc.requests, subscribeRequest{method, params, ch})
-
-	nonce := wsc.nonce.Inc()
-	payload, err := NewJsonrpcMessage(nonce, method, params)
-	if err != nil {
-		return err
-	}
-
-	listener := make(chan json.RawMessage)
-	wsc.nonceListeners[nonce] = listener
-
-	err = wsc.sendMessage(payload)
-	if err != nil {
-		return err
-	}
-
-	timer := time.NewTimer(5 * time.Second)
-	defer timer.Stop()
-
-	select {
-	case result := <-listener:
-		var subscriptionId string
-		err = json.Unmarshal(result, &subscriptionId)
-		if err != nil {
-			return err
-		}
-
-		wsc.subscriptionListeners[subscriptionId] = ch
-		return nil
-	case <-timer.C:
-		return errorRequestTimeout
-	}
-}
-
-func (wsc *websocketConnection) sendMessage(payload json.RawMessage) error {
-	wsc.writeMutex.Lock()
-	defer wsc.writeMutex.Unlock()
-
-	err := wsc.conn.SetWriteDeadline(time.Now().Add(writeWait))
-	if err != nil {
-		return err
-	}
-	return wsc.conn.WriteMessage(websocket.TextMessage, payload)
-}
-
-func (wsc *websocketConnection) close() {
-	wsc.quitOnce.Do(func() {
-		close(wsc.chClose)
-	})
-}
 
 // WebsocketSubscriber holds the configuration for
 // a not-yet-active WS subscription.
 type WebsocketSubscriber struct {
-	endpoint string
-	manager  JsonManager
-
-	wsc *websocketConnection
-
-	onClose sync.Once
+	Endpoint string
+	Manager  JsonManager
 }
 
-func (wss *WebsocketSubscriber) Subscribe(t string, ch chan<- interface{}, params ...interface{}) error {
-	method, requestParams := wss.manager.GetSubscribeParams(t, params)
+// Test sends a opens a WS connection to the endpoint.
+func (wss WebsocketSubscriber) Test() error {
+	c, _, err := websocket.DefaultDialer.Dial(wss.Endpoint, nil)
+	if err != nil {
+		return err
+	}
+	defer logger.ErrorIfCalling(c.Close)
 
-	msgs := make(chan json.RawMessage)
+	testPayload := wss.Manager.GetTestJson()
+	if testPayload == nil {
+		return nil
+	}
 
-	err := wss.wsc.subscribe(method, requestParams, msgs)
+	resp := make(chan []byte)
+
+	go func() {
+		var body []byte
+		_, body, err = c.ReadMessage()
+		if err != nil {
+			close(resp)
+		}
+		resp <- body
+	}()
+
+	err = c.WriteMessage(websocket.BinaryMessage, testPayload)
 	if err != nil {
 		return err
 	}
 
-	go func() {
-		for {
-			select {
-			case msg := <-msgs:
-				response, ok := wss.manager.ParseNotification(msg)
-				if !ok {
-					continue
-				}
-				ch <- response
-			case <-wss.wsc.chClose:
-				return
-			}
-		}
-	}()
+	// Set timeout for response to 5 seconds
+	t := time.NewTimer(5 * time.Second)
+	defer t.Stop()
 
-	return nil
+	select {
+	case <-t.C:
+		return errors.New("timeout from test payload")
+	case body, ok := <-resp:
+		if !ok {
+			return errors.New("failed reading test response from WS endpoint")
+		}
+		return wss.Manager.ParseTestResponse(body)
+	}
 }
 
-func (wss *WebsocketSubscriber) Stop() {
-	wss.onClose.Do(func() {
-		wss.wsc.close()
-	})
+type wsConn struct {
+	connection *websocket.Conn
+	closing    bool
+}
+
+type websocketSubscription struct {
+	conn      *wsConn
+	events    chan<- Event
+	confirmed bool
+	manager   JsonManager
+	endpoint  string
+}
+
+func (wss websocketSubscription) Unsubscribe() {
+	logger.Info("Unsubscribing from WS endpoint", wss.endpoint)
+	wss.conn.closing = true
+	_ = wss.conn.connection.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+	_ = wss.conn.connection.Close()
+}
+
+func (wss websocketSubscription) forceClose() {
+	wss.conn.closing = false
+	_ = wss.conn.connection.Close()
+}
+
+func (wss websocketSubscription) readMessages() {
+	for {
+		_, message, err := wss.conn.connection.ReadMessage()
+		if err != nil {
+			_ = wss.conn.connection.Close()
+			if !wss.conn.closing {
+				wss.reconnect()
+				return
+			}
+			return
+		}
+
+		// First message is a confirmation with the subscription id
+		// Ignore this
+		if !wss.confirmed {
+			wss.confirmed = true
+			continue
+		}
+
+		events, ok := wss.manager.ParseResponse(message)
+		if !ok {
+			continue
+		}
+
+		for _, event := range events {
+			wss.events <- event
+		}
+	}
+}
+
+func (wss websocketSubscription) init() {
+	go wss.readMessages()
+
+	err := wss.conn.connection.WriteMessage(websocket.TextMessage, wss.manager.GetTriggerJson())
+	if err != nil {
+		wss.forceClose()
+		return
+	}
+
+	logger.Infof("Connected to %s\n", wss.endpoint)
+}
+
+func (wss websocketSubscription) reconnect() {
+	logger.Warnf("Lost WS connection to %s\nRetrying in %vs", wss.endpoint, 3)
+	time.Sleep(3 * time.Second)
+
+	c, _, err := websocket.DefaultDialer.Dial(wss.endpoint, nil)
+	if err != nil {
+		logger.Error("Reconnect failed:", err)
+		wss.reconnect()
+		return
+	}
+
+	wss.conn.connection = c
+	wss.init()
+}
+
+func (wss WebsocketSubscriber) SubscribeToEvents(channel chan<- Event, _ store.RuntimeConfig) (ISubscription, error) {
+	logger.Infof("Connecting to WS endpoint: %s\n", wss.Endpoint)
+
+	c, _, err := websocket.DefaultDialer.Dial(wss.Endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	subscription := websocketSubscription{
+		conn:      &wsConn{connection: c},
+		events:    channel,
+		confirmed: false,
+		manager:   wss.Manager,
+		endpoint:  wss.Endpoint,
+	}
+	subscription.init()
+
+	return subscription, nil
 }
