@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -37,16 +36,16 @@ type FluxMonitor struct {
 	config FluxMonitorConfig
 
 	// subscriber subscriber.ISubscriber
-
-	adapters []url.URL
-	from     string
-	to       string
-	quitOnce sync.Once
+	latestResult decimal.Decimal
+	adapters     []url.URL
+	from         string
+	to           string
+	// quitOnce     sync.Once
 
 	// chBlockchainEvents chan subscriber.Event
-	// chDeviation chan *decimal.Decimal
+	chDeviation chan decimal.Decimal
 	// chNewround  chan FluxAggregatorState
-	chClose chan struct{}
+	// chClose chan struct{}
 }
 
 func NewFluxMonitor(adapters []url.URL, from string, to string, multiply *big.Int, threshold decimal.Decimal, absoluteThreshold decimal.Decimal, heartbeat time.Duration, pollInterval time.Duration) *FluxMonitor {
@@ -62,37 +61,49 @@ func NewFluxMonitor(adapters []url.URL, from string, to string, multiply *big.In
 			pollInterval:      pollInterval,
 		},
 	}
-	srv.startPoller()
+	go srv.startPoller()
+	srv.hitTrigger()
 	return &srv
 }
 
-// func (fm *FluxMonitor) hitTrigger() {
-// 	timer := time.NewTimer(fm.config.heartbeat)
-// 	defer timer.Stop()
+func (fm *FluxMonitor) hitTrigger() {
+	fm.chDeviation = make(chan decimal.Decimal)
+	ticker := time.NewTicker(fm.config.heartbeat)
+	defer ticker.Stop()
+	for {
 
-// 	select {
-// 	case <-fm.chNewround:
-// 		fmt.Println("new round started")
-// 	case <-fm.chDeviation:
-// 		fmt.Println("hit deviation threshold")
-// 	case <-timer.C:
-// 		fmt.Println("heartbeat")
-// 	case <-fm.chClose:
-// 		fmt.Println("shut down")
-// 	}
-// }
+		select {
+		// case <-fm.chNewround:
+		// 	fmt.Println("New round started")
+		// 	fm.state.currentAnswer = fm.latestResult
+		// 	fmt.Println("New answer: ", fm.state.currentAnswer)
+		case <-fm.chDeviation:
+			logger.Infow("Deviation threshold hit")
+			fm.state.currentAnswer = <-fm.chDeviation
+			logger.Infow("New answer: ", fm.state.currentAnswer)
+		case <-ticker.C:
+			logger.Infow("Heartbeat")
+			// if adapters not working this is going to resubmit an old value
+			fm.state.currentAnswer = fm.latestResult
+			logger.Infow("New answer: ", fm.state.currentAnswer)
+			// 	// case <-fm.chClose:
+			// 	// fmt.Println("shut down")
+		}
+	}
+}
 
 func (fm *FluxMonitor) startPoller() {
+	fm.poll()
 	ticker := time.NewTicker(fm.config.pollInterval)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			fmt.Println("polling adapters")
+			logger.Infow("polling adapters")
 			fm.poll()
-		case <-fm.chClose:
-			fmt.Println("shut down")
+			// case <-fm.chClose:
+			// 	fmt.Println("shut down")
 		}
 	}
 }
@@ -103,7 +114,7 @@ func getAdapterResponse(endpoint url.URL, from string, to string) (*decimal.Deci
 	json_data, err := json.Marshal(values)
 
 	if err != nil {
-		fmt.Println("Marshal error: ", err)
+		logger.Error("Marshal error: ", err)
 		return nil, err
 	}
 
@@ -111,7 +122,7 @@ func getAdapterResponse(endpoint url.URL, from string, to string) (*decimal.Deci
 		bytes.NewBuffer(json_data))
 
 	if err != nil {
-		fmt.Println(err)
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -127,7 +138,7 @@ func getAdapterResponse(endpoint url.URL, from string, to string) (*decimal.Deci
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("ReadAll error: ", err)
+		logger.Error("ReadAll error: ", err)
 		return nil, err
 	}
 
@@ -166,18 +177,17 @@ func (fm *FluxMonitor) poll() {
 	}
 
 	if len(values) <= numSources/2 {
-		fmt.Println("Unable to get values from more than 50% of data sources")
+		logger.Infow("Unable to get values from more than 50% of data sources")
 		return
 	}
 
 	median := calculateMedian(values)
-	fmt.Println("Median: ")
-	fmt.Println(median)
-	if outOfDeviation(fm.state.currentAnswer, median, fm.config.threshold, fm.config.absoluteThreshold) {
-		fm.state.currentAnswer = median
+	fm.latestResult = median
+	logger.Infow("Latest result: ", median)
+	if outOfDeviation(fm.state.currentAnswer, fm.latestResult, fm.config.threshold, fm.config.absoluteThreshold) {
+		fm.chDeviation <- fm.latestResult
 	}
 
-	// fm.chDeviation <- median
 }
 
 func calculateMedian(prices []*decimal.Decimal) decimal.Decimal {
@@ -193,11 +203,11 @@ func calculateMedian(prices []*decimal.Decimal) decimal.Decimal {
 	return (prices[mNumber-1].Add(*prices[mNumber])).Div(decimal.NewFromInt(2))
 }
 
-func (fm *FluxMonitor) stop() {
-	fm.quitOnce.Do(func() {
-		close(fm.chClose)
-	})
-}
+// func (fm *FluxMonitor) stop() {
+// 	fm.quitOnce.Do(func() {
+// 		close(fm.chClose)
+// 	})
+// }
 
 func outOfDeviation(currentAnswer, nextAnswer, percentageThreshold, absoluteThreshold decimal.Decimal) bool {
 	loggerFields := []interface{}{
