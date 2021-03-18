@@ -109,7 +109,7 @@ func NewJsonrpcMessage(nonce uint64, method string, params json.RawMessage) ([]b
 // JsonManager holds the interface for generating blockchain
 // specific payloads and parsing the response for the
 // appropriate blockchain.
-type JsonManagerNew interface {
+type BlockchainManager interface {
 	GetSubscribeParams(t string, params ...interface{}) (method string, requestParams json.RawMessage)
 	ParseNotification(payload json.RawMessage) (response interface{}, ok bool)
 	GetRequestParams(t string) (method string, params json.RawMessage)
@@ -119,9 +119,9 @@ type JsonManagerNew interface {
 // ISubscriber holds the interface for interacting with a blockchain node
 type ISubscriberNew interface {
 	// Subscribe to events of type t. Events are pushed to ch.
-	Subscribe(t string, ch chan<- interface{}, params ...interface{}) error
+	Subscribe(method string, params json.RawMessage, ch chan<- interface{}) (unsubscribe func(), err error)
 	// Request data of type t.
-	Request(t string, params ...interface{}) (interface{}, error)
+	Request(method string, params json.RawMessage) (result interface{}, err error)
 	// Stop the subscriber and close all connections
 	Stop()
 }

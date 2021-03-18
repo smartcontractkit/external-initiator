@@ -24,6 +24,8 @@ require (
 	github.com/pierrec/xxHash v0.1.5 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.8.0
+	github.com/satori/go.uuid v1.2.0
+	github.com/shopspring/decimal v1.2.0
 	github.com/smartcontractkit/chainlink v0.9.5-0.20201214122441-66aaea171293
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/viper v1.7.1
@@ -32,8 +34,11 @@ require (
 	github.com/tendermint/tendermint v0.34.0
 	github.com/tidwall/gjson v1.6.3
 	go.uber.org/atomic v1.7.0
+	go.uber.org/multierr v1.6.0
 	go.uber.org/zap v1.16.0
 	google.golang.org/grpc v1.33.2
 	gopkg.in/gormigrate.v1 v1.6.0
+	gopkg.in/guregu/null.v4 v4.0.0
+	gorm.io/gorm v1.21.3
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )

@@ -1,87 +1,159 @@
 package services
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/big"
+	"net/http"
 	"net/url"
-	"sync"
+	"sort"
 	"time"
 
-	"github.com/smartcontractkit/external-initiator/subscriber"
+	"github.com/shopspring/decimal"
 )
 
-type fluxAggregatorState struct {
-	currentAnswer *big.Int
+type FluxAggregatorState struct {
+	currentAnswer decimal.Decimal
 }
 
-type fluxMonitorConfig struct {
-	multiply  *big.Int
-	threshold *big.Int
-	heartbeat time.Duration
+type FluxMonitorConfig struct {
+	multiply          *big.Int
+	threshold         decimal.Decimal
+	absoluteThreshold decimal.Decimal
+	heartbeat         time.Duration
+	pollInterval      time.Duration
 }
 
+type AdapterResponse struct {
+	Price decimal.Decimal `json:"result"`
+}
 type FluxMonitor struct {
-	state  fluxAggregatorState
-	config fluxMonitorConfig
+	state  FluxAggregatorState
+	config FluxMonitorConfig
 
-	subscriber subscriber.ISubscriber
+	// subscriber subscriber.ISubscriber
 
 	adapters []url.URL
+	from     string
+	to       string
+	// quitOnce sync.Once
 
-	quitOnce sync.Once
-
-	chBlockchainEvents chan subscriber.Event
-	chDeviation        chan *big.Int
-	chNewround         chan fluxAggregatorState
-	chClose            chan struct{}
+	// chBlockchainEvents chan subscriber.Event
+	// chDeviation chan *decimal.Decimal
+	// chNewround  chan FluxAggregatorState
+	// chClose     chan struct{}
 }
 
-func NewFluxMonitor(subscriber subscriber.ISubscriber) (*FluxMonitor, error) {
-	return nil, nil
-}
-
-func (fm *FluxMonitor) hitTrigger() {
-	timer := time.NewTimer(fm.config.heartbeat)
-	defer timer.Stop()
-
-	select {
-	case <-fm.chNewround:
-		fmt.Println("new round started")
-	case <-fm.chDeviation:
-		fmt.Println("hit deviation threshold")
-	case <-timer.C:
-		fmt.Println("heartbeat")
-	case <-fm.chClose:
-		fmt.Println("shut down")
+func NewFluxMonitor(adapters []url.URL, from string, to string, multiply *big.Int, threshold decimal.Decimal, absoluteThreshold decimal.Decimal, heartbeat time.Duration, pollInterval time.Duration) *FluxMonitor {
+	srv := FluxMonitor{
+		adapters: adapters,
+		from:     from,
+		to:       to,
+		config: FluxMonitorConfig{
+			multiply:          multiply,
+			threshold:         threshold,
+			absoluteThreshold: absoluteThreshold,
+			heartbeat:         heartbeat,
+			pollInterval:      pollInterval,
+		},
 	}
+	srv.startPoller()
+	return &srv
 }
 
-func (fm *FluxMonitor) startPoller(pollInterval time.Duration) {
-	ticker := time.NewTicker(pollInterval)
+// func (fm *FluxMonitor) hitTrigger() {
+// 	timer := time.NewTimer(fm.config.heartbeat)
+// 	defer timer.Stop()
+
+// 	select {
+// 	case <-fm.chNewround:
+// 		fmt.Println("new round started")
+// 	case <-fm.chDeviation:
+// 		fmt.Println("hit deviation threshold")
+// 	case <-timer.C:
+// 		fmt.Println("heartbeat")
+// 	case <-fm.chClose:
+// 		fmt.Println("shut down")
+// 	}
+// }
+
+func (fm *FluxMonitor) startPoller() {
+	ticker := time.NewTicker(fm.config.pollInterval)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			fmt.Println("do poll")
-		case <-fm.chClose:
-			fmt.Println("shut down")
+			fmt.Println("polling adapters")
+			fm.poll()
+			// case <-fm.chClose:
+			// 	fmt.Println("shut down")
 		}
 	}
 }
 
+func getAdapterResponse(endpoint url.URL, from string, to string) (*decimal.Decimal, error) {
+	data := map[string]string{"from": from, "to": to}
+	values := map[string]interface{}{"id": "0", "data": data}
+	json_data, err := json.Marshal(values)
+
+	if err != nil {
+		fmt.Println("Marshal error: ", err)
+		return nil, err
+	}
+
+	resp, err := http.Post(endpoint.String(), "application/json",
+		bytes.NewBuffer(json_data))
+
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode == 400 {
+		return nil, fmt.Errorf("%s returned 400", endpoint.String())
+	}
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("unexpected status code %v from endpoint %s", resp.StatusCode, endpoint.String())
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("ReadAll error: ", err)
+		return nil, err
+	}
+
+	var response AdapterResponse
+	err = json.Unmarshal(body, &response)
+
+	if err != nil {
+		fmt.Println("Unmarshal error: ", err)
+		return nil, err
+	}
+
+	fmt.Println(response.Price)
+
+	return &response.Price, nil
+
+}
+
 func (fm *FluxMonitor) poll() {
 	numSources := len(fm.adapters)
-	ch := make(chan *big.Int)
+	ch := make(chan *decimal.Decimal)
 	for _, adapter := range fm.adapters {
 		go func(adapter url.URL) {
-			// Poll the adapter
 			fmt.Println(adapter.String())
-			ch <- big.NewInt(123)
+			var price, _ = getAdapterResponse(adapter, fm.from, fm.to)
+			ch <- price
 		}(adapter)
 	}
 
-	var values []*big.Int
+	var values []*decimal.Decimal
 	for i := 0; i < numSources; i++ {
 		val := <-ch
 		if val == nil {
@@ -90,78 +162,46 @@ func (fm *FluxMonitor) poll() {
 		values = append(values, val)
 	}
 
-	if len(values) < numSources/2 {
+	if len(values) <= numSources/2 {
 		fmt.Println("Unable to get values from more than 50% of data sources")
 		return
 	}
 
-	median := getMedian(values)
-	percDifference := getDifference(new(big.Int).Div(fm.state.currentAnswer, fm.config.multiply), median)
-	if percDifference.Cmp(fm.config.threshold) <= 0 {
-		return
-	}
+	median := calculateMedian(values)
+	fmt.Println("Median: ")
+	fmt.Println(median)
+	fm.state.currentAnswer = median
+	// percDifference := getDifference(new(big.Int).Div(fm.state.currentAnswer, fm.config.multiply), median)
+	// if percDifference.Cmp(fm.config.threshold) <= 0 {
+	// 	return
+	// }
 
-	fm.chDeviation <- median
+	// fm.chDeviation <- median
 }
 
-func (fm *FluxMonitor) stop() {
-	fm.quitOnce.Do(func() {
-		close(fm.chClose)
+func calculateMedian(prices []*decimal.Decimal) decimal.Decimal {
+	sort.Slice(prices, func(i, j int) bool {
+		return (*prices[i]).LessThan(*prices[j])
 	})
+	mNumber := len(prices) / 2
+
+	if len(prices)%2 == 1 {
+		return *prices[mNumber]
+	}
+
+	return (prices[mNumber-1].Add(*prices[mNumber])).Div(decimal.NewFromInt(2))
 }
 
-func quicksortBigint(valsRef *[]*big.Int) {
-	vals := *valsRef
-	if len(vals) < 1 {
-		return
-	}
+// func (fm *FluxMonitor) stop() {
+// 	fm.quitOnce.Do(func() {
+// 		close(fm.chClose)
+// 	})
+// }
 
-	pivotIndex := len(vals) / 2
-	var smallerItems []*big.Int
-	var largerItems []*big.Int
+// func getDifference(v1 *decimal.Decimal, v2 *decimal.Decimal) *decimal.Decimal {
+// 	absDiff := new(decimal.Decimal).Abs(new(decimal.Decimal).Sub(*v1, *v2))
+// 	total := new(decimal.Decimal).Add(*v1, *v2)
 
-	for i, val := range vals {
-		if i == pivotIndex {
-			continue
-		}
-		if val.Cmp(vals[pivotIndex]) < 0 {
-			smallerItems = append(smallerItems, val)
-		} else {
-			largerItems = append(largerItems, val)
-		}
-	}
-
-	quicksortBigint(&smallerItems)
-	quicksortBigint(&largerItems)
-
-	merged := append(append(smallerItems, vals[pivotIndex]), largerItems...)
-	for i := 0; i < len(vals); i++ {
-		vals[i] = merged[i]
-	}
-
-	valsRef = &vals
-}
-
-func getMedian(vals []*big.Int) *big.Int {
-	if len(vals) < 1 {
-		return nil
-	}
-
-	quicksortBigint(&vals)
-
-	middleIndex := len(vals) / 2
-
-	if len(vals)%2 != 0 {
-		return vals[middleIndex]
-	}
-
-	return new(big.Int).Div(new(big.Int).Add(vals[middleIndex-1], vals[middleIndex]), big.NewInt(2))
-}
-
-func getDifference(v1 *big.Int, v2 *big.Int) *big.Int {
-	absDiff := new(big.Int).Abs(new(big.Int).Sub(v1, v2))
-	total := new(big.Int).Add(v1, v2)
-
-	percDiff := new(big.Int).Div(absDiff, new(big.Int).Div(total, big.NewInt(2)))
-	return new(big.Int).Mul(percDiff, big.NewInt(100))
-}
+// 	percDiff := new(decimal.Decimal).Div(absDiff, new(decimal.Decimal).Div(total, decimal.NewFromInt(2)))
+// 	return new(decimal.Decimal).Mul(percDiff, decimal.NewFromInt(100))
+// }

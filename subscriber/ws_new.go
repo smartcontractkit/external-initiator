@@ -168,7 +168,7 @@ func (wsc *websocketConnection) close() {
 // a not-yet-active WS subscription.
 type WebsocketSubscriberNew struct {
 	endpoint string
-	manager  JsonManagerNew
+	manager  BlockchainManager
 
 	wsc *websocketConnection
 
