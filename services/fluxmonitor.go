@@ -9,9 +9,11 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/shopspring/decimal"
+	"github.com/smartcontractkit/chainlink/core/logger"
 )
 
 type FluxAggregatorState struct {
@@ -28,6 +30,7 @@ type FluxMonitorConfig struct {
 
 type AdapterResponse struct {
 	Price decimal.Decimal `json:"result"`
+	// might need error response as well
 }
 type FluxMonitor struct {
 	state  FluxAggregatorState
@@ -38,12 +41,12 @@ type FluxMonitor struct {
 	adapters []url.URL
 	from     string
 	to       string
-	// quitOnce sync.Once
+	quitOnce sync.Once
 
 	// chBlockchainEvents chan subscriber.Event
 	// chDeviation chan *decimal.Decimal
 	// chNewround  chan FluxAggregatorState
-	// chClose     chan struct{}
+	chClose chan struct{}
 }
 
 func NewFluxMonitor(adapters []url.URL, from string, to string, multiply *big.Int, threshold decimal.Decimal, absoluteThreshold decimal.Decimal, heartbeat time.Duration, pollInterval time.Duration) *FluxMonitor {
@@ -88,8 +91,8 @@ func (fm *FluxMonitor) startPoller() {
 		case <-ticker.C:
 			fmt.Println("polling adapters")
 			fm.poll()
-			// case <-fm.chClose:
-			// 	fmt.Println("shut down")
+		case <-fm.chClose:
+			fmt.Println("shut down")
 		}
 	}
 }
@@ -170,11 +173,9 @@ func (fm *FluxMonitor) poll() {
 	median := calculateMedian(values)
 	fmt.Println("Median: ")
 	fmt.Println(median)
-	fm.state.currentAnswer = median
-	// percDifference := getDifference(new(big.Int).Div(fm.state.currentAnswer, fm.config.multiply), median)
-	// if percDifference.Cmp(fm.config.threshold) <= 0 {
-	// 	return
-	// }
+	if outOfDeviation(fm.state.currentAnswer, median, fm.config.threshold, fm.config.absoluteThreshold) {
+		fm.state.currentAnswer = median
+	}
 
 	// fm.chDeviation <- median
 }
@@ -192,16 +193,53 @@ func calculateMedian(prices []*decimal.Decimal) decimal.Decimal {
 	return (prices[mNumber-1].Add(*prices[mNumber])).Div(decimal.NewFromInt(2))
 }
 
-// func (fm *FluxMonitor) stop() {
-// 	fm.quitOnce.Do(func() {
-// 		close(fm.chClose)
-// 	})
-// }
+func (fm *FluxMonitor) stop() {
+	fm.quitOnce.Do(func() {
+		close(fm.chClose)
+	})
+}
 
-// func getDifference(v1 *decimal.Decimal, v2 *decimal.Decimal) *decimal.Decimal {
-// 	absDiff := new(decimal.Decimal).Abs(new(decimal.Decimal).Sub(*v1, *v2))
-// 	total := new(decimal.Decimal).Add(*v1, *v2)
+func outOfDeviation(currentAnswer, nextAnswer, percentageThreshold, absoluteThreshold decimal.Decimal) bool {
+	loggerFields := []interface{}{
+		"threshold", percentageThreshold,
+		"absoluteThreshold", absoluteThreshold,
+		"currentAnswer", currentAnswer,
+		"nextAnswer", nextAnswer,
+	}
+	logger.Infow(
+		"Deviation checker ", loggerFields...)
+	if absoluteThreshold == decimal.NewFromInt(0) && percentageThreshold == decimal.NewFromInt(0) {
+		logger.Debugw(
+			"Deviation thresholds both zero; short-circuiting deviation checker to "+
+				"true, regardless of feed values", loggerFields...)
+		return true
+	}
 
-// 	percDiff := new(decimal.Decimal).Div(absDiff, new(decimal.Decimal).Div(total, decimal.NewFromInt(2)))
-// 	return new(decimal.Decimal).Mul(percDiff, decimal.NewFromInt(100))
-// }
+	diff := currentAnswer.Sub(nextAnswer).Abs()
+
+	if !diff.GreaterThan(absoluteThreshold) {
+		logger.Debugw("Absolute deviation threshold not met", loggerFields...)
+		return false
+	}
+
+	if currentAnswer.IsZero() {
+		if nextAnswer.IsZero() {
+			logger.Debugw("Relative deviation is undefined; can't satisfy threshold", loggerFields...)
+			return false
+		}
+		logger.Infow("Threshold met: relative deviation is ∞", loggerFields...)
+		return true
+	}
+
+	// 100*|new-old|/|old|: Deviation (relative to curAnswer) as a percentage
+	percentage := diff.Div(currentAnswer.Abs()).Mul(decimal.NewFromInt(100))
+
+	loggerFields = append(loggerFields, "percentage", percentage)
+
+	if percentage.LessThan(percentageThreshold) {
+		logger.Debugw("Relative deviation threshold not met", loggerFields...)
+		return false
+	}
+	logger.Infow("Relative and absolute deviation thresholds both met", loggerFields...)
+	return true
+}
