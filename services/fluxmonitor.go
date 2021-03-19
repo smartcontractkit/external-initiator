@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"math/big"
 	"net/http"
 	"net/url"
 	"sort"
@@ -20,7 +19,7 @@ type FluxAggregatorState struct {
 }
 
 type FluxMonitorConfig struct {
-	multiply          *big.Int
+	multiply          int64
 	threshold         decimal.Decimal
 	absoluteThreshold decimal.Decimal
 	heartbeat         time.Duration
@@ -48,7 +47,7 @@ type FluxMonitor struct {
 	// chClose chan struct{}
 }
 
-func NewFluxMonitor(adapters []url.URL, from string, to string, multiply *big.Int, threshold decimal.Decimal, absoluteThreshold decimal.Decimal, heartbeat time.Duration, pollInterval time.Duration) *FluxMonitor {
+func NewFluxMonitor(adapters []url.URL, from string, to string, multiply int64, threshold decimal.Decimal, absoluteThreshold decimal.Decimal, heartbeat time.Duration, pollInterval time.Duration) *FluxMonitor {
 	srv := FluxMonitor{
 		adapters: adapters,
 		from:     from,
