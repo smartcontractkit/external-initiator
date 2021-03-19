@@ -35,6 +35,8 @@ type storeInterface interface {
 	SaveSubscription(arg *store.Subscription) error
 	DeleteSubscription(subscription *store.Subscription) error
 	SaveEndpoint(e *store.Endpoint) error
+	SaveJobSpec(arg *store.JobSpec) error
+	LoadJobSpec(jobid string) (*store.JobSpec, error)
 }
 
 // startService runs the Service in the background and gracefully stops when a
@@ -267,6 +269,21 @@ func (srv *Service) subscribe(sub *store.Subscription, iSubscriber subscriber.IS
 	}()
 
 	return nil
+}
+
+func (srv *Service) SaveJobSpec(arg *store.JobSpec) error {
+	if err := srv.store.SaveJobSpec(arg); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (srv *Service) LoadJobSpec(jobid string) (*store.JobSpec, error) {
+	jobspec, err := srv.store.LoadJobSpec(jobid)
+	if err != nil {
+		return nil, err
+	}
+	return jobspec, nil
 }
 
 // SaveSubscription tests, stores and subscribes to the store.Subscription

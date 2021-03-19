@@ -30,6 +30,8 @@ type subscriptionStorer interface {
 	DeleteJob(jobid string) error
 	GetEndpoint(name string) (*store.Endpoint, error)
 	SaveEndpoint(endpoint *store.Endpoint) error
+	SaveJobSpec(arg *store.JobSpec) error
+	LoadJobSpec(jobid string) (*store.JobSpec, error)
 }
 
 func init() {
@@ -158,6 +160,17 @@ func (srv *HttpService) CreateSubscription(c *gin.Context) {
 	if err := c.BindJSON(&req); err != nil {
 		logger.Error(err)
 		c.JSON(http.StatusBadRequest, nil)
+		return
+	}
+
+	js := &store.JobSpec{
+		Job:  req.JobID,
+		Spec: req.Params.FluxMonitor,
+	}
+
+	if err := srv.Store.SaveJobSpec(js); err != nil {
+		logger.Error(err)
+		c.JSON(http.StatusInternalServerError, nil)
 		return
 	}
 

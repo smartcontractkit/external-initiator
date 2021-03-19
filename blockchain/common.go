@@ -61,7 +61,7 @@ type Params struct {
 	UpkeepID    string          `json:"upkeepId"`
 	ServiceName string          `json:"serviceName"`
 	From        string          `json:"from"`
-	FluxMonitor json.RawMessage `json:"fm"`
+	FluxMonitor json.RawMessage `json:"fluxmonitor"`
 }
 
 // CreateJsonManager creates a new instance of a JSON blockchain manager with the provided
@@ -151,7 +151,7 @@ func GetValidations(t string, params Params) []int {
 		}
 	case Substrate:
 		return []int{
-			len(params.AccountIds),
+			len(params.AccountIds) + len(params.FluxMonitor),
 		}
 	case ONT:
 		return []int{
@@ -222,6 +222,7 @@ func ParseFMSpec(jsonSpec json.RawMessage) FluxMonitorSpec {
 
 func CreateSubscription(sub *store.Subscription, params Params) {
 	fmt.Println("Testing FM Spec !")
+	fmt.Println(params.FluxMonitor)
 	fmSpec := ParseFMSpec(params.FluxMonitor)
 	services.NewFluxMonitor(fmSpec.adapters, fmSpec.from, fmSpec.to, fmSpec.multiply, fmSpec.threshold, fmSpec.absoluteThreshold, fmSpec.heartbeat, fmSpec.pollInterval)
 	switch sub.Endpoint.Type {

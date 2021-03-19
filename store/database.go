@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"database/sql/driver"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -189,6 +190,25 @@ func (client Client) LoadSubscriptions() ([]Subscription, error) {
 	return subs, nil
 }
 
+func (client Client) LoadJobSpec(jobid string) (*JobSpec, error) {
+	var js JobSpec
+	err := client.db.Where("job = ?", jobid).First(&js).Error
+	return &js, err
+}
+
+// SaveJobSpec will store the JobSpec in the database.
+func (client Client) SaveJobSpec(js *JobSpec) error {
+	if err := client.db.Create(js).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+// DeleteJobSpec will soft-delete the JobSpec provided.
+func (client Client) DeleteJobSpec(js *JobSpec) error {
+	return client.db.Delete(js).Error
+}
+
 func (client Client) LoadSubscription(jobid string) (*Subscription, error) {
 	var sub Subscription
 	if err := client.db.Where("job = ?", jobid).First(&sub).Error; err != nil {
@@ -366,4 +386,10 @@ type BSNIritaSubscription struct {
 type AgoricSubscription struct {
 	gorm.Model
 	SubscriptionId uint
+}
+
+type JobSpec struct {
+	gorm.Model
+	Job  string
+	Spec json.RawMessage
 }
