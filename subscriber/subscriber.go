@@ -74,9 +74,9 @@ type JsonManager interface {
 // ISubscriber holds the interface for interacting with a blockchain node
 type ISubscriber interface {
 	// Subscribe to events of type t. Events are pushed to ch.
-	Subscribe(t string, ch chan<- interface{}, params ...interface{}) error
+	Subscribe(method string, params json.RawMessage, responses chan<- []byte) (func(), error)
 	// Request data of type t.
-	Request(t string, params ...interface{}) (interface{}, error)
+	Request(method string, params json.RawMessage) ([]byte, error)
 	// Stop the subscriber and close all connections
 	Stop()
 }

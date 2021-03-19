@@ -8,7 +8,7 @@ require (
 	github.com/FactomProject/basen v0.0.0-20150613233007-fe3947df716e // indirect
 	github.com/avast/retry-go v2.6.0+incompatible
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869
-	github.com/centrifuge/go-substrate-rpc-client v2.0.0+incompatible
+	github.com/centrifuge/go-substrate-rpc-client/v2 v2.1.0
 	github.com/cmars/basen v0.0.0-20150613233007-fe3947df716e // indirect
 	github.com/ethereum/go-ethereum v1.9.25
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a
@@ -21,19 +21,18 @@ require (
 	github.com/magiconair/properties v1.8.1
 	github.com/mattn/go-sqlite3 v2.0.1+incompatible // indirect
 	github.com/ontio/ontology-go-sdk v1.11.1
-	github.com/pierrec/xxHash v0.1.5 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.8.0
 	github.com/smartcontractkit/chainlink v0.9.5-0.20201214122441-66aaea171293
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/objx v0.2.0 // indirect
-	github.com/stretchr/testify v1.6.1
-	github.com/tendermint/tendermint v0.34.0
+	github.com/stretchr/testify v1.7.0
+	github.com/tendermint/tendermint v0.34.8
 	github.com/tidwall/gjson v1.6.3
 	go.uber.org/atomic v1.7.0
 	go.uber.org/zap v1.16.0
-	google.golang.org/grpc v1.33.2
+	google.golang.org/grpc v1.35.0
 	gopkg.in/gormigrate.v1 v1.6.0
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
