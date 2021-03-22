@@ -200,7 +200,7 @@ func (srv *HttpService) CreateSubscription(c *gin.Context) {
 	}
 
 	blockchain.CreateSubscription(sub, req.Params)
-
+	fmt.Println("Before saving the subscription")
 	if err := srv.Store.SaveSubscription(sub); err != nil {
 		logger.Error(err)
 		c.JSON(http.StatusInternalServerError, nil)

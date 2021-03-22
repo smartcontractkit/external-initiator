@@ -12,18 +12,41 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/smartcontractkit/chainlink/core/logger"
+	"github.com/tidwall/gjson"
 )
+
+type FluxMonitorConfig struct {
+	Adapters          []url.URL
+	From              string
+	To                string
+	Multiply          int64
+	Threshold         decimal.Decimal
+	AbsoluteThreshold decimal.Decimal
+	Heartbeat         time.Duration
+	PollInterval      time.Duration
+}
+
+func ParseFMSpec(jsonSpec json.RawMessage) FluxMonitorConfig {
+	var fmConfig FluxMonitorConfig
+	res := gjson.GetBytes(jsonSpec, "feeds.#.url")
+	var adapters []url.URL
+	for _, adapter := range res.Array() {
+		url, _ := url.Parse(adapter.String())
+		adapters = append(adapters, *url)
+	}
+	fmConfig.Adapters = adapters
+	fmConfig.From = gjson.GetBytes(jsonSpec, "requestData.data.from").String()
+	fmConfig.To = gjson.GetBytes(jsonSpec, "requestData.data.to").String()
+	fmConfig.Multiply = gjson.GetBytes(jsonSpec, "precision").Int()
+	fmConfig.Threshold, _ = decimal.NewFromString(gjson.GetBytes(jsonSpec, "threshold").String())
+	fmConfig.AbsoluteThreshold, _ = decimal.NewFromString(gjson.GetBytes(jsonSpec, "absoluteThreshold").String())
+	fmConfig.Heartbeat, _ = time.ParseDuration(gjson.GetBytes(jsonSpec, "idleTimer.duration").String())
+	fmConfig.PollInterval, _ = time.ParseDuration(gjson.GetBytes(jsonSpec, "pollTimer.period").String())
+	return fmConfig
+}
 
 type FluxAggregatorState struct {
 	currentAnswer decimal.Decimal
-}
-
-type FluxMonitorConfig struct {
-	multiply          int64
-	threshold         decimal.Decimal
-	absoluteThreshold decimal.Decimal
-	heartbeat         time.Duration
-	pollInterval      time.Duration
 }
 
 type AdapterResponse struct {
@@ -36,9 +59,7 @@ type FluxMonitor struct {
 
 	// subscriber subscriber.ISubscriber
 	latestResult decimal.Decimal
-	adapters     []url.URL
-	from         string
-	to           string
+
 	// quitOnce     sync.Once
 
 	// chBlockchainEvents chan subscriber.Event
@@ -47,27 +68,18 @@ type FluxMonitor struct {
 	// chClose chan struct{}
 }
 
-func NewFluxMonitor(adapters []url.URL, from string, to string, multiply int64, threshold decimal.Decimal, absoluteThreshold decimal.Decimal, heartbeat time.Duration, pollInterval time.Duration) *FluxMonitor {
+func NewFluxMonitor(config FluxMonitorConfig, triggerJobRun chan decimal.Decimal) *FluxMonitor {
 	srv := FluxMonitor{
-		adapters: adapters,
-		from:     from,
-		to:       to,
-		config: FluxMonitorConfig{
-			multiply:          multiply,
-			threshold:         threshold,
-			absoluteThreshold: absoluteThreshold,
-			heartbeat:         heartbeat,
-			pollInterval:      pollInterval,
-		},
+		config: config,
 	}
 	go srv.startPoller()
-	srv.hitTrigger()
+	srv.hitTrigger(triggerJobRun)
 	return &srv
 }
 
-func (fm *FluxMonitor) hitTrigger() {
+func (fm *FluxMonitor) hitTrigger(triggerJobRun chan decimal.Decimal) {
 	fm.chDeviation = make(chan decimal.Decimal)
-	ticker := time.NewTicker(fm.config.heartbeat)
+	ticker := time.NewTicker(fm.config.Heartbeat)
 	defer ticker.Stop()
 	for {
 
@@ -79,11 +91,14 @@ func (fm *FluxMonitor) hitTrigger() {
 		case <-fm.chDeviation:
 			logger.Infow("Deviation threshold hit")
 			fm.state.currentAnswer = <-fm.chDeviation
+			triggerJobRun <- fm.state.currentAnswer
 			logger.Infow("New answer: ", fm.state.currentAnswer)
 		case <-ticker.C:
 			logger.Infow("Heartbeat")
 			// if adapters not working this is going to resubmit an old value
 			fm.state.currentAnswer = fm.latestResult
+			triggerJobRun <- fm.state.currentAnswer
+
 			logger.Infow("New answer: ", fm.state.currentAnswer)
 			// 	// case <-fm.chClose:
 			// 	// fmt.Println("shut down")
@@ -93,7 +108,7 @@ func (fm *FluxMonitor) hitTrigger() {
 
 func (fm *FluxMonitor) startPoller() {
 	fm.poll()
-	ticker := time.NewTicker(fm.config.pollInterval)
+	ticker := time.NewTicker(fm.config.PollInterval)
 	defer ticker.Stop()
 
 	for {
@@ -156,12 +171,12 @@ func getAdapterResponse(endpoint url.URL, from string, to string) (*decimal.Deci
 }
 
 func (fm *FluxMonitor) poll() {
-	numSources := len(fm.adapters)
+	numSources := len(fm.config.Adapters)
 	ch := make(chan *decimal.Decimal)
-	for _, adapter := range fm.adapters {
+	for _, adapter := range fm.config.Adapters {
 		go func(adapter url.URL) {
 			fmt.Println(adapter.String())
-			var price, _ = getAdapterResponse(adapter, fm.from, fm.to)
+			var price, _ = getAdapterResponse(adapter, fm.config.From, fm.config.To)
 			ch <- price
 		}(adapter)
 	}
@@ -183,7 +198,7 @@ func (fm *FluxMonitor) poll() {
 	median := calculateMedian(values)
 	fm.latestResult = median
 	logger.Infow("Latest result: ", median)
-	if outOfDeviation(fm.state.currentAnswer, fm.latestResult, fm.config.threshold, fm.config.absoluteThreshold) {
+	if outOfDeviation(fm.state.currentAnswer, fm.latestResult, fm.config.Threshold, fm.config.AbsoluteThreshold) {
 		fm.chDeviation <- fm.latestResult
 	}
 

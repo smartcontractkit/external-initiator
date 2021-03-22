@@ -1,6 +1,8 @@
 package client
 
 import (
+	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -12,9 +14,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/shopspring/decimal"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/blockchain"
 	"github.com/smartcontractkit/external-initiator/chainlink"
+	"github.com/smartcontractkit/external-initiator/services"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 )
@@ -153,6 +157,7 @@ func NewService(
 
 // Run loads subscriptions, validates and subscribes to them.
 func (srv *Service) Run() error {
+
 	subs, err := srv.store.LoadSubscriptions()
 	if err != nil {
 		return err
@@ -186,9 +191,9 @@ func (srv *Service) getAndTestSubscription(sub *store.Subscription) (subscriber.
 		return nil, err
 	}
 
-	if err := iSubscriber.Test(); err != nil {
-		return nil, errors.Wrap(err, "Failed testing subscriber")
-	}
+	// if err := iSubscriber.Test(); err != nil {
+	// 	return nil, errors.Wrap(err, "Failed testing subscriber")
+	// }
 
 	return iSubscriber, nil
 }
@@ -229,38 +234,47 @@ func (srv *Service) subscribe(sub *store.Subscription, iSubscriber subscriber.IS
 		return errors.New("already subscribed to this jobid")
 	}
 
-	events := make(chan subscriber.Event)
+	// events := make(chan subscriber.Event)
 
-	subscription, err := iSubscriber.SubscribeToEvents(events, srv.runtimeConfig)
+	// subscription, err := iSubscriber.SubscribeToEvents(events, srv.runtimeConfig)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// as := &activeSubscription{
+	// 	Subscription: sub,
+	// 	Interface:    subscription,
+	// 	Events:       events,
+	// 	Node:         srv.clNode,
+	// }
+	// srv.subscriptions[sub.Job] = as
+
+	// counter := promActiveSubscriptions.With(prometheus.Labels{"endpoint": sub.EndpointName})
+	// counter.Inc()
+
+	js, err := srv.store.LoadJobSpec(sub.Job)
 	if err != nil {
-		return err
+		return nil
 	}
-
-	as := &activeSubscription{
-		Subscription: sub,
-		Interface:    subscription,
-		Events:       events,
-		Node:         srv.clNode,
-	}
-	srv.subscriptions[sub.Job] = as
-
-	counter := promActiveSubscriptions.With(prometheus.Labels{"endpoint": sub.EndpointName})
-	counter.Inc()
+	logger.Infow("Starting FluxMonitor for Job: ", js.Job)
+	fmConfig := services.ParseFMSpec(js.Spec)
+	triggerJobRun := make(chan decimal.Decimal)
+	go services.NewFluxMonitor(fmConfig, triggerJobRun)
 
 	go func() {
-		defer counter.Dec()
+		// defer counter.Dec()
 
 		// Add a second of delay to let services (Chainlink core)
 		// sync up before sending the first job run trigger.
 		time.Sleep(1 * time.Second)
 
 		for {
-			event, ok := <-as.Events
-			if !ok {
-				return
-			}
+			// we should send here event from FluxMonitor
+			trigger := <-triggerJobRun
 			go func() {
-				err := as.Node.TriggerJob(as.Subscription.Job, event)
+				data := new(bytes.Buffer)
+				binary.Write(data, binary.LittleEndian, trigger)
+				err := srv.clNode.TriggerJob(sub.Job, data.Bytes())
 				if err != nil {
 					logger.Error("Failed sending job run trigger: ", err)
 				}

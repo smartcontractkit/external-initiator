@@ -8,15 +8,10 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/shopspring/decimal"
-	"github.com/smartcontractkit/external-initiator/services"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
-
-	"github.com/tidwall/gjson"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -188,43 +183,10 @@ func GetValidations(t string, params Params) []int {
 	return nil
 }
 
-//import this from services? still not created there, maybe constructor struct
-type FluxMonitorSpec struct {
-	adapters          []url.URL
-	from              string
-	to                string
-	multiply          int64
-	threshold         decimal.Decimal
-	absoluteThreshold decimal.Decimal
-	heartbeat         time.Duration
-	pollInterval      time.Duration
-}
-
-// might need to moved as well?
-func ParseFMSpec(jsonSpec json.RawMessage) FluxMonitorSpec {
-	var fmConfig FluxMonitorSpec
-	res := gjson.GetBytes(jsonSpec, "feeds.#.bridge")
-	var adapters []url.URL
-	for _, adapter := range res.Array() {
-		url, _ := url.Parse(adapter.String())
-		adapters = append(adapters, *url)
-	}
-	fmConfig.adapters = adapters
-	fmConfig.from = gjson.GetBytes(jsonSpec, "requestData.data.from").String()
-	fmConfig.to = gjson.GetBytes(jsonSpec, "requestData.data.to").String()
-	fmConfig.multiply = gjson.GetBytes(jsonSpec, "precision").Int()
-	fmConfig.threshold, _ = decimal.NewFromString(gjson.GetBytes(jsonSpec, "threshold").String())
-	fmConfig.absoluteThreshold, _ = decimal.NewFromString(gjson.GetBytes(jsonSpec, "absoluteThreshold").String())
-	fmConfig.heartbeat, _ = time.ParseDuration(gjson.GetBytes(jsonSpec, "idleTimer.duration").String())
-	fmConfig.pollInterval, _ = time.ParseDuration(gjson.GetBytes(jsonSpec, "pollTimer.period").String())
-	return fmConfig
-}
-
 func CreateSubscription(sub *store.Subscription, params Params) {
-	fmt.Println("Testing FM Spec !")
-	fmt.Println(params.FluxMonitor)
-	fmSpec := ParseFMSpec(params.FluxMonitor)
-	services.NewFluxMonitor(fmSpec.adapters, fmSpec.from, fmSpec.to, fmSpec.multiply, fmSpec.threshold, fmSpec.absoluteThreshold, fmSpec.heartbeat, fmSpec.pollInterval)
+	// fmConfig := services.ParseFMSpec(params.FluxMonitor)
+	// go services.NewFluxMonitor(fmConfig)
+	// FM probably needs to get started at createsubscription too. Check how to handle this.
 	switch sub.Endpoint.Type {
 	case ETH, HMY, IOTX:
 		sub.Ethereum = store.EthSubscription{
