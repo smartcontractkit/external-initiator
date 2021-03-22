@@ -285,7 +285,7 @@ func (sm substrateManager) oracleIsEligibleToSubmit() bool {
 		return false
 	}
 
-	return oracleStatus.Ending_Round == nil
+	return oracleStatus.Ending_Round.IsNone()
 }
 
 func (sm substrateManager) SubscribeToFluxMonitor(ch chan<- interface{}) error {
@@ -383,10 +383,9 @@ func (sm substrateManager) subscribeOraclePermissions(ch chan<- interface{}) err
 func (sm substrateManager) subscribeRoundDetailsUpdate(ch chan<- interface{}) error {
 	return sm.subscribe("RoundDetailsUpdated", func(event EventRecords) {
 		for _, update := range event.ChainlinkFeeds_RoundDetailsUpdated {
-			// TODO: Fix
-			/*if update. {
+			if update.FeedId != sm.feedId {
 				continue
-			}*/
+			}
 			ch <- update // TODO: Format in new struct
 		}
 	})
