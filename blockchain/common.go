@@ -9,42 +9,15 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
-
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
-)
-
-var (
-	promLastSourcePing = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "ei_last_source_ping",
-		Help: "The timestamp of the last source of life from the source",
-	}, []string{"endpoint", "jobid"})
-)
-
-var (
-	ErrConnectionType = errors.New("unknown connection type")
-	ErrSubscriberType = errors.New("unknown subscriber type")
 )
 
 // ExpectsMock variable is set when we run in a mock context
 var ExpectsMock = false
 
 var blockchains = []string{
-	ETH,
-	HMY,
-	XTZ,
 	Substrate,
-	ONT,
-	BSC,
-	NEAR,
-	IOTX,
-	CFX,
-	Keeper,
-	BIRITA,
-	Agoric,
 }
 
 type Params struct {
@@ -63,20 +36,9 @@ type Params struct {
 // connection type and store.Subscription config.
 func CreateJsonManager(t subscriber.Type, sub store.Subscription) (subscriber.JsonManager, error) {
 	switch sub.Endpoint.Type {
-	case ETH:
-		return createEthManager(t, sub), nil
-	case HMY:
-		return createHmyManager(t, sub), nil
-	case BSC:
-		return createBscManager(t, sub), nil
 	case Substrate:
-		return createSubstrateManager(t, sub)
-	case NEAR:
-		return createNearManager(t, sub)
-	case CFX:
-		return createCfxManager(t, sub), nil
-	case Agoric:
-		return createAgoricManager(t, sub)
+		// TODO: Implement
+		return nil, nil
 	}
 
 	return nil, fmt.Errorf("unknown blockchain type %v for JSON manager", sub.Endpoint.Type)
@@ -86,16 +48,6 @@ func CreateJsonManager(t subscriber.Type, sub store.Subscription) (subscriber.Js
 // connection type and store.Subscription config.
 func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error) {
 	switch sub.Endpoint.Type {
-	case XTZ:
-		return createTezosSubscriber(sub), nil
-	case ONT:
-		return createOntSubscriber(sub), nil
-	case IOTX:
-		return createIoTeXSubscriber(sub)
-	case Keeper:
-		return createKeeperSubscriber(sub)
-	case BIRITA:
-		return createBSNIritaSubscriber(sub)
 	}
 
 	return nil, errors.New("unknown blockchain type for Client subscription")
@@ -104,7 +56,7 @@ func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error)
 func GetConnectionType(endpoint store.Endpoint) (subscriber.Type, error) {
 	switch endpoint.Type {
 	// Add blockchain implementations that encapsulate entire connection here
-	case XTZ, ONT, IOTX, Keeper, BIRITA:
+	case "": // TODO: XTZ, ONT, IOTX, Keeper, BIRITA:
 		return subscriber.Client, nil
 	default:
 		u, err := url.Parse(endpoint.Url)
@@ -136,47 +88,9 @@ func GetValidations(t string, params Params) []int {
 
 	fmt.Println(t)
 	switch t {
-	case ETH, HMY, IOTX:
-		return []int{
-			len(params.Addresses) + len(params.Topics) + len(params.FluxMonitor),
-		}
-	case XTZ:
-		return []int{
-			len(params.Addresses),
-		}
 	case Substrate:
 		return []int{
 			len(params.AccountIds) + len(params.FluxMonitor),
-		}
-	case ONT:
-		return []int{
-			len(params.Addresses),
-		}
-	case BSC:
-		return []int{
-			len(params.Addresses),
-		}
-	case NEAR:
-		return []int{
-			len(params.AccountIds),
-		}
-	case CFX:
-		return []int{
-			len(params.Addresses) + len(params.Topics),
-		}
-	case Keeper:
-		return []int{
-			len(params.Address),
-			len(params.UpkeepID),
-			len(params.From),
-		}
-	case BIRITA:
-		return []int{
-			len(params.Addresses),
-		}
-	case Agoric:
-		return []int{
-			1,
 		}
 	}
 
@@ -188,50 +102,10 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 	// go services.NewFluxMonitor(fmConfig)
 	// FM probably needs to get started at createsubscription too. Check how to handle this.
 	switch sub.Endpoint.Type {
-	case ETH, HMY, IOTX:
-		sub.Ethereum = store.EthSubscription{
-			Addresses: params.Addresses,
-			Topics:    params.Topics,
-		}
-	case XTZ:
-		sub.Tezos = store.TezosSubscription{
-			Addresses: params.Addresses,
-		}
 	case Substrate:
 		sub.Substrate = store.SubstrateSubscription{
 			AccountIds: params.AccountIds,
 		}
-	case ONT:
-		sub.Ontology = store.OntSubscription{
-			Addresses: params.Addresses,
-		}
-	case BSC:
-		sub.BinanceSmartChain = store.BinanceSmartChainSubscription{
-			Addresses: params.Addresses,
-		}
-	case NEAR:
-		sub.NEAR = store.NEARSubscription{
-			AccountIds: params.AccountIds,
-		}
-	case CFX:
-		sub.Conflux = store.CfxSubscription{
-			Addresses: params.Addresses,
-			Topics:    params.Topics,
-		}
-	case Keeper:
-		from := common.HexToAddress(params.From)
-		sub.Keeper = store.KeeperSubscription{
-			Address:  params.Address,
-			UpkeepID: params.UpkeepID,
-			From:     from,
-		}
-	case BIRITA:
-		sub.BSNIrita = store.BSNIritaSubscription{
-			Addresses:   params.Addresses,
-			ServiceName: params.ServiceName,
-		}
-	case Agoric:
-		sub.Agoric = store.AgoricSubscription{}
 	}
 }
 
