@@ -5,7 +5,6 @@ import (
 	"encoding/gob"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"reflect"
 	"testing"
 
@@ -172,7 +171,8 @@ func Test_getChanges(t *testing.T) {
 func Test_parseChange(t *testing.T) {
 	var accountId types.AccountID
 	var feedId FeedId
-	var feedConfig FeedConfigOf
+	var feedConfig FeedConfig
+	var round Round
 
 	type args struct {
 		key  types.StorageKey
@@ -211,13 +211,21 @@ func Test_parseChange(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "parses round data",
+			args: args{
+				key:  types.NewStorageKey(MustDecodeHex("1ae70894dea2956c24d9c19ac4d15d337b45e7c782afb68af72fc5ebb26b974bb4def25cfda6ef3a000000005153cb1f00942ff401000000")),
+				data: []byte(`{"result":{"block":"0x7eb1c3626a76510323f0f8174881de62761e06b668b506631a4ee73a9f051560","changes":[["0x1ae70894dea2956c24d9c19ac4d15d337b45e7c782afb68af72fc5ebb26b974bb4def25cfda6ef3a000000005153cb1f00942ff401000000","0xc102000001d204000000000000000000000000000001c10200000101000000"]]},"subscription":"GRMvxdpwlBiTjbUa"}`),
+				t:    &round,
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := parseChange(tt.args.key, tt.args.data, tt.args.t); (err != nil) != tt.wantErr {
 				t.Errorf("parseChange() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			fmt.Println(feedConfig)
 		})
 	}
 }

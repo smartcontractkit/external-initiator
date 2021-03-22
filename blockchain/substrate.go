@@ -74,10 +74,6 @@ func decodeStorageData(sd types.StorageDataRaw, t interface{}) error {
 	if !val.CanSet() {
 		return fmt.Errorf("unsettable value %v", typ)
 	}
-	// ensure val points to a struct
-	/* if val.Kind() != reflect.Struct {
-		return fmt.Errorf("target must point to a struct, but is " + fmt.Sprint(typ))
-	}*/
 
 	decoder := scale.NewDecoder(bytes.NewReader(sd))
 	return decoder.Decode(t)
@@ -266,7 +262,7 @@ func (sm substrateManager) getFluxState() {
 		return
 	}
 
-	var round RoundOf
+	var round Round
 	err = sm.queryState("ChainlinkFeed", "Rounds", &round, sm.feedId, feedConfig.Latest_Round)
 	if err != nil {
 		logger.Error(err)
@@ -275,7 +271,7 @@ func (sm substrateManager) getFluxState() {
 }
 
 func (sm substrateManager) oracleIsEligibleToSubmit() bool {
-	var oracleStatus OracleStatusOf
+	var oracleStatus OracleStatus
 	err := sm.queryState("ChainlinkFeed", "OracleStati", &oracleStatus, sm.feedId, sm.accountId)
 	if err == ErrorResultIsNull {
 		return false
