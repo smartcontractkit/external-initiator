@@ -1,8 +1,6 @@
 package client
 
 import (
-	"bytes"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -256,7 +254,7 @@ func (srv *Service) subscribe(sub *store.Subscription, iSubscriber subscriber.IS
 	if err != nil {
 		return nil
 	}
-	logger.Infow("Starting FluxMonitor for Job: ", js.Job)
+	logger.Info("Starting FluxMonitor for Job: ", js.Job)
 	fmConfig := services.ParseFMSpec(js.Spec)
 	triggerJobRun := make(chan decimal.Decimal)
 	go services.NewFluxMonitor(fmConfig, triggerJobRun)
@@ -272,9 +270,9 @@ func (srv *Service) subscribe(sub *store.Subscription, iSubscriber subscriber.IS
 			// we should send here event from FluxMonitor
 			trigger := <-triggerJobRun
 			go func() {
-				data := new(bytes.Buffer)
-				binary.Write(data, binary.LittleEndian, trigger)
-				err := srv.clNode.TriggerJob(sub.Job, data.Bytes())
+				// data := new(bytes.Buffer)
+				// binary.Write(data, binary.LittleEndian, trigger)
+				err := srv.clNode.TriggerJob(sub.Job, []byte(fmt.Sprintf(`{"result":"%s"}`, trigger)))
 				if err != nil {
 					logger.Error("Failed sending job run trigger: ", err)
 				}

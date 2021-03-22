@@ -69,6 +69,7 @@ type FluxMonitor struct {
 }
 
 func NewFluxMonitor(config FluxMonitorConfig, triggerJobRun chan decimal.Decimal) *FluxMonitor {
+	logger.Info(fmt.Sprintf("New FluxMonitor with config: %+v", config))
 	srv := FluxMonitor{
 		config: config,
 	}
@@ -89,17 +90,17 @@ func (fm *FluxMonitor) hitTrigger(triggerJobRun chan decimal.Decimal) {
 		// 	fm.state.currentAnswer = fm.latestResult
 		// 	fmt.Println("New answer: ", fm.state.currentAnswer)
 		case <-fm.chDeviation:
-			logger.Infow("Deviation threshold hit")
+			logger.Info("Deviation threshold hit")
 			fm.state.currentAnswer = <-fm.chDeviation
 			triggerJobRun <- fm.state.currentAnswer
-			logger.Infow("New answer: ", fm.state.currentAnswer)
+			logger.Info("New answer: ", fm.state.currentAnswer)
 		case <-ticker.C:
-			logger.Infow("Heartbeat")
+			logger.Info("Heartbeat")
 			// if adapters not working this is going to resubmit an old value
 			fm.state.currentAnswer = fm.latestResult
 			triggerJobRun <- fm.state.currentAnswer
 
-			logger.Infow("New answer: ", fm.state.currentAnswer)
+			logger.Info("New answer: ", fm.state.currentAnswer)
 			// 	// case <-fm.chClose:
 			// 	// fmt.Println("shut down")
 		}
@@ -114,7 +115,7 @@ func (fm *FluxMonitor) startPoller() {
 	for {
 		select {
 		case <-ticker.C:
-			logger.Infow("polling adapters")
+			logger.Info("polling adapters")
 			fm.poll()
 			// case <-fm.chClose:
 			// 	fmt.Println("shut down")
@@ -123,6 +124,7 @@ func (fm *FluxMonitor) startPoller() {
 }
 
 func getAdapterResponse(endpoint url.URL, from string, to string) (*decimal.Decimal, error) {
+	logger.Info("Requesting data from adapter: ", endpoint.String())
 	data := map[string]string{"from": from, "to": to}
 	values := map[string]interface{}{"id": "0", "data": data}
 	json_data, err := json.Marshal(values)
@@ -131,8 +133,12 @@ func getAdapterResponse(endpoint url.URL, from string, to string) (*decimal.Deci
 		logger.Error("Marshal error: ", err)
 		return nil, err
 	}
+	//TODO: initialize this outside of method and use env var to set the timeout
+	client := http.Client{
+		Timeout: 3 * time.Second,
+	}
 
-	resp, err := http.Post(endpoint.String(), "application/json",
+	resp, err := client.Post(endpoint.String(), "application/json",
 		bytes.NewBuffer(json_data))
 
 	if err != nil {
@@ -163,9 +169,7 @@ func getAdapterResponse(endpoint url.URL, from string, to string) (*decimal.Deci
 		fmt.Println("Unmarshal error: ", err)
 		return nil, err
 	}
-
-	fmt.Println(response.Price)
-
+	logger.Info(fmt.Sprintf("Response from %s: %s ", endpoint.String(), response.Price))
 	return &response.Price, nil
 
 }
@@ -175,7 +179,6 @@ func (fm *FluxMonitor) poll() {
 	ch := make(chan *decimal.Decimal)
 	for _, adapter := range fm.config.Adapters {
 		go func(adapter url.URL) {
-			fmt.Println(adapter.String())
 			var price, _ = getAdapterResponse(adapter, fm.config.From, fm.config.To)
 			ch <- price
 		}(adapter)
@@ -191,13 +194,13 @@ func (fm *FluxMonitor) poll() {
 	}
 
 	if len(values) <= numSources/2 {
-		logger.Infow("Unable to get values from more than 50% of data sources")
+		logger.Info("Unable to get values from more than 50% of data sources")
 		return
 	}
 
 	median := calculateMedian(values)
 	fm.latestResult = median
-	logger.Infow("Latest result: ", median)
+	logger.Info("Latest result: ", median)
 	if outOfDeviation(fm.state.currentAnswer, fm.latestResult, fm.config.Threshold, fm.config.AbsoluteThreshold) {
 		fm.chDeviation <- fm.latestResult
 	}
