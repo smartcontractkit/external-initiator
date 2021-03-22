@@ -1,7 +1,7 @@
 package blockchain
 
 import (
-	"fmt"
+	"math/big"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v2/scale"
 	"github.com/centrifuge/go-substrate-rpc-client/v2/types"
@@ -19,34 +19,13 @@ func (o option) IsSome() bool {
 	return o.hasValue
 }
 
-var opt types.OptionBytes
-
 type OptionAccountID struct {
 	option
 	value *types.AccountID
 }
 
-func (o OptionAccountID) Encode(encoder scale.Encoder) error {
-	return encoder.EncodeOption(o.hasValue, o.value)
-}
-
 func (o *OptionAccountID) Decode(decoder scale.Decoder) error {
-	fmt.Println("Decoding OptionAccountID")
 	return decoder.DecodeOption(&o.hasValue, &o.value)
-}
-
-func (o *OptionAccountID) SetSome(value types.AccountID) {
-	o.hasValue = true
-	o.value = &value
-}
-
-func (o *OptionAccountID) SetNone() {
-	o.hasValue = false
-	o.value = nil
-}
-
-func (o OptionAccountID) Unwrap() (ok bool, value types.AccountID) {
-	return o.hasValue, *o.value
 }
 
 type FeedId types.U32
@@ -57,31 +36,88 @@ type OptionRoundID struct {
 	value RoundID
 }
 
-func (o OptionRoundID) Encode(encoder scale.Encoder) error {
-	return encoder.EncodeOption(o.hasValue, o.value)
-}
-
 func (o *OptionRoundID) Decode(decoder scale.Decoder) error {
-	fmt.Println("Decoding OptionRoundID")
 	return decoder.DecodeOption(&o.hasValue, &o.value)
 }
 
-func (o *OptionRoundID) SetSome(value RoundID) {
-	o.hasValue = true
-	o.value = value
-}
-
-func (o *OptionRoundID) SetNone() {
-	o.hasValue = false
-	o.value = RoundID(0)
-}
-
-func (o OptionRoundID) Unwrap() (ok bool, value RoundID) {
-	return o.hasValue, o.value
-}
-
 type Value types.U128
+
+func (v *Value) Decode(decoder scale.Decoder) error {
+	bs := make([]byte, 16)
+	err := decoder.Read(bs)
+	if err != nil {
+		return err
+	}
+	// reverse bytes, scale uses little-endian encoding, big.int's bytes are expected in big-endian
+	scale.Reverse(bs)
+
+	b, err := types.UintBytesToBigInt(bs)
+	if err != nil {
+		return err
+	}
+
+	// deal with zero differently to get a nil representation (this is how big.Int deals with 0)
+	if b.Sign() == 0 {
+		*v = Value{Int: big.NewInt(0)}
+		return nil
+	}
+
+	*v = Value{Int: b}
+	return nil
+}
+
+type OptionValue struct {
+	option
+	value Value
+}
+
+func (o *OptionValue) Decode(decoder scale.Decoder) error {
+	return decoder.DecodeOption(&o.hasValue, &o.value)
+}
+
 type Balance types.U128
+
+func (ba *Balance) Decode(decoder scale.Decoder) error {
+	bs := make([]byte, 16)
+	err := decoder.Read(bs)
+	if err != nil {
+		return err
+	}
+	// reverse bytes, scale uses little-endian encoding, big.int's bytes are expected in big-endian
+	scale.Reverse(bs)
+
+	b, err := types.UintBytesToBigInt(bs)
+	if err != nil {
+		return err
+	}
+
+	// deal with zero differently to get a nil representation (this is how big.Int deals with 0)
+	if b.Sign() == 0 {
+		*ba = Balance{Int: big.NewInt(0)}
+		return nil
+	}
+
+	*ba = Balance{Int: b}
+	return nil
+}
+
+type OptionBalance struct {
+	option
+	value Balance
+}
+
+func (o *OptionBalance) Decode(decoder scale.Decoder) error {
+	return decoder.DecodeOption(&o.hasValue, &o.value)
+}
+
+type OptionBlockNumber struct {
+	option
+	value types.BlockNumber
+}
+
+func (o *OptionBlockNumber) Decode(decoder scale.Decoder) error {
+	return decoder.DecodeOption(&o.hasValue, &o.value)
+}
 
 type TupleValue struct {
 	From Value
@@ -116,34 +152,15 @@ type OptionFeedConfigOf struct {
 	value FeedConfigOf
 }
 
-func (o OptionFeedConfigOf) Encode(encoder scale.Encoder) error {
-	return encoder.EncodeOption(o.hasValue, o.value)
-}
-
 func (o *OptionFeedConfigOf) Decode(decoder scale.Decoder) error {
-	fmt.Println("Decoding OptionFeedConfigOf")
 	return decoder.DecodeOption(&o.hasValue, &o.value)
-}
-
-func (o *OptionFeedConfigOf) SetSome(value FeedConfigOf) {
-	o.hasValue = true
-	o.value = value
-}
-
-func (o *OptionFeedConfigOf) SetNone() {
-	o.hasValue = false
-	o.value = FeedConfigOf{}
-}
-
-func (o OptionFeedConfigOf) Unwrap() (ok bool, value FeedConfigOf) {
-	return o.hasValue, o.value
 }
 
 type Round struct {
 	Started_At        types.BlockNumber
-	Answer            *Value
-	Updated_At        *types.BlockNumber
-	Answered_In_Round *RoundID
+	Answer            OptionValue
+	Updated_At        OptionBlockNumber
+	Answered_In_Round OptionRoundID
 }
 
 type RoundOf Round
@@ -160,24 +177,24 @@ type RoundDetailsOf RoundDetails
 type OracleMeta struct {
 	Withdrawable  Balance
 	Admin         types.AccountID
-	Pending_Admin *types.AccountID
+	Pending_Admin OptionAccountID
 }
 
 type OracleMetaOf OracleMeta
 
 type OracleStatus struct {
 	Starting_Round      RoundID
-	Ending_Round        *RoundID
-	Last_Reported_Round *RoundID
-	Last_Started_Round  *RoundID
-	Latest_Submission   *Value
+	Ending_Round        OptionRoundID
+	Last_Reported_Round OptionRoundID
+	Last_Started_Round  OptionRoundID
+	Latest_Submission   OptionValue
 }
 
 type OracleStatusOf OracleStatus
 
 type Requester struct {
 	Delay              RoundID
-	Last_Started_Round *RoundID
+	Last_Started_Round OptionRoundID
 }
 
 type RequesterOf Requester
