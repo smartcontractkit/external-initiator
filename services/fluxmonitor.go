@@ -8,10 +8,12 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/smartcontractkit/chainlink/core/logger"
+	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/tidwall/gjson"
 )
 
@@ -24,6 +26,7 @@ type FluxMonitorConfig struct {
 	AbsoluteThreshold decimal.Decimal
 	Heartbeat         time.Duration
 	PollInterval      time.Duration
+	AdapterTimeout    time.Duration
 }
 
 func ParseFMSpec(jsonSpec json.RawMessage) FluxMonitorConfig {
@@ -60,26 +63,32 @@ type FluxMonitor struct {
 	// subscriber subscriber.ISubscriber
 	latestResult decimal.Decimal
 
-	// quitOnce     sync.Once
+	quitOnce   sync.Once
+	httpClient http.Client
 
+	// was this meant to be similar to triggerJobRun?
 	// chBlockchainEvents chan subscriber.Event
-	chDeviation chan decimal.Decimal
+	chDeviation chan struct{}
 	// chNewround  chan FluxAggregatorState
-	// chClose chan struct{}
+	chClose chan struct{}
 }
 
-func NewFluxMonitor(config FluxMonitorConfig, triggerJobRun chan decimal.Decimal) *FluxMonitor {
+func NewFluxMonitor(config FluxMonitorConfig, triggerJobRun chan subscriber.Event) *FluxMonitor {
 	logger.Info(fmt.Sprintf("New FluxMonitor with config: %+v", config))
 	srv := FluxMonitor{
-		config: config,
+		config:  config,
+		chClose: make(chan struct{}),
+		httpClient: http.Client{
+			Timeout: config.AdapterTimeout,
+		},
 	}
 	go srv.startPoller()
-	srv.hitTrigger(triggerJobRun)
+	go srv.hitTrigger(triggerJobRun)
 	return &srv
 }
 
-func (fm *FluxMonitor) hitTrigger(triggerJobRun chan decimal.Decimal) {
-	fm.chDeviation = make(chan decimal.Decimal)
+func (fm *FluxMonitor) hitTrigger(triggerJobRun chan subscriber.Event) {
+	fm.chDeviation = make(chan struct{})
 	ticker := time.NewTicker(fm.config.Heartbeat)
 	defer ticker.Stop()
 	for {
@@ -91,18 +100,17 @@ func (fm *FluxMonitor) hitTrigger(triggerJobRun chan decimal.Decimal) {
 		// 	fmt.Println("New answer: ", fm.state.currentAnswer)
 		case <-fm.chDeviation:
 			logger.Info("Deviation threshold hit")
-			fm.state.currentAnswer = <-fm.chDeviation
-			triggerJobRun <- fm.state.currentAnswer
-			logger.Info("New answer: ", fm.state.currentAnswer)
+			//TODO: Event formatting should be handled by BlockchainManager. Feed_id should be included here
+			triggerJobRun <- []byte(fmt.Sprintf(`{"result":"%s"}`, fm.latestResult))
+			logger.Info("Latest result: ", fm.latestResult)
 		case <-ticker.C:
 			logger.Info("Heartbeat")
 			// if adapters not working this is going to resubmit an old value
-			fm.state.currentAnswer = fm.latestResult
-			triggerJobRun <- fm.state.currentAnswer
-
-			logger.Info("New answer: ", fm.state.currentAnswer)
-			// 	// case <-fm.chClose:
-			// 	// fmt.Println("shut down")
+			triggerJobRun <- []byte(fmt.Sprintf(`{"result":"%s"}`, fm.latestResult))
+			logger.Info("Latest result: ", fm.latestResult)
+		case <-fm.chClose:
+			fmt.Println("FluxMonitor stopped")
+			return
 		}
 	}
 }
@@ -117,13 +125,16 @@ func (fm *FluxMonitor) startPoller() {
 		case <-ticker.C:
 			logger.Info("polling adapters")
 			fm.poll()
-			// case <-fm.chClose:
-			// 	fmt.Println("shut down")
+		case <-fm.chClose:
+			fmt.Println("stopping polling adapter")
+			return
 		}
 	}
 }
 
-func getAdapterResponse(endpoint url.URL, from string, to string) (*decimal.Decimal, error) {
+// could use the fm service values but also can use arguments for standalone functionality and potential reuseability
+// httpClient passing and initial setup could be handled in standalone service if we don't want to interfere with fm service state
+func (fm *FluxMonitor) getAdapterResponse(endpoint url.URL, from string, to string) (*decimal.Decimal, error) {
 	logger.Info("Requesting data from adapter: ", endpoint.String())
 	data := map[string]string{"from": from, "to": to}
 	values := map[string]interface{}{"id": "0", "data": data}
@@ -133,12 +144,8 @@ func getAdapterResponse(endpoint url.URL, from string, to string) (*decimal.Deci
 		logger.Error("Marshal error: ", err)
 		return nil, err
 	}
-	//TODO: initialize this outside of method and use env var to set the timeout
-	client := http.Client{
-		Timeout: 3 * time.Second,
-	}
 
-	resp, err := client.Post(endpoint.String(), "application/json",
+	resp, err := fm.httpClient.Post(endpoint.String(), "application/json",
 		bytes.NewBuffer(json_data))
 
 	if err != nil {
@@ -179,7 +186,7 @@ func (fm *FluxMonitor) poll() {
 	ch := make(chan *decimal.Decimal)
 	for _, adapter := range fm.config.Adapters {
 		go func(adapter url.URL) {
-			var price, _ = getAdapterResponse(adapter, fm.config.From, fm.config.To)
+			var price, _ = fm.getAdapterResponse(adapter, fm.config.From, fm.config.To)
 			ch <- price
 		}(adapter)
 	}
@@ -202,7 +209,7 @@ func (fm *FluxMonitor) poll() {
 	fm.latestResult = median
 	logger.Info("Latest result: ", median)
 	if outOfDeviation(fm.state.currentAnswer, fm.latestResult, fm.config.Threshold, fm.config.AbsoluteThreshold) {
-		fm.chDeviation <- fm.latestResult
+		fm.chDeviation <- struct{}{}
 	}
 
 }
@@ -220,11 +227,11 @@ func calculateMedian(prices []*decimal.Decimal) decimal.Decimal {
 	return (prices[mNumber-1].Add(*prices[mNumber])).Div(decimal.NewFromInt(2))
 }
 
-// func (fm *FluxMonitor) stop() {
-// 	fm.quitOnce.Do(func() {
-// 		close(fm.chClose)
-// 	})
-// }
+func (fm *FluxMonitor) Stop() {
+	fm.quitOnce.Do(func() {
+		close(fm.chClose)
+	})
+}
 
 func outOfDeviation(currentAnswer, nextAnswer, percentageThreshold, absoluteThreshold decimal.Decimal) bool {
 	loggerFields := []interface{}{

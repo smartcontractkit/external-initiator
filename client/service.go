@@ -12,7 +12,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/shopspring/decimal"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/blockchain"
 	"github.com/smartcontractkit/external-initiator/chainlink"
@@ -69,6 +68,7 @@ func startService(
 		},
 	}, store.RuntimeConfig{
 		KeeperBlockCooldown: config.KeeperBlockCooldown,
+		FMAdapterTimeout:    config.FMAdapterTimeout,
 	})
 
 	var names []string
@@ -256,9 +256,10 @@ func (srv *Service) subscribe(sub *store.Subscription, iSubscriber subscriber.IS
 	}
 	logger.Info("Starting FluxMonitor for Job: ", js.Job)
 	fmConfig := services.ParseFMSpec(js.Spec)
-	triggerJobRun := make(chan decimal.Decimal)
-	go services.NewFluxMonitor(fmConfig, triggerJobRun)
-
+	fmConfig.AdapterTimeout = srv.runtimeConfig.FMAdapterTimeout
+	triggerJobRun := make(chan subscriber.Event)
+	fm := services.NewFluxMonitor(fmConfig, triggerJobRun)
+	// did we break something of the previous implementation here?
 	go func() {
 		// defer counter.Dec()
 
@@ -272,9 +273,11 @@ func (srv *Service) subscribe(sub *store.Subscription, iSubscriber subscriber.IS
 			go func() {
 				// data := new(bytes.Buffer)
 				// binary.Write(data, binary.LittleEndian, trigger)
-				err := srv.clNode.TriggerJob(sub.Job, []byte(fmt.Sprintf(`{"result":"%s"}`, trigger)))
+				err := srv.clNode.TriggerJob(sub.Job, trigger)
 				if err != nil {
 					logger.Error("Failed sending job run trigger: ", err)
+					logger.Info("Closing FM service, just for testing")
+					fm.Stop()
 				}
 			}()
 		}
