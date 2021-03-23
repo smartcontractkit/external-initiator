@@ -1,13 +1,3 @@
-import * as ETH from './eth'
-import * as HMY from './hmy'
-import * as XTZ from './xtz'
-import * as ONT from './ont'
-import * as BSC from './bsc'
-import * as IOTX from './iotx'
-import * as CFX from './cfx'
-import * as Keeper from './keeper'
-import * as BIRITA from './birita'
-import * as NEAR from './near'
 import * as Substrate from './substrate'
 
 interface TestInterface {
@@ -16,7 +6,7 @@ interface TestInterface {
 }
 
 const integrations: TestInterface[] = [
-  ETH,
+  /*ETH,
   HMY,
   XTZ,
   ONT,
@@ -25,7 +15,7 @@ const integrations: TestInterface[] = [
   CFX,
   Keeper,
   BIRITA,
-  NEAR,
+  NEAR,*/
   Substrate,
 ]
 

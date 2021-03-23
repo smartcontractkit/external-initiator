@@ -11,6 +11,21 @@ import (
 
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+)
+
+var (
+	promLastSourcePing = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "ei_last_source_ping",
+		Help: "The timestamp of the last source of life from the source",
+	}, []string{"endpoint", "jobid"})
+)
+
+var (
+	ErrConnectionType = errors.New("unknown connection type")
+	ErrSubscriberType = errors.New("unknown subscriber type")
 )
 
 // ExpectsMock variable is set when we run in a mock context
