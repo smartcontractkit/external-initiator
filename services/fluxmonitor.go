@@ -49,7 +49,10 @@ func ParseFMSpec(jsonSpec json.RawMessage) FluxMonitorConfig {
 }
 
 type FluxAggregatorState struct {
-	currentAnswer decimal.Decimal
+	CurrentRoundID int32
+	LatestAnswer   decimal.Decimal
+	LatestRoundID  int32
+	CanSubmit      bool
 }
 
 type AdapterResponse struct {
@@ -61,16 +64,19 @@ type FluxMonitor struct {
 	config FluxMonitorConfig
 
 	// subscriber subscriber.ISubscriber
-	latestResult decimal.Decimal
+	latestResult          decimal.Decimal
+	latestResultTimestamp time.Time
+
+	latestSubmittedRoundID int32
 
 	quitOnce   sync.Once
 	httpClient http.Client
 
-	// was this meant to be similar to triggerJobRun?
 	// chBlockchainEvents chan subscriber.Event
 	chDeviation chan struct{}
-	// chNewround  chan FluxAggregatorState
-	chClose chan struct{}
+	// on new round, fetch and update everything related to FA state
+	chStateUpdate chan FluxAggregatorState
+	chClose       chan struct{}
 }
 
 func NewFluxMonitor(config FluxMonitorConfig, triggerJobRun chan subscriber.Event) *FluxMonitor {
@@ -86,28 +92,29 @@ func NewFluxMonitor(config FluxMonitorConfig, triggerJobRun chan subscriber.Even
 	go srv.hitTrigger(triggerJobRun)
 	return &srv
 }
+func (fm *FluxMonitor) sendJob(triggerJobRun chan subscriber.Event, triggerReason string) {
+	if fm.state.CurrentRoundID != fm.latestSubmittedRoundID && fm.state.CanSubmit {
+		// TODO: If adapters not working this is going to resubmit an old value. need to handle with timestamp or something else
+		// Formatting is according to CL node parsing
+		triggerJobRun <- []byte(fmt.Sprintf(`{"result":"%s"}`, fm.latestResult))
+		fm.latestSubmittedRoundID = fm.state.CurrentRoundID
+		logger.Info(triggerReason, " Triggering Job Run with latest result: ", fm.latestResult)
+	}
+}
 
 func (fm *FluxMonitor) hitTrigger(triggerJobRun chan subscriber.Event) {
 	fm.chDeviation = make(chan struct{})
 	ticker := time.NewTicker(fm.config.Heartbeat)
 	defer ticker.Stop()
 	for {
-
 		select {
-		// case <-fm.chNewround:
-		// 	fmt.Println("New round started")
-		// 	fm.state.currentAnswer = fm.latestResult
-		// 	fmt.Println("New answer: ", fm.state.currentAnswer)
+		case <-fm.chStateUpdate:
+			fm.state = <-fm.chStateUpdate
+			fm.sendJob(triggerJobRun, "State update.")
 		case <-fm.chDeviation:
-			logger.Info("Deviation threshold hit")
-			//TODO: Event formatting should be handled by BlockchainManager. Feed_id should be included here
-			triggerJobRun <- []byte(fmt.Sprintf(`{"result":"%s"}`, fm.latestResult))
-			logger.Info("Latest result: ", fm.latestResult)
+			fm.sendJob(triggerJobRun, "Deviation threshold met.")
 		case <-ticker.C:
-			logger.Info("Heartbeat")
-			// if adapters not working this is going to resubmit an old value
-			triggerJobRun <- []byte(fmt.Sprintf(`{"result":"%s"}`, fm.latestResult))
-			logger.Info("Latest result: ", fm.latestResult)
+			fm.sendJob(triggerJobRun, "Heartbeat.")
 		case <-fm.chClose:
 			fmt.Println("FluxMonitor stopped")
 			return
@@ -207,8 +214,9 @@ func (fm *FluxMonitor) poll() {
 
 	median := calculateMedian(values)
 	fm.latestResult = median
+	fm.latestResultTimestamp = time.Now()
 	logger.Info("Latest result: ", median)
-	if outOfDeviation(fm.state.currentAnswer, fm.latestResult, fm.config.Threshold, fm.config.AbsoluteThreshold) {
+	if outOfDeviation(fm.state.LatestAnswer, fm.latestResult, fm.config.Threshold, fm.config.AbsoluteThreshold) {
 		fm.chDeviation <- struct{}{}
 	}
 
