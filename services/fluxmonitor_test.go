@@ -30,28 +30,28 @@ func TestNewFluxMonitor(t *testing.T) {
 	fmConfig.AbsoluteThreshold = decimal.NewFromInt(0)
 	fmConfig.Heartbeat = 15 * time.Second
 	fmConfig.PollInterval = 5 * time.Second
-	fm := NewFluxMonitor(fmConfig, triggerJobRun)
-	fm.state.LatestRoundID = 1
-	fm.state.CurrentRoundID = 2
-	fm.state.LatestAnswer = decimal.NewFromInt(50000)
-	fm.state.CanSubmit = true
 
+	fm := NewFluxMonitor(fmConfig, triggerJobRun)
+	fm.state.CanSubmit = true
 	go func() {
-		for range time.Tick(time.Second * 25) {
-			fm.state.LatestRoundID += 1
-			fm.state.CurrentRoundID += 1
-			fm.state.LatestAnswer = decimal.NewFromInt32(50000 + fm.state.LatestRoundID)
-			fmt.Println("New state", prettyPrint(fm.state))
+		for range time.Tick(time.Second * 2) {
+			fmt.Println("New round event")
+			fm.chNewRound <- fm.state.CurrentRoundID + 1
 		}
 	}()
 	go func() {
-		for range time.Tick(time.Second * 35) {
-			fm.state.CanSubmit = !fm.state.CanSubmit
-			fmt.Println("New state", prettyPrint(fm.state))
+		for range time.Tick(time.Second * 7) {
+			fmt.Println("New answer event")
+			fm.chAnswerUpdated <- fm.state.LatestAnswer.Add(decimal.NewFromInt32(10))
+		}
+	}()
+	go func() {
+		for range time.Tick(time.Second * 25) {
+			fmt.Println("Oracle permissions changed")
+			fm.chCanSubmit <- !fm.state.CanSubmit
 		}
 	}()
 	for {
-		// we should send here event from FluxMonitor
 		job := <-triggerJobRun
 		go func() {
 			fmt.Println("Job triggered", string(job))

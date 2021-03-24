@@ -51,14 +51,21 @@ func ParseFMSpec(jsonSpec json.RawMessage) FluxMonitorConfig {
 type FluxAggregatorState struct {
 	CurrentRoundID int32
 	LatestAnswer   decimal.Decimal
-	LatestRoundID  int32
-	CanSubmit      bool
+	//not sure if needed
+	// LatestRoundID int32
+	CanSubmit bool
 }
 
 type AdapterResponse struct {
 	Price decimal.Decimal `json:"result"`
 	// might need error response as well
 }
+
+// type NewAnswer struct {
+// 	Value   decimal.Decimal
+// 	RoundID int32
+// }
+
 type FluxMonitor struct {
 	state  FluxAggregatorState
 	config FluxMonitorConfig
@@ -72,11 +79,12 @@ type FluxMonitor struct {
 	quitOnce   sync.Once
 	httpClient http.Client
 
-	// chBlockchainEvents chan subscriber.Event
 	chDeviation chan struct{}
-	// on new round, fetch and update everything related to FA state
-	chStateUpdate chan FluxAggregatorState
-	chClose       chan struct{}
+	chNewRound  chan int32
+	chCanSubmit chan bool
+	// might be replaced with NewAnswer if we need the latest round
+	chAnswerUpdated chan decimal.Decimal
+	chClose         chan struct{}
 }
 
 func NewFluxMonitor(config FluxMonitorConfig, triggerJobRun chan subscriber.Event) *FluxMonitor {
@@ -90,33 +98,47 @@ func NewFluxMonitor(config FluxMonitorConfig, triggerJobRun chan subscriber.Even
 	}
 	go srv.startPoller()
 	go srv.hitTrigger(triggerJobRun)
+	srv.state.CanSubmit = true
 	return &srv
 }
-func (fm *FluxMonitor) sendJob(triggerJobRun chan subscriber.Event, triggerReason string) {
+func (fm *FluxMonitor) checkAndsendJob(triggerJobRun chan subscriber.Event) {
 	if fm.state.CurrentRoundID != fm.latestSubmittedRoundID && fm.state.CanSubmit {
 		// TODO: If adapters not working this is going to resubmit an old value. need to handle with timestamp or something else
 		// Formatting is according to CL node parsing
 		triggerJobRun <- []byte(fmt.Sprintf(`{"result":"%s"}`, fm.latestResult))
 		fm.latestSubmittedRoundID = fm.state.CurrentRoundID
-		logger.Info(triggerReason, " Triggering Job Run with latest result: ", fm.latestResult)
+		logger.Info("Triggering Job Run with latest result: ", fm.latestResult)
 	}
 }
 
 func (fm *FluxMonitor) hitTrigger(triggerJobRun chan subscriber.Event) {
 	fm.chDeviation = make(chan struct{})
+	fm.chNewRound = make(chan int32)
+	fm.chAnswerUpdated = make(chan decimal.Decimal)
+	fm.chCanSubmit = make(chan bool)
+
 	ticker := time.NewTicker(fm.config.Heartbeat)
 	defer ticker.Stop()
 	for {
 		select {
-		case <-fm.chStateUpdate:
-			fm.state = <-fm.chStateUpdate
-			fm.sendJob(triggerJobRun, "State update.")
+		case <-fm.chNewRound:
+			fm.state.CurrentRoundID = <-fm.chNewRound
+			logger.Info("New round: ", fm.state.CurrentRoundID)
+			fm.checkAndsendJob(triggerJobRun)
+		case <-fm.chAnswerUpdated:
+			fm.state.LatestAnswer = <-fm.chAnswerUpdated
+			logger.Info("Answer updated: ", fm.state.LatestAnswer)
+		case <-fm.chCanSubmit:
+			fm.state.CanSubmit = <-fm.chCanSubmit
+			logger.Info("Can submit updated: ", fm.state.CanSubmit)
 		case <-fm.chDeviation:
-			fm.sendJob(triggerJobRun, "Deviation threshold met.")
+			logger.Info("Deviation threshold met.")
+			fm.checkAndsendJob(triggerJobRun)
 		case <-ticker.C:
-			fm.sendJob(triggerJobRun, "Heartbeat.")
+			logger.Info("Heartbeat")
+			fm.checkAndsendJob(triggerJobRun)
 		case <-fm.chClose:
-			fmt.Println("FluxMonitor stopped")
+			logger.Info("FluxMonitor stopped")
 			return
 		}
 	}
