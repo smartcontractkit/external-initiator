@@ -9,7 +9,7 @@ import (
 
 var upgrader = websocket.Upgrader{} // use default options
 
-func TestWebsocketSubscriber_SubscribeToEvents(t *testing.T) {
+func TestWebsocketSubscriberNew_SubscribeToEvents(t *testing.T) {
 	t.Run("subscribes and ignores confirmation message", func(t *testing.T) {
 		wss := WebsocketSubscriber{Endpoint: wsMockUrl.String(), Manager: TestsMockManager{true}}
 		events := make(chan Event)
@@ -95,7 +95,7 @@ func (m TestsReconnectManager) ParseTestResponse(data []byte) error {
 	return nil
 }
 
-func TestWebsocketSubscriber_Test(t *testing.T) {
+func TestWebsocketSubscriberNew_Test(t *testing.T) {
 	type fields struct {
 		Endpoint string
 	}

@@ -3,11 +3,8 @@ package subscriber
 import (
 	"testing"
 
-	"github.com/gorilla/websocket"
 	"github.com/smartcontractkit/external-initiator/store"
 )
-
-var upgrader = websocket.Upgrader{} // use default options
 
 func TestWebsocketSubscriber_SubscribeToEvents(t *testing.T) {
 	t.Run("subscribes and ignores confirmation message", func(t *testing.T) {
@@ -66,33 +63,6 @@ func TestWebsocketSubscriber_SubscribeToEvents(t *testing.T) {
 			return
 		}
 	})
-}
-
-type TestsReconnectManager struct {
-	connections int
-}
-
-func (m TestsReconnectManager) ParseResponse(data []byte) ([]Event, bool) {
-	return []Event{data}, true
-}
-
-func (m *TestsReconnectManager) GetTriggerJson() []byte {
-	count := m.connections
-	m.connections++
-	switch count {
-	case 0:
-		return []byte(`close`)
-	default:
-		return []byte(`true`)
-	}
-}
-
-func (m TestsReconnectManager) GetTestJson() []byte {
-	return nil
-}
-
-func (m TestsReconnectManager) ParseTestResponse(data []byte) error {
-	return nil
 }
 
 func TestWebsocketSubscriber_Test(t *testing.T) {
