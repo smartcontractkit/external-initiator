@@ -37,9 +37,8 @@ func TestNewFluxMonitor(t *testing.T) {
 
 	fm, err := NewFluxMonitor(fmConfig, triggerJobRun, sub)
 	require.NoError(t, err)
-	canSubmit := true
-	fm.state.CanSubmit = &canSubmit
-	go func() {
+	fm.state.CanSubmit = true
+	/*go func() {
 		for range time.Tick(time.Second * 2) {
 			fmt.Println("New round event")
 			fm.chNewRound <- *fm.state.CurrentRoundID + 1
@@ -56,7 +55,7 @@ func TestNewFluxMonitor(t *testing.T) {
 			fmt.Println("Oracle permissions changed")
 			fm.chCanSubmit <- !*fm.state.CanSubmit
 		}
-	}()
+	}()*/
 	for {
 		job := <-triggerJobRun
 		go func() {
