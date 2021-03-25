@@ -3,14 +3,14 @@ package services
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/smartcontractkit/external-initiator/store"
-	"github.com/stretchr/testify/require"
 	"net/url"
 	"testing"
 	"time"
 
 	"github.com/shopspring/decimal"
+	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
+	"github.com/stretchr/testify/require"
 )
 
 func prettyPrint(i interface{}) string {
