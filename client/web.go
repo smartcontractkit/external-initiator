@@ -30,6 +30,8 @@ type subscriptionStorer interface {
 	DeleteJob(jobid string) error
 	GetEndpoint(name string) (*store.Endpoint, error)
 	SaveEndpoint(endpoint *store.Endpoint) error
+	SaveJobSpec(arg *store.JobSpec) error
+	LoadJobSpec(jobid string) (*store.JobSpec, error)
 }
 
 func init() {
@@ -179,6 +181,17 @@ func (srv *HttpService) CreateSubscription(c *gin.Context) {
 		return
 	}
 
+	js := &store.JobSpec{
+		Job:  req.JobID,
+		Spec: req.Params.FluxMonitor,
+	}
+
+	if err := srv.Store.SaveJobSpec(js); err != nil {
+		logger.Error(err)
+		c.JSON(http.StatusInternalServerError, nil)
+		return
+	}
+
 	sub := &store.Subscription{
 		ReferenceId:  uuid.New().String(),
 		Job:          req.JobID,
@@ -187,7 +200,6 @@ func (srv *HttpService) CreateSubscription(c *gin.Context) {
 	}
 
 	blockchain.CreateSubscription(sub, req.Params)
-
 	if err := srv.Store.SaveSubscription(sub); err != nil {
 		logger.Error(err)
 		c.JSON(http.StatusInternalServerError, nil)

@@ -47,7 +47,7 @@ type ontSubscription struct {
 	isDone       bool
 }
 
-func (ot *ontSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ store.RuntimeConfig) (subscriber.ISubscription, error) {
+/*func (ot *ontSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ store.RuntimeConfig) (subscriber.ISubscription, error) {
 	logger.Infof("Using Ontology RPC endpoint: Listening for events on addresses: %v\n", ot.Addresses)
 	addresses := make(map[string]bool)
 	for _, a := range ot.Addresses {
@@ -64,7 +64,7 @@ func (ot *ontSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ st
 	go ontSubscription.scanWithRetry()
 
 	return ontSubscription, nil
-}
+}*/
 
 func (ot *ontSubscriber) Test() error {
 	_, err := ot.Sdk.GetCurrentBlockHeight()

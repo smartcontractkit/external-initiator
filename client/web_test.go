@@ -27,24 +27,39 @@ func (s storeFailer) DeleteJob(string) error {
 	return s.error
 }
 
-func (s storeFailer) GetEndpoint(string) (*store.Endpoint, error) {
-	return s.endpoint, s.endpointError
+func (s storeFailer) GetEndpoint(name string) (*store.Endpoint, error) {
+	if s.endpoint != nil && name == s.endpoint.Name {
+		return s.endpoint, nil
+	}
+
+	return nil, s.endpointError
 }
 
 func (s storeFailer) SaveEndpoint(*store.Endpoint) error {
 	return s.error
 }
 
+func (s storeFailer) SaveJobSpec(*store.JobSpec) error {
+	return s.error
+}
+
+func (s storeFailer) LoadJobSpec(string) (*store.JobSpec, error) {
+	return nil, s.error
+}
+
 func generateCreateSubscriptionReq(id, endpoint string, addresses, topics, accountIds []string) CreateSubscriptionReq {
 	params := struct {
-		Endpoint    string   `json:"endpoint"`
-		Addresses   []string `json:"addresses"`
-		Topics      []string `json:"topics"`
-		AccountIds  []string `json:"accountIds"`
-		Address     string   `json:"address"`
-		UpkeepID    string   `json:"upkeepId"`
-		ServiceName string   `json:"serviceName"`
-		From        string   `json:"from"`
+		Endpoint    string          `json:"endpoint"`
+		Addresses   []string        `json:"addresses"`
+		Topics      []string        `json:"topics"`
+		AccountIds  []string        `json:"accountIds"`
+		Address     string          `json:"address"`
+		UpkeepID    string          `json:"upkeepId"`
+		ServiceName string          `json:"serviceName"`
+		From        string          `json:"from"`
+		FluxMonitor json.RawMessage `json:"fluxmonitor"`
+		FeedId      uint32          `json:"feed_id"`
+		AccountId   string          `json:"account_id"`
 	}{
 		Endpoint:   endpoint,
 		Addresses:  addresses,

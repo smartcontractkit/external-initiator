@@ -1,13 +1,15 @@
 package blockchain
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 
-	"github.com/centrifuge/go-substrate-rpc-client/scale"
-	"github.com/centrifuge/go-substrate-rpc-client/types"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/centrifuge/go-substrate-rpc-client/v2/scale"
+	"github.com/centrifuge/go-substrate-rpc-client/v2/types"
+	"github.com/shopspring/decimal"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
@@ -17,162 +19,54 @@ import (
 // blockchain integration.
 const Substrate = "substrate"
 
-type substrateFilter struct {
-	JobID   types.Text
-	Address []types.Address
-}
+var (
+	ErrorResultIsNull = errors.New("result is null")
+)
 
 type substrateManager struct {
-	filter       substrateFilter
-	meta         *types.Metadata
-	key          types.StorageKey
 	endpointName string
+
+	meta      *types.Metadata
+	feedId    FeedId
+	accountId types.AccountID
+
+	subscriber subscriber.ISubscriber
 }
 
-func createSubstrateManager(t subscriber.Type, conf store.Subscription) (*substrateManager, error) {
-	if t != subscriber.WS {
-		return nil, errors.New("only WS connections are allowed for Substrate")
+func createSubstrateManager(sub store.Subscription) (*substrateManager, error) {
+	feedId := types.NewU32(sub.Substrate.FeedId)
+	accountId, err := types.NewAddressFromHexAccountID(sub.Substrate.AccountId)
+	if err != nil {
+		return nil, err
 	}
 
-	var addresses []types.Address
-	for _, id := range conf.Substrate.AccountIds {
-		address, err := types.NewAddressFromHexAccountID(id)
-		if err != nil {
-			logger.Error(err)
-			continue
-		}
-		addresses = append(addresses, address)
+	conn, err := subscriber.NewSubscriber(sub.Endpoint)
+	if err != nil {
+		return nil, err
 	}
 
 	return &substrateManager{
-		filter: substrateFilter{
-			JobID:   types.NewText(conf.Job),
-			Address: addresses,
-		},
-		endpointName: conf.EndpointName,
+		endpointName: sub.EndpointName,
+		feedId:       FeedId(feedId),
+		accountId:    accountId.AsAccountID,
+		subscriber:   conn,
 	}, nil
 }
 
-func (sm *substrateManager) GetTriggerJson() []byte {
-	if sm.meta == nil {
-		return nil
+func (sm substrateManager) Request(t string) (interface{}, error) {
+	switch t {
+	case FMRequestState:
+		return sm.getFluxState()
 	}
+	return nil, errors.New("request type is not implemented")
+}
 
-	if len(sm.key) == 0 {
-		key, err := types.CreateStorageKey(sm.meta, "System", "Events", nil, nil)
-		if err != nil {
-			logger.Error(err)
-			return nil
-		}
-		sm.key = key
+func (sm substrateManager) Subscribe(t string, ch chan<- interface{}) error {
+	switch t {
+	case FMSubscribeEvents:
+		return sm.SubscribeToFluxMonitor(ch)
 	}
-
-	msg := JsonrpcMessage{
-		Version: "2.0",
-		ID:      json.RawMessage(`1`),
-		Method:  "state_subscribeStorage",
-	}
-
-	keys := [][]string{{sm.key.Hex()}}
-	params, err := json.Marshal(keys)
-	if err != nil {
-		logger.Error(err)
-		return nil
-	}
-	msg.Params = params
-
-	data, _ := json.Marshal(msg)
-	return data
-}
-
-// SubstrateRequestParams allows for decoding a scale hex string into
-// a byte array, which is then encoded back to a scale encoded byte array,
-// to be decoded into a string array. This solves issues where decoding
-// directly into a string array would read past the end of the array.
-type SubstrateRequestParams []string
-
-func (a *SubstrateRequestParams) Decode(decoder scale.Decoder) error {
-	// Decode hex string into a byte array.
-	// This allows us to stop reading where the
-	// intended byte array stops.
-	var bz types.Bytes
-	err := decoder.Decode(&bz)
-	if err != nil {
-		return err
-	}
-
-	// Encode byte array into a scale encoded byte array
-	encoded, err := types.EncodeToBytes(bz)
-	if err != nil {
-		return err
-	}
-
-	// Decode byte array into a string array
-	var strings []string
-	err = types.DecodeFromBytes(encoded, &strings)
-	if err != nil {
-		return err
-	}
-
-	*a = strings
-
-	return nil
-}
-
-func (a SubstrateRequestParams) Encode(_ scale.Encoder) error {
-	return nil
-}
-
-// EventChainlinkOracleRequest is the event structure we expect
-// to be emitted from the Chainlink pallet
-type EventChainlinkOracleRequest struct {
-	Phase              types.Phase
-	OracleAccountID    types.AccountID
-	SpecIndex          types.Text
-	RequestIdentifier  types.U64
-	RequesterAccountID types.AccountID
-	DataVersion        types.U64
-	Bytes              SubstrateRequestParams
-	Callback           types.Text
-	Payment            types.U32
-	Topics             []types.Hash
-}
-
-type EventChainlinkOracleAnswer struct {
-	Phase              types.Phase
-	OracleAccountID    types.AccountID
-	RequestIdentifier  types.U64
-	RequesterAccountID types.AccountID
-	Bytes              types.Text
-	Payment            types.U32
-	Topics             []types.Hash
-}
-
-type EventChainlinkOperatorRegistered struct {
-	Phase     types.Phase
-	AccountID types.AccountID
-	Topics    []types.Hash
-}
-
-type EventChainlinkOperatorUnregistered struct {
-	Phase     types.Phase
-	AccountID types.AccountID
-	Topics    []types.Hash
-}
-
-type EventChainlinkKillRequest struct {
-	Phase             types.Phase
-	RequestIdentifier types.U64
-	Topics            []types.Hash
-}
-
-type EventRecords struct {
-	types.EventRecords
-	Chainlink_OracleRequest        []EventChainlinkOracleRequest        //nolint:stylecheck,golint
-	Chainlink_OracleAnswer         []EventChainlinkOracleAnswer         //nolint:stylecheck,golint
-	Chainlink_OperatorRegistered   []EventChainlinkOperatorRegistered   //nolint:stylecheck,golint
-	Chainlink_OperatorUnregistered []EventChainlinkOperatorUnregistered //nolint:stylecheck,golint
-	Chainlink_KillRequest          []EventChainlinkKillRequest          //nolint:stylecheck,golint
+	return errors.New("subscribe type is not implemented")
 }
 
 type substrateSubscribeResponse struct {
@@ -180,86 +74,98 @@ type substrateSubscribeResponse struct {
 	Result       json.RawMessage `json:"result"`
 }
 
-func (sm *substrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
-	promLastSourcePing.With(prometheus.Labels{"endpoint": sm.endpointName, "jobid": string(sm.filter.JobID)}).SetToCurrentTime()
-
-	var msg JsonrpcMessage
-	err := json.Unmarshal(data, &msg)
-	if err != nil {
-		logger.Error("Failed parsing JSON-RPC message:", err)
-		return nil, false
+func decodeStorageData(sd types.StorageDataRaw, t interface{}) error {
+	// ensure t is a pointer
+	ttyp := reflect.TypeOf(t)
+	if ttyp.Kind() != reflect.Ptr {
+		return errors.New("target must be a pointer, but is " + fmt.Sprint(ttyp))
+	}
+	// ensure t is not a nil pointer
+	tval := reflect.ValueOf(t)
+	if tval.IsNil() {
+		return errors.New("target is a nil pointer")
+	}
+	val := tval.Elem()
+	typ := val.Type()
+	// ensure val can be set
+	if !val.CanSet() {
+		return fmt.Errorf("unsettable value %v", typ)
 	}
 
+	decoder := scale.NewDecoder(bytes.NewReader(sd))
+	return decoder.Decode(t)
+}
+
+func getChanges(key types.StorageKey, data []byte) ([]types.KeyValueOption, error) {
 	var subRes substrateSubscribeResponse
-	err = json.Unmarshal(msg.Params, &subRes)
+	err := json.Unmarshal(data, &subRes)
 	if err != nil {
-		logger.Error("Failed parsing substrateSubscribeResponse:", err)
-		return nil, false
+		return nil, err
 	}
 
-	var changes types.StorageChangeSet
-	err = json.Unmarshal(subRes.Result, &changes)
+	var changeSet types.StorageChangeSet
+	err = json.Unmarshal(subRes.Result, &changeSet)
 	if err != nil {
-		logger.Error("Failed parsing StorageChangeSet:", err)
-		return nil, false
+		return nil, err
 	}
 
-	var subEvents []subscriber.Event
-	for _, change := range changes.Changes {
-		if !types.Eq(change.StorageKey, sm.key) || !change.HasStorageData {
-			logger.Error("Does not match storage")
+	var changes []types.KeyValueOption
+	for _, change := range changeSet.Changes {
+		if !types.Eq(change.StorageKey, key) {
+			logger.Debugw("Does not match storage",
+				"key", change.StorageKey.Hex(),
+				"expects", key.Hex())
 			continue
 		}
+		changes = append(changes, change)
+	}
 
-		events := EventRecords{}
-		err = types.EventRecordsRaw(change.StorageData).DecodeEventRecords(sm.meta, &events)
+	return changes, nil
+}
+
+func parseChange(key types.StorageKey, data []byte, t interface{}) error {
+	changes, err := getChanges(key, data)
+	if err != nil {
+		return err
+	}
+
+	if len(changes) != 1 {
+		return errors.New("number of changes is not 1")
+	}
+
+	if len(changes[0].StorageData) == 0 {
+		return ErrorResultIsNull
+	}
+
+	return decodeStorageData(changes[0].StorageData, t)
+}
+
+func parseEvents(meta *types.Metadata, key types.StorageKey, data []byte) ([]EventRecords, error) {
+	changes, err := getChanges(key, data)
+	if err != nil {
+		return nil, err
+	}
+
+	var events []EventRecords
+	for _, change := range changes {
+		eventRecords := EventRecords{}
+		err = types.EventRecordsRaw(change.StorageData).DecodeEventRecords(meta, &eventRecords)
 		if err != nil {
 			logger.Errorw("Failed parsing EventRecords:",
 				"err", err,
 				"change.StorageData", change.StorageData,
-				"sm.key", sm.key,
+				"key", key.Hex(),
 				"types.EventRecordsRaw", types.EventRecordsRaw(change.StorageData))
 			continue
 		}
 
-		for _, request := range events.Chainlink_OracleRequest {
-			// Check if our jobID matches
-			jobID := fmt.Sprint(sm.filter.JobID)
-			specIndex := fmt.Sprint(request.SpecIndex)
-			if !matchesJobID(jobID, specIndex) {
-				logger.Errorf("Does not match job : expected %s, requested %s", jobID, specIndex)
-				continue
-			}
-
-			// Check if request is being sent from correct
-			// oracle address
-			found := false
-			for _, address := range sm.filter.Address {
-				if request.OracleAccountID == address.AsAccountID {
-					found = true
-					break
-				}
-			}
-			if !found {
-				logger.Errorf("Does not match OracleAccountID, requested is %s", request.OracleAccountID)
-				continue
-			}
-
-			requestParams := convertStringArrayToKV(request.Bytes)
-			requestParams["function"] = string(request.Callback)
-			requestParams["request_id"] = fmt.Sprint(request.RequestIdentifier)
-			requestParams["payment"] = fmt.Sprint(request.Payment)
-			event, err := json.Marshal(requestParams)
-			if err != nil {
-				logger.Error(err)
-				continue
-			}
-			subEvents = append(subEvents, event)
-		}
+		events = append(events, eventRecords)
 	}
 
-	return subEvents, true
+	return events, nil
 }
+
+// LEGACY: Getting the metadata
 
 func (sm *substrateManager) GetTestJson() []byte {
 	msg := JsonrpcMessage{
@@ -292,4 +198,243 @@ func (sm *substrateManager) ParseTestResponse(data []byte) error {
 
 	sm.meta = &metadata
 	return nil
+}
+
+// Events to send to FM
+// - A new round has started
+// - Oracle is now eligible to submit
+// - Oracle is no longer eligible to submit
+
+func getStorageKey(meta *types.Metadata, prefix, method string, args ...interface{}) (types.StorageKey, error) {
+	if len(args) > 2 {
+		return types.StorageKey{}, errors.New("too many arguments given")
+	}
+
+	var err error
+	encoded := make([][]byte, 2)
+	for i, arg := range args {
+		encoded[i], err = types.EncodeToBytes(arg)
+		if err != nil {
+			return types.StorageKey{}, err
+		}
+	}
+
+	return types.CreateStorageKey(meta, prefix, method, encoded[0], encoded[1])
+}
+
+func subscribeToStorage(meta *types.Metadata, prefix, method string, args ...interface{}) (key types.StorageKey, m string, params json.RawMessage, err error) {
+	m = "state_subscribeStorage"
+
+	key, err = getStorageKey(meta, prefix, method, args...)
+	if err != nil {
+		return
+	}
+
+	keys := [][]string{{key.Hex()}}
+	params, err = json.Marshal(keys)
+	return
+}
+
+func (sm substrateManager) queryState(prefix, method string, t interface{}, args ...interface{}) error {
+	key, rpcMethod, params, err := subscribeToStorage(sm.meta, prefix, method, args...)
+	if err != nil {
+		return err
+	}
+
+	responses := make(chan []byte)
+	unsubscribe, err := sm.subscriber.Subscribe(rpcMethod, params, responses)
+	if err != nil {
+		return err
+	}
+	defer unsubscribe()
+
+	for {
+		response := <-responses
+		err = parseChange(key, response, t)
+		if err == ErrorResultIsNull {
+			return err
+		}
+		if err != nil {
+			logger.Error(err)
+			continue
+		}
+
+		return nil
+	}
+}
+
+func (sm substrateManager) getFluxState() (*FluxAggregatorState, error) {
+	// Call chainlinkFeed.feeds(FeedId) to get the latest round
+	// Return back `latest_round`
+	// - payment
+	// - timeout
+	// - restart_delay
+	// - submission bounds
+
+	// "method": "state_subscribeStorage"
+	var feedConfig FeedConfig
+	err := sm.queryState("ChainlinkFeed", "Feeds", &feedConfig, sm.feedId)
+	if err != nil {
+		return nil, err
+	}
+
+	var round Round
+	// TODO: Can be nil?
+	err = sm.queryState("ChainlinkFeed", "Rounds", &round, sm.feedId, feedConfig.Latest_Round)
+	if err != nil {
+		return nil, err
+	}
+
+	roundId := int32(feedConfig.Latest_Round)
+	var latestAnswer *decimal.Decimal
+	if round.Answer.IsSome() {
+		val := decimal.NewFromBigInt(round.Answer.value.Int, 10)
+		latestAnswer = &val
+	}
+
+	minSubmission := decimal.NewFromBigInt(feedConfig.Submission_Value_Bounds.From.Int, 10)
+	maxSubmission := decimal.NewFromBigInt(feedConfig.Submission_Value_Bounds.To.Int, 10)
+	canSubmit := sm.oracleIsEligibleToSubmit()
+
+	payment := feedConfig.Payment_Amount.Int
+	timeout := uint32(feedConfig.Timeout)
+	restartDelay := int32(feedConfig.Restart_Delay)
+
+	return &FluxAggregatorState{
+		CurrentRoundID: &roundId,
+		LatestAnswer:   latestAnswer,
+		MinSubmission:  &minSubmission,
+		MaxSubmission:  &maxSubmission,
+		Payment:        payment,
+		Timeout:        &timeout,
+		RestartDelay:   &restartDelay,
+		CanSubmit:      &canSubmit,
+	}, nil
+}
+
+func (sm substrateManager) oracleIsEligibleToSubmit() bool {
+	var oracleStatus OracleStatus
+	err := sm.queryState("ChainlinkFeed", "OracleStati", &oracleStatus, sm.feedId, sm.accountId)
+	if err == ErrorResultIsNull {
+		return false
+	}
+	if err != nil {
+		logger.Error(err)
+		return false
+	}
+
+	return oracleStatus.Ending_Round.IsNone()
+}
+
+func (sm substrateManager) SubscribeToFluxMonitor(ch chan<- interface{}) error {
+	// Subscribe to events and watch for NewRound
+	// This should increment the round ID on FM – but it should also return if this account was the initiator of the round
+	// Also watch for OraclePermissionsUpdated - this tells if the oracle loses permission to submit new answers
+	// Also needs to watch for RoundDetailsUpdated – this tells if timeout/restart delay/payment changes
+
+	return noneShouldError(
+		sm.subscribeNewRounds(ch),
+		sm.subscribeAnswerUpdated(ch),
+		sm.subscribeOraclePermissions(ch),
+		sm.subscribeRoundDetailsUpdate(ch),
+	)
+}
+
+func noneShouldError(errs ...error) error {
+	for _, e := range errs {
+		if e != nil {
+			return e
+		}
+	}
+	return nil
+}
+
+func (sm substrateManager) subscribe(method string, handler func(event EventRecords)) error {
+	key, rpcMethod, params, err := subscribeToStorage(sm.meta, "ChainlinkFeed", method)
+	if err != nil {
+		return err
+	}
+
+	responses := make(chan []byte)
+	unsubscribe, err := sm.subscriber.Subscribe(rpcMethod, params, responses)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		defer unsubscribe()
+
+		for {
+			response, ok := <-responses
+			if !ok {
+				return
+			}
+
+			events, err := parseEvents(sm.meta, key, response)
+			if err != nil {
+				logger.Error(err)
+				continue
+			}
+
+			for _, event := range events {
+				handler(event)
+			}
+		}
+	}()
+
+	return nil
+}
+
+func (sm substrateManager) subscribeNewRounds(ch chan<- interface{}) error {
+	return sm.subscribe("NewRound", func(event EventRecords) {
+		for _, round := range event.ChainlinkFeeds_NewRound {
+			if round.FeedId != sm.feedId {
+				continue
+			}
+			roundId := int32(round.RoundId)
+			ch <- FluxAggregatorState{
+				CurrentRoundID: &roundId,
+			}
+		}
+	})
+}
+
+func (sm substrateManager) subscribeAnswerUpdated(ch chan<- interface{}) error {
+	return sm.subscribe("AnswerUpdated", func(event EventRecords) {
+		for _, update := range event.ChainlinkFeeds_AnswerUpdated {
+			if update.FeedId != sm.feedId {
+				continue
+			}
+			latestAnswer := decimal.NewFromBigInt(update.Value.Int, 10)
+			ch <- FluxAggregatorState{
+				LatestAnswer: &latestAnswer,
+			}
+		}
+	})
+}
+
+func (sm substrateManager) subscribeOraclePermissions(ch chan<- interface{}) error {
+	return sm.subscribe("OraclePermissionsUpdated", func(event EventRecords) {
+		for _, update := range event.ChainlinkFeeds_OraclePermissionsUpdated {
+			if update.FeedId != sm.feedId || update.AccountId != sm.accountId {
+				continue
+			}
+			// TODO: Verify is correct
+			canSubmit := bool(update.Bool)
+			ch <- FluxAggregatorState{
+				CanSubmit: &canSubmit,
+			}
+		}
+	})
+}
+
+func (sm substrateManager) subscribeRoundDetailsUpdate(ch chan<- interface{}) error {
+	return sm.subscribe("RoundDetailsUpdated", func(event EventRecords) {
+		for _, update := range event.ChainlinkFeeds_RoundDetailsUpdated {
+			if update.FeedId != sm.feedId {
+				continue
+			}
+			// TODO: Anything to do here?
+		}
+	})
 }

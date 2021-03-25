@@ -58,6 +58,9 @@ func generateCmd() *cobra.Command {
 	newcmd.Flags().Duration("cl_timeout", 5*time.Second, "The timeout for job run triggers to the Chainlink node")
 	must(v.BindPFlag("cl_timeout", newcmd.Flags().Lookup("cl_timeout")))
 
+	newcmd.Flags().Duration("fm_adapter_timeout", 5*time.Second, "The timeout for FluxMonitor adapter polling")
+	must(v.BindPFlag("fm_adapter_timeout", newcmd.Flags().Lookup("fm_adapter_timeout")))
+
 	newcmd.Flags().Uint("cl_retry_attempts", 3, "The maximum number of attempts that will be made for job run triggers")
 	must(v.BindPFlag("cl_retry_attempts", newcmd.Flags().Lookup("cl_retry_attempts")))
 

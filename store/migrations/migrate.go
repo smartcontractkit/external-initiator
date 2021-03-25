@@ -17,6 +17,7 @@ import (
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1610281978"
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1611169747"
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1613356332"
+	migration1613356333 "github.com/smartcontractkit/external-initiator/store/migrations/migration1616122557"
 	"gopkg.in/gormigrate.v1"
 )
 
@@ -95,6 +96,11 @@ func Migrate(db *gorm.DB) error {
 			ID:       "1613356332",
 			Migrate:  migration1613356332.Migrate,
 			Rollback: migration1613356332.Rollback,
+		},
+		{
+			ID:       "1613356333",
+			Migrate:  migration1613356333.Migrate,
+			Rollback: migration1613356333.Rollback,
 		},
 	}
 

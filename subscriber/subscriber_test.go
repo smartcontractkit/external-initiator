@@ -13,32 +13,6 @@ import (
 	"github.com/smartcontractkit/external-initiator/eitest"
 )
 
-var rpcMockUrl *url.URL
-var wsMockUrl *url.URL
-
-type TestsMockManager struct {
-	confirmation bool
-}
-
-func (m TestsMockManager) ParseResponse(data []byte) ([]Event, bool) {
-	return []Event{data}, true
-}
-
-func (m TestsMockManager) GetTriggerJson() []byte {
-	if m.confirmation {
-		return []byte(`true`)
-	}
-	return []byte(`false`)
-}
-
-func (m TestsMockManager) GetTestJson() []byte {
-	return nil
-}
-
-func (m TestsMockManager) ParseTestResponse(data []byte) error {
-	return nil
-}
-
 func TestMain(m *testing.M) {
 	responses := make(map[string]int)
 
@@ -54,15 +28,9 @@ func TestMain(m *testing.M) {
 	}))
 	defer ts.Close()
 
-	u, err := url.Parse(ts.URL)
-	rpcMockUrl = u
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	ws := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var c *websocket.Conn
-		c, err = upgrader.Upgrade(w, r, nil)
+		c, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			log.Print("upgrade:", err)
 			return
@@ -101,7 +69,7 @@ func TestMain(m *testing.M) {
 	}))
 	defer ws.Close()
 
-	wsMockUrl, err = url.Parse(ws.URL)
+	wsMockUrl, err := url.Parse(ws.URL)
 	if err != nil {
 		log.Fatal(err)
 	}
