@@ -292,12 +292,12 @@ func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 				return nil, false
 			}
 
-			event, err := json.Marshal(eventData)
+			_, err = json.Marshal(eventData)
 			if err != nil {
 				logger.Error("Failed marshaling fulfillment arguments:", err)
 				continue
 			}
-			events = append(events, event)
+			// events = append(events, event)
 		}
 	}
 

@@ -248,17 +248,15 @@ func testParseResponse(t *testing.T, filter nearFilter, n int) {
 
 				for _, e := range events {
 					// check that we are able to unmarshal these bytes
-					var data map[string]interface{}
-					err = json.Unmarshal(e, &data)
 					require.NoError(t, err)
-					assert.NotNil(t, data)
+					assert.NotNil(t, e)
 					// check that every event holds five arguments
-					assert.Equal(t, 5, len(data))
-					assert.Contains(t, data, "account")
-					assert.Contains(t, data, "nonce")
-					assert.Contains(t, data, "get")
-					assert.Contains(t, data, "path")
-					assert.Contains(t, data, "times")
+					assert.Equal(t, 5, len(e))
+					assert.Contains(t, e, "account")
+					assert.Contains(t, e, "nonce")
+					assert.Contains(t, e, "get")
+					assert.Contains(t, e, "path")
+					assert.Contains(t, e, "times")
 				}
 			}
 		})

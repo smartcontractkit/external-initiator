@@ -228,11 +228,11 @@ func iotexLogEventToSubscriberEvents(logs []*iotextypes.Log) ([]subscriber.Event
 		if err != nil {
 			return nil, fmt.Errorf("error add json fields: %v", err)
 		}
-		event, err := json.Marshal(js)
+		_, err = json.Marshal(js)
 		if err != nil {
 			return nil, err
 		}
-		events = append(events, event)
+		// events = append(events, event)
 	}
 	return events, nil
 }

@@ -241,13 +241,13 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 			return nil, false
 		}
 
-		event, err := json.Marshal(request)
+		_, err = json.Marshal(request)
 		if err != nil {
 			logger.Error("marshal:", err)
 			return nil, false
 		}
 
-		events = append(events, event)
+		// events = append(events, event)
 
 	case subscriber.RPC:
 		var rawEvents []cfxLogResponse
@@ -270,11 +270,11 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 				return nil, false
 			}
 
-			event, err := json.Marshal(request)
+			_, err = json.Marshal(request)
 			if err != nil {
 				continue
 			}
-			events = append(events, event)
+			// events = append(events, event)
 
 			// Check if we can update the "FromEpoch" in the query,
 			// so we only get new events from blocks we haven't queried yet

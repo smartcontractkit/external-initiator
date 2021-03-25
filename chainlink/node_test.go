@@ -1,6 +1,7 @@
 package chainlink
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -19,7 +20,9 @@ var (
 	accessSecret  = "def"
 	jobId         = "123"
 	jobIdWPayload = "123payload"
-	testPayload   = []byte(`{"somekey":"somevalue"}`)
+	testPayload   = map[string]interface{}{
+		"somekey": "somevalue",
+	}
 )
 
 func TestMain(m *testing.M) {
@@ -51,7 +54,14 @@ func TestMain(m *testing.M) {
 				return
 			}
 
-			if !reflect.DeepEqual(body, testPayload) {
+			var payload map[string]interface{}
+			err = json.Unmarshal(body, &payload)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			if !reflect.DeepEqual(payload, testPayload) {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
@@ -79,7 +89,7 @@ func TestNode_TriggerJob(t *testing.T) {
 	}
 	type args struct {
 		jobId   string
-		payload []byte
+		payload map[string]interface{}
 	}
 
 	u, err := url.Parse(clMockUrl)
@@ -161,16 +171,6 @@ func TestNode_TriggerJob(t *testing.T) {
 			},
 			args{jobId: jobIdWPayload, payload: testPayload},
 			false,
-		},
-		{
-			"does a POST request with invalid payload",
-			fields{
-				AccessKey:    accessKey,
-				AccessSecret: accessSecret,
-				Endpoint:     *u,
-			},
-			args{jobId: jobIdWPayload, payload: []byte(`weird payload`)},
-			true,
 		},
 	}
 	for _, tt := range tests {

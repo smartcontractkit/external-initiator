@@ -156,8 +156,15 @@ func (fm *FluxMonitor) checkNewState(state blockchain.FluxAggregatorState) {
 func (fm *FluxMonitor) checkAndSendJob(triggerJobRun chan subscriber.Event) {
 	if *fm.state.CurrentRoundID != fm.latestSubmittedRoundID && *fm.state.CanSubmit {
 		// TODO: If adapters not working this is going to resubmit an old value. need to handle with timestamp or something else
-		// Formatting is according to CL node parsing
-		triggerJobRun <- []byte(fmt.Sprintf(`{"result":"%s"}`, fm.latestResult))
+		jobRequest, err := fm.blockchain.CreateJobRun(blockchain.FMJobRun, fm.state)
+		if err != nil {
+			logger.Error("Failed to create job run:", err)
+			return
+		}
+		// The "result" key should always be the value
+		jobRequest["result"] = fm.latestResult.String()
+
+		triggerJobRun <- jobRequest
 		fm.latestSubmittedRoundID = *fm.state.CurrentRoundID
 		logger.Info("Triggering Job Run with latest result: ", fm.latestResult)
 	}

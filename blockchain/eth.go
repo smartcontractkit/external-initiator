@@ -202,13 +202,13 @@ func (e ethManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 			return nil, false
 		}
 
-		event, err := json.Marshal(evt)
+		_, err := json.Marshal(evt)
 		if err != nil {
 			logger.Error("marshal:", err)
 			return nil, false
 		}
 
-		events = append(events, event)
+		// events = append(events, event)
 
 	case subscriber.RPC:
 		var rawEvents []ethLogResponse
@@ -217,11 +217,11 @@ func (e ethManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 		}
 
 		for _, evt := range rawEvents {
-			event, err := json.Marshal(evt)
+			_, err := json.Marshal(evt)
 			if err != nil {
 				continue
 			}
-			events = append(events, event)
+			// events = append(events, event)
 
 			// Check if we can update the "fromBlock" in the query,
 			// so we only get new events from blocks we haven't queried yet

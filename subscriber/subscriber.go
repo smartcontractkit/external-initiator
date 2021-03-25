@@ -38,7 +38,7 @@ type SubConfig struct {
 
 // Event is the individual event that occurs during
 // the subscription.
-type Event []byte
+type Event map[string]interface{}
 
 // IParser holds the interface for parsing data
 // from the external endpoint into an array of Events
