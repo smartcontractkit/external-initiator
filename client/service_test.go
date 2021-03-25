@@ -8,8 +8,6 @@ import (
 	"github.com/smartcontractkit/external-initiator/blockchain"
 	"github.com/smartcontractkit/external-initiator/chainlink"
 	"github.com/smartcontractkit/external-initiator/store"
-	"github.com/smartcontractkit/external-initiator/subscriber"
-	"github.com/stretchr/testify/require"
 )
 
 type storeClientFailer struct {
@@ -57,102 +55,6 @@ func (s storeClientFailer) SaveJobSpec(*store.JobSpec) error {
 
 func (s storeClientFailer) LoadJobSpec(string) (*store.JobSpec, error) {
 	return nil, s.error
-}
-
-type mockSubscription struct{}
-
-func (s mockSubscription) Unsubscribe() {}
-
-func Test_getSubscriber(t *testing.T) {
-	ethWsManager, err := blockchain.CreateJsonManager(subscriber.WS, store.Subscription{
-		Endpoint: store.Endpoint{
-			Url:  "ws://localhost",
-			Type: blockchain.Substrate,
-		},
-	})
-	require.NoError(t, err)
-
-	/*ethRpcManager, err := blockchain.CreateJsonManager(subscriber.RPC, store.Subscription{
-		Endpoint: store.Endpoint{
-			Url:  "http://localhost",
-			Type: blockchain.ETH,
-		},
-		Ethereum: store.EthSubscription{},
-	})
-	require.NoError(t, err)*/
-
-	type args struct {
-		sub store.Subscription
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    subscriber.ISubscriber
-		wantErr bool
-	}{
-		{
-			"fails on invalid connection type",
-			args{sub: store.Subscription{
-				Endpoint: store.Endpoint{
-					Url: "postgres://localhost",
-				},
-			}},
-			nil,
-			true,
-		},
-		{
-			"fails on invalid subscription manager",
-			args{sub: store.Subscription{
-				Endpoint: store.Endpoint{
-					Url: "http://localhost",
-				},
-			}},
-			nil,
-			true,
-		},
-		{
-			"creates WS subscriber",
-			args{sub: store.Subscription{
-				Endpoint: store.Endpoint{
-					Url:  "ws://localhost",
-					Type: blockchain.Substrate,
-				},
-			}},
-			subscriber.WebsocketSubscriber{
-				Endpoint: "ws://localhost",
-				Manager:  ethWsManager,
-			},
-			false,
-		},
-		/*{
-			"creates RPC subscriber",
-			args{sub: store.Subscription{
-				Endpoint: store.Endpoint{
-					Url:        "http://localhost",
-					Type:       blockchain.ETH,
-					RefreshInt: 42,
-				},
-			}},
-			subscriber.RpcSubscriber{
-				Endpoint: "http://localhost",
-				Interval: time.Duration(42) * time.Second,
-				Manager:  ethRpcManager,
-			},
-			false,
-		},*/
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := getSubscriber(tt.args.sub)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("getSubscriber() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("getSubscriber() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
 }
 
 func Test_normalizeLocalhost(t *testing.T) {
@@ -209,10 +111,7 @@ func Test_Service_DeleteJob(t *testing.T) {
 			fields{
 				store: storeClientFailer{},
 				subscriptions: map[string]*activeSubscription{
-					"testJob": {
-						Interface: mockSubscription{},
-						Events:    make(chan subscriber.Event),
-					},
+					"testJob": {},
 				},
 			},
 			args{"testJob"},

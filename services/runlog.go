@@ -1,11 +1,7 @@
 package services
 
-import "github.com/smartcontractkit/external-initiator/subscriber"
+type RunlogManager struct{}
 
-type RunlogManager struct {
-	subscriber subscriber.ISubscriber
-}
-
-func NewRunlogManager(subscriber subscriber.ISubscriber) (*RunlogManager, error) {
+func NewRunlogManager() (*RunlogManager, error) {
 	return nil, nil
 }

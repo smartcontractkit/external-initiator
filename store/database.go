@@ -342,6 +342,9 @@ type SubstrateSubscription struct {
 	gorm.Model
 	SubscriptionId uint
 	AccountIds     SQLStringArray
+	// TODO: Create migration:
+	FeedId    uint32
+	AccountId string
 }
 
 type OntSubscription struct {

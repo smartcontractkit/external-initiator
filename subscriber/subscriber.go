@@ -5,6 +5,8 @@ package subscriber
 
 import (
 	"encoding/json"
+	"errors"
+	"net/url"
 
 	"github.com/smartcontractkit/external-initiator/store"
 )
@@ -38,42 +40,6 @@ type SubConfig struct {
 // the subscription.
 type Event []byte
 
-// JsonManager holds the interface for generating blockchain
-// specific payloads and parsing the response for the
-// appropriate blockchain.
-type JsonManager interface {
-	// Get JSON payload to send when opening a new subscription
-	GetTriggerJson() []byte
-	// Parse the response returned after sending GetTriggerJson()
-	ParseResponse(data []byte) ([]Event, bool)
-	// Get JSON payload to send when testing a connection
-	GetTestJson() []byte
-	// Parse the response returned after sending GetTestJson()
-	ParseTestResponse(data []byte) error
-}
-
-// ISubscription holds the interface for interacting
-// with an active subscription.
-type ISubscription interface {
-	// Unsubscribe closes the connection to the external endpoint
-	// and stops any processes related to this subscription.
-	Unsubscribe()
-}
-
-// ISubscriber holds the interface for interacting
-// with a not-yet-active subscription.
-type ISubscriber interface {
-	// SubscribeToEvents subscribes to events using the endpoint and configuration
-	// as set in ISubscriber. All events will be sent in the channel. If anything is
-	// passed as a param after channel, it will not expect to receive any confirmation
-	// message after opening the initial subscription.
-	SubscribeToEvents(channel chan<- Event, runtimeConfig store.RuntimeConfig) (ISubscription, error)
-	// Test attempts to open a connection using the endpoint and configuration
-	// as set in ISubscriber. If connection is succesful, it sends GetTestJson() as a payload
-	// and attempts to parse response with ParseTestResponse().
-	Test() error
-}
-
 // IParser holds the interface for parsing data
 // from the external endpoint into an array of Events
 // based on the blockchain's parser.
@@ -106,22 +72,29 @@ func NewJsonrpcMessage(nonce uint64, method string, params json.RawMessage) ([]b
 	return json.Marshal(msg)
 }
 
-// JsonManager holds the interface for generating blockchain
-// specific payloads and parsing the response for the
-// appropriate blockchain.
-type BlockchainManager interface {
-	GetSubscribeParams(t string, params ...interface{}) (method string, requestParams json.RawMessage)
-	ParseNotification(payload json.RawMessage) (response interface{}, ok bool)
-	GetRequestParams(t string) (method string, params json.RawMessage)
-	ParseRequestResponse(payload json.RawMessage) (response interface{}, ok bool)
-}
-
 // ISubscriber holds the interface for interacting with a blockchain node
-type ISubscriberNew interface {
+type ISubscriber interface {
 	// Subscribe to events of type t. Events are pushed to ch.
 	Subscribe(method string, params json.RawMessage, ch chan<- []byte) (unsubscribe func(), err error)
 	// Request data of type t.
 	Request(method string, params json.RawMessage) (result []byte, err error)
 	// Stop the subscriber and close all connections
 	Stop()
+}
+
+func NewSubscriber(endpoint store.Endpoint) (ISubscriber, error) {
+	u, err := url.Parse(endpoint.Url)
+	if err != nil {
+		return nil, err
+	}
+
+	switch u.Scheme {
+	case "ws", "wss":
+		return NewWebsocketSubscriber(endpoint.Url)
+	case "http", "https":
+		// TODO: Implement
+		return nil, nil
+	}
+
+	return nil, errors.New("unexpected URL scheme")
 }

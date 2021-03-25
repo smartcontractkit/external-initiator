@@ -3,6 +3,8 @@ package services
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/smartcontractkit/external-initiator/store"
+	"github.com/stretchr/testify/require"
 	"net/url"
 	"testing"
 	"time"
@@ -31,12 +33,16 @@ func TestNewFluxMonitor(t *testing.T) {
 	fmConfig.Heartbeat = 15 * time.Second
 	fmConfig.PollInterval = 5 * time.Second
 
-	fm := NewFluxMonitor(fmConfig, triggerJobRun)
-	fm.state.CanSubmit = true
+	sub := store.Subscription{}
+
+	fm, err := NewFluxMonitor(fmConfig, triggerJobRun, sub)
+	require.NoError(t, err)
+	canSubmit := true
+	fm.state.CanSubmit = &canSubmit
 	go func() {
 		for range time.Tick(time.Second * 2) {
 			fmt.Println("New round event")
-			fm.chNewRound <- fm.state.CurrentRoundID + 1
+			fm.chNewRound <- *fm.state.CurrentRoundID + 1
 		}
 	}()
 	go func() {
@@ -48,7 +54,7 @@ func TestNewFluxMonitor(t *testing.T) {
 	go func() {
 		for range time.Tick(time.Second * 25) {
 			fmt.Println("Oracle permissions changed")
-			fm.chCanSubmit <- !fm.state.CanSubmit
+			fm.chCanSubmit <- !*fm.state.CanSubmit
 		}
 	}()
 	for {

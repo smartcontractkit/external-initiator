@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/smartcontractkit/external-initiator/blockchain"
+	"github.com/smartcontractkit/external-initiator/store"
 	"io/ioutil"
+	"math/big"
 	"net/http"
 	"net/url"
 	"sort"
@@ -15,6 +18,11 @@ import (
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/tidwall/gjson"
+)
+
+const (
+	FMRequestState    = "fm_requestState"
+	FMSubscribeEvents = "fm_subscribeEvents"
 )
 
 type FluxMonitorConfig struct {
@@ -49,11 +57,16 @@ func ParseFMSpec(jsonSpec json.RawMessage) FluxMonitorConfig {
 }
 
 type FluxAggregatorState struct {
-	CurrentRoundID int32
-	LatestAnswer   decimal.Decimal
+	CurrentRoundID *int32
+	LatestAnswer   *decimal.Decimal
+	MinSubmission  *decimal.Decimal
+	MaxSubmission  *decimal.Decimal
+	Payment        *big.Int
+	Timeout        *uint32
+	RestartDelay   *int32
 	//not sure if needed
 	// LatestRoundID int32
-	CanSubmit bool
+	CanSubmit *bool
 }
 
 type AdapterResponse struct {
@@ -70,10 +83,10 @@ type FluxMonitor struct {
 	state  FluxAggregatorState
 	config FluxMonitorConfig
 
-	// subscriber subscriber.ISubscriber
-	latestResult          decimal.Decimal
-	latestResultTimestamp time.Time
+	blockchain blockchain.Manager
 
+	latestResult           decimal.Decimal
+	latestResultTimestamp  time.Time
 	latestSubmittedRoundID int32
 
 	quitOnce   sync.Once
@@ -87,26 +100,79 @@ type FluxMonitor struct {
 	chClose         chan struct{}
 }
 
-func NewFluxMonitor(config FluxMonitorConfig, triggerJobRun chan subscriber.Event) *FluxMonitor {
-	logger.Info(fmt.Sprintf("New FluxMonitor with config: %+v", config))
+func NewFluxMonitor(config FluxMonitorConfig, triggerJobRun chan subscriber.Event, sub store.Subscription) (*FluxMonitor, error) {
+	logger.Infof("New FluxMonitor with config: %+v", config)
+	blockchainManager, err := blockchain.CreateManager(sub)
+	if err != nil {
+		return nil, err
+	}
+
 	srv := FluxMonitor{
 		config:  config,
 		chClose: make(chan struct{}),
 		httpClient: http.Client{
 			Timeout: config.AdapterTimeout,
 		},
+		blockchain: blockchainManager,
 	}
+
+	state, err := srv.blockchain.Request(FMRequestState)
+	if err != nil {
+		return nil, err
+	}
+	srv.state = state.(FluxAggregatorState)
+
+	eventListener := make(chan interface{})
+	err = srv.blockchain.Subscribe(FMSubscribeEvents, eventListener)
+	if err != nil {
+		return nil, err
+	}
+
+	go srv.eventListener(eventListener)
+
 	go srv.startPoller()
 	go srv.hitTrigger(triggerJobRun)
-	srv.state.CanSubmit = true
-	return &srv
+
+	return &srv, nil
 }
-func (fm *FluxMonitor) checkAndsendJob(triggerJobRun chan subscriber.Event) {
-	if fm.state.CurrentRoundID != fm.latestSubmittedRoundID && fm.state.CanSubmit {
+
+func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
+	defer fm.Stop()
+
+	for {
+		select {
+		case state := <-ch:
+			fmState, ok := state.(FluxAggregatorState)
+			if !ok {
+				logger.Error("Got invalid state", state)
+				continue
+			}
+			logger.Debug("New state", fmState)
+			fm.checkNewState(fmState)
+		case <-fm.chClose:
+			return
+		}
+	}
+}
+
+func (fm *FluxMonitor) checkNewState(state FluxAggregatorState) {
+	if state.CurrentRoundID != nil {
+		fm.chNewRound <- *state.CurrentRoundID
+	}
+	if state.LatestAnswer != nil {
+		fm.chAnswerUpdated <- *state.LatestAnswer
+	}
+	if state.CanSubmit != nil {
+		fm.chCanSubmit <- *state.CanSubmit
+	}
+}
+
+func (fm *FluxMonitor) checkAndSendJob(triggerJobRun chan subscriber.Event) {
+	if *fm.state.CurrentRoundID != fm.latestSubmittedRoundID && *fm.state.CanSubmit {
 		// TODO: If adapters not working this is going to resubmit an old value. need to handle with timestamp or something else
 		// Formatting is according to CL node parsing
 		triggerJobRun <- []byte(fmt.Sprintf(`{"result":"%s"}`, fm.latestResult))
-		fm.latestSubmittedRoundID = fm.state.CurrentRoundID
+		fm.latestSubmittedRoundID = *fm.state.CurrentRoundID
 		logger.Info("Triggering Job Run with latest result: ", fm.latestResult)
 	}
 }
@@ -121,22 +187,22 @@ func (fm *FluxMonitor) hitTrigger(triggerJobRun chan subscriber.Event) {
 	defer ticker.Stop()
 	for {
 		select {
-		case <-fm.chNewRound:
-			fm.state.CurrentRoundID = <-fm.chNewRound
+		case newRoundID := <-fm.chNewRound:
+			fm.state.CurrentRoundID = &newRoundID
 			logger.Info("New round: ", fm.state.CurrentRoundID)
-			fm.checkAndsendJob(triggerJobRun)
-		case <-fm.chAnswerUpdated:
-			fm.state.LatestAnswer = <-fm.chAnswerUpdated
+			fm.checkAndSendJob(triggerJobRun)
+		case newAnswer := <-fm.chAnswerUpdated:
+			fm.state.LatestAnswer = &newAnswer
 			logger.Info("Answer updated: ", fm.state.LatestAnswer)
-		case <-fm.chCanSubmit:
-			fm.state.CanSubmit = <-fm.chCanSubmit
+		case canSubmit := <-fm.chCanSubmit:
+			fm.state.CanSubmit = &canSubmit
 			logger.Info("Can submit updated: ", fm.state.CanSubmit)
 		case <-fm.chDeviation:
 			logger.Info("Deviation threshold met.")
-			fm.checkAndsendJob(triggerJobRun)
+			fm.checkAndSendJob(triggerJobRun)
 		case <-ticker.C:
 			logger.Info("Heartbeat")
-			fm.checkAndsendJob(triggerJobRun)
+			fm.checkAndSendJob(triggerJobRun)
 		case <-fm.chClose:
 			logger.Info("FluxMonitor stopped")
 			return
@@ -234,7 +300,7 @@ func (fm *FluxMonitor) poll() {
 	fm.latestResult = median
 	fm.latestResultTimestamp = time.Now()
 	logger.Info("Latest result: ", median)
-	if outOfDeviation(fm.state.LatestAnswer, fm.latestResult, fm.config.Threshold, fm.config.AbsoluteThreshold) {
+	if outOfDeviation(*fm.state.LatestAnswer, fm.latestResult, fm.config.Threshold, fm.config.AbsoluteThreshold) {
 		fm.chDeviation <- struct{}{}
 	}
 

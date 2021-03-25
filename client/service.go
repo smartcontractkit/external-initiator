@@ -2,11 +2,11 @@ package client
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/url"
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -162,13 +162,7 @@ func (srv *Service) Run() error {
 	}
 
 	for _, sub := range subs {
-		iSubscriber, err := srv.getAndTestSubscription(&sub)
-		if err != nil {
-			logger.Error(err)
-			continue
-		}
-
-		err = srv.subscribe(&sub, iSubscriber)
+		err = srv.subscribe(&sub)
 		if err != nil {
 			logger.Error(err)
 		}
@@ -177,32 +171,10 @@ func (srv *Service) Run() error {
 	return nil
 }
 
-func (srv *Service) getAndTestSubscription(sub *store.Subscription) (subscriber.ISubscriber, error) {
-	endpoint, err := srv.store.LoadEndpoint(sub.EndpointName)
-	if err != nil {
-		return nil, errors.Wrap(err, "Failed loading endpoint")
-	}
-	sub.Endpoint = endpoint
-
-	iSubscriber, err := getSubscriber(*sub)
-	if err != nil {
-		return nil, err
-	}
-
-	// if err := iSubscriber.Test(); err != nil {
-	// 	return nil, errors.Wrap(err, "Failed testing subscriber")
-	// }
-
-	return iSubscriber, nil
-}
-
 func closeSubscription(sub *activeSubscription) {
-	if sub.Interface != nil {
-		sub.Interface.Unsubscribe()
-	}
-	if sub.Events != nil {
-		close(sub.Events)
-	}
+	sub.onStop.Do(func() {
+		sub.Service.Stop()
+	})
 }
 
 // Close shuts down any open subscriptions and closes
@@ -222,47 +194,32 @@ func (srv *Service) Close() {
 
 type activeSubscription struct {
 	Subscription *store.Subscription
-	Interface    subscriber.ISubscription
-	Events       chan subscriber.Event
-	Node         chainlink.Node
+	Service      services.Service
+
+	onStop sync.Once
 }
 
-func (srv *Service) subscribe(sub *store.Subscription, iSubscriber subscriber.ISubscriber) error {
+func (srv *Service) subscribe(sub *store.Subscription) error {
 	if _, ok := srv.subscriptions[sub.Job]; ok {
 		return errors.New("already subscribed to this jobid")
 	}
-
-	// events := make(chan subscriber.Event)
-
-	// subscription, err := iSubscriber.SubscribeToEvents(events, srv.runtimeConfig)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// as := &activeSubscription{
-	// 	Subscription: sub,
-	// 	Interface:    subscription,
-	// 	Events:       events,
-	// 	Node:         srv.clNode,
-	// }
-	// srv.subscriptions[sub.Job] = as
-
-	// counter := promActiveSubscriptions.With(prometheus.Labels{"endpoint": sub.EndpointName})
-	// counter.Inc()
 
 	js, err := srv.store.LoadJobSpec(sub.Job)
 	if err != nil {
 		return nil
 	}
+
 	logger.Info("Starting FluxMonitor for Job: ", js.Job)
+
 	fmConfig := services.ParseFMSpec(js.Spec)
 	fmConfig.AdapterTimeout = srv.runtimeConfig.FMAdapterTimeout
 	triggerJobRun := make(chan subscriber.Event)
-	fm := services.NewFluxMonitor(fmConfig, triggerJobRun)
-	// did we break something of the previous implementation here?
-	go func() {
-		// defer counter.Dec()
+	fm, err := services.NewFluxMonitor(fmConfig, triggerJobRun, *sub)
+	if err != nil {
+		return err
+	}
 
+	go func() {
 		// Add a second of delay to let services (Chainlink core)
 		// sync up before sending the first job run trigger.
 		time.Sleep(1 * time.Second)
@@ -282,6 +239,13 @@ func (srv *Service) subscribe(sub *store.Subscription, iSubscriber subscriber.IS
 			}()
 		}
 	}()
+
+	subscription := activeSubscription{
+		Subscription: sub,
+		Service:      fm,
+	}
+
+	srv.subscriptions[sub.Job] = &subscription
 
 	return nil
 }
@@ -304,16 +268,11 @@ func (srv *Service) LoadJobSpec(jobid string) (*store.JobSpec, error) {
 // SaveSubscription tests, stores and subscribes to the store.Subscription
 // provided.
 func (srv *Service) SaveSubscription(arg *store.Subscription) error {
-	sub, err := srv.getAndTestSubscription(arg)
-	if err != nil {
-		return err
-	}
-
 	if err := srv.store.SaveSubscription(arg); err != nil {
 		return err
 	}
 
-	return srv.subscribe(arg, sub)
+	return srv.subscribe(arg)
 }
 
 // DeleteJob unsubscribes (if applicable) and deletes
@@ -355,31 +314,6 @@ func (srv *Service) SaveEndpoint(e *store.Endpoint) error {
 		return err
 	}
 	return srv.store.SaveEndpoint(e)
-}
-
-func getSubscriber(sub store.Subscription) (subscriber.ISubscriber, error) {
-	connType, err := blockchain.GetConnectionType(sub.Endpoint)
-	if err != nil {
-		return nil, err
-	}
-
-	if connType == subscriber.Client {
-		return blockchain.CreateClientManager(sub)
-	}
-
-	manager, err := blockchain.CreateJsonManager(connType, sub)
-	if err != nil {
-		return nil, err
-	}
-
-	switch connType {
-	case subscriber.WS:
-		return subscriber.WebsocketSubscriber{Endpoint: sub.Endpoint.Url, Manager: manager}, nil
-	case subscriber.RPC:
-		return subscriber.RpcSubscriber{Endpoint: sub.Endpoint.Url, Interval: time.Duration(sub.Endpoint.RefreshInt) * time.Second, Manager: manager}, nil
-	default:
-		return nil, fmt.Errorf("unknown subscriber type: %v", connType)
-	}
 }
 
 func normalizeLocalhost(endpoint string) string {

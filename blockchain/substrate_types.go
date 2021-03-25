@@ -117,7 +117,7 @@ type Round struct {
 
 type RoundDetails struct {
 	Submissions             []Value
-	Submission_Count_Bounds []types.U32
+	Submission_Count_Bounds TupleU32
 	Payment_Amount          Balance
 	Timeout                 types.BlockNumber
 }
@@ -161,7 +161,7 @@ type EventRoundDetailsUpdated struct {
 	Phase            types.Phase
 	FeedId           FeedId
 	Balance          Balance
-	SubmissionBounds []types.U32
+	SubmissionBounds TupleU32
 	RoundId          RoundID
 	BlockNumber      types.BlockNumber
 	Topics           []types.Hash
