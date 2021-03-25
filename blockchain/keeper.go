@@ -611,10 +611,11 @@ func (keeper keeperSubscription) parseResponse(response JsonrpcMessage) ([]subsc
 		"fromAddresses":    []string{keeper.from.Hex()},
 	}
 
-	eventBz, err := json.Marshal(event)
+	_, err = json.Marshal(event)
 	if err != nil {
 		return nil, err
 	}
 
-	return []subscriber.Event{eventBz}, nil
+	// return []subscriber.Event{eventBz}, nil
+	return nil, nil
 }

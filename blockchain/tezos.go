@@ -266,11 +266,11 @@ func extractEventsFromBlock(data []byte, addresses []string, jobID string) ([]su
 				return nil, err
 			}
 
-			event, err := json.Marshal(params)
+			_, err = json.Marshal(params)
 			if err != nil {
 				return nil, err
 			}
-			events = append(events, event)
+			// events = append(events, event)
 		}
 	}
 	return events, nil

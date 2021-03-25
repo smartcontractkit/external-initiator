@@ -125,12 +125,12 @@ func (sm *agoricManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	requestParams["payment"] = fmt.Sprint(onQueryData.Fee) +
 		strings.Repeat("0", linkDecimals-linkAgoricDecimals)
 
-	event, err := json.Marshal(requestParams)
+	_, err = json.Marshal(requestParams)
 	if err != nil {
 		logger.Error(err)
 		return nil, false
 	}
-	subEvents = append(subEvents, event)
+	// subEvents = append(subEvents, event)
 
 	return subEvents, true
 }

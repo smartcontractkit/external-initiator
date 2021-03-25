@@ -220,7 +220,9 @@ func TestEthManager_ParseResponse(t *testing.T) {
 			"successfully parses WS response",
 			fields{fq: &filterQuery{}, p: subscriber.WS},
 			args{data: []byte(`{"jsonrpc":"2.0","id":1,"params":{"subscription":"test","result":{"data":"test"}}}`)},
-			[]subscriber.Event{subscriber.Event(`{"logIndex":"","blockNumber":"","blockHash":"","transactionHash":"","transactionIndex":"","address":"","data":"test","topics":null}`)},
+			[]subscriber.Event{map[string]interface{}{
+				"logIndex": "", "blockNumber": "", "blockHash": "", "transactionHash": "", "transactionIndex": "", "address": "", "data": "test", "topics": nil,
+			}},
 			true,
 			"",
 		},
@@ -236,7 +238,9 @@ func TestEthManager_ParseResponse(t *testing.T) {
 			"fails parsing invalid block number in RPC event payload",
 			fields{fq: &filterQuery{}, p: subscriber.RPC},
 			args{data: []byte(`{"jsonrpc":"2.0","id":1,"result":[{"data":"test"}]}`)},
-			[]subscriber.Event{subscriber.Event(`{"logIndex":"","blockNumber":"","blockHash":"","transactionHash":"","transactionIndex":"","address":"","data":"test","topics":null}`)},
+			[]subscriber.Event{map[string]interface{}{
+				"logIndex": "", "blockNumber": "", "blockHash": "", "transactionHash": "", "transactionIndex": "", "address": "", "data": "test", "topics": nil,
+			}},
 			true,
 			"",
 		},
@@ -244,7 +248,9 @@ func TestEthManager_ParseResponse(t *testing.T) {
 			"updates fromBlock from RPC payload",
 			fields{fq: &filterQuery{}, p: subscriber.RPC},
 			args{data: []byte(`{"jsonrpc":"2.0","id":1,"result":[{"data":"test","blockNumber":"0x0"}]}`)},
-			[]subscriber.Event{subscriber.Event(`{"logIndex":"","blockNumber":"0x0","blockHash":"","transactionHash":"","transactionIndex":"","address":"","data":"test","topics":null}`)},
+			[]subscriber.Event{map[string]interface{}{
+				"logIndex": "", "blockNumber": "0x0", "blockHash": "", "transactionHash": "", "transactionIndex": "", "address": "", "data": "test", "topics": nil,
+			}},
 			true,
 			"0x1",
 		},
@@ -252,7 +258,9 @@ func TestEthManager_ParseResponse(t *testing.T) {
 			"does not update fromBlock in the past from RPC payload",
 			fields{fq: &filterQuery{FromBlock: "0x1"}, p: subscriber.RPC},
 			args{data: []byte(`{"jsonrpc":"2.0","id":1,"result":[{"data":"test","blockNumber":"0x0"}]}`)},
-			[]subscriber.Event{subscriber.Event(`{"logIndex":"","blockNumber":"0x0","blockHash":"","transactionHash":"","transactionIndex":"","address":"","data":"test","topics":null}`)},
+			[]subscriber.Event{map[string]interface{}{
+				"logIndex": "", "blockNumber": "0x0", "blockHash": "", "transactionHash": "", "transactionIndex": "", "address": "", "data": "test", "topics": nil,
+			}},
 			true,
 			"0x1",
 		},

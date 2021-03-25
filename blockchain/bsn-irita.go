@@ -285,12 +285,13 @@ func (bs *biritaSubscription) buildTriggerEvent(request BIritaServiceRequest) (s
 	triggerEvent.RequestID = request.ID
 	triggerEvent.RequestBody = requestBody
 
-	event, err := json.Marshal(triggerEvent)
+	_, err = json.Marshal(triggerEvent)
 	if err != nil {
 		return nil, err
 	}
 
-	return event, nil
+	// return event, nil
+	return nil, nil
 }
 
 func (bs *biritaSubscription) checkServiceRequest(request BIritaServiceRequest) error {

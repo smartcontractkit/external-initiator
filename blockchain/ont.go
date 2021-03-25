@@ -114,9 +114,9 @@ func (ots *ontSubscription) parseOntEvent(height uint32) error {
 
 	for _, e := range ontEvents {
 		for _, notify := range e.Notify {
-			event, ok := ots.notifyTrigger(notify)
+			_, ok := ots.notifyTrigger(notify)
 			if ok {
-				ots.events <- event
+				// ots.events <- event
 			}
 		}
 	}
