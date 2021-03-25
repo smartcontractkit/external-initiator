@@ -160,7 +160,7 @@ type keeperSubscription struct {
 	blockHeight      *big.Int
 }
 
-func (keeper keeperSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, runtimeConfig store.RuntimeConfig) (subscriber.ISubscription, error) {
+/*func (keeper keeperSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, runtimeConfig store.RuntimeConfig) (subscriber.ISubscription, error) {
 	sub := keeperSubscription{
 		endpoint:         keeper.Endpoint,
 		endpointName:     keeper.EndpointName,
@@ -185,7 +185,7 @@ func (keeper keeperSubscriber) SubscribeToEvents(channel chan<- subscriber.Event
 	}
 
 	return &sub, nil
-}
+}*/
 
 func (keeper keeperSubscriber) Test() error {
 	switch keeper.Connection {

@@ -5,11 +5,12 @@ package blockchain
 import (
 	"encoding/json"
 	"errors"
+	"math/big"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/shopspring/decimal"
 	"github.com/smartcontractkit/external-initiator/store"
-	"math/big"
 )
 
 var (

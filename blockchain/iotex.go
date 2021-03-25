@@ -84,12 +84,12 @@ type iotexSubscriber struct {
 	jobid        string
 }
 
-func (io *iotexSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ store.RuntimeConfig) (subscriber.ISubscription, error) {
+/*func (io *iotexSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ store.RuntimeConfig) (subscriber.ISubscription, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	sub := io.newSubscription(channel, cancel, clock.New())
 	sub.run(ctx)
 	return sub, nil
-}
+}*/
 
 func (io *iotexSubscriber) newSubscription(channel chan<- subscriber.Event, cancel context.CancelFunc, clk clock.Clock) *iotexSubscription {
 	return &iotexSubscription{
