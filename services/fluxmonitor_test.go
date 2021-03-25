@@ -60,7 +60,7 @@ func TestNewFluxMonitor(t *testing.T) {
 	for {
 		job := <-triggerJobRun
 		go func() {
-			fmt.Println("Job triggered", string(job))
+			fmt.Println("Job triggered", job)
 			fmt.Println("Current state", prettyPrint(fm.state))
 		}()
 	}
