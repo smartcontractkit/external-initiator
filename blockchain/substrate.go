@@ -11,7 +11,6 @@ import (
 	"github.com/centrifuge/go-substrate-rpc-client/v2/types"
 	"github.com/shopspring/decimal"
 	"github.com/smartcontractkit/chainlink/core/logger"
-	"github.com/smartcontractkit/external-initiator/services"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 )
@@ -56,7 +55,7 @@ func createSubstrateManager(sub store.Subscription) (*substrateManager, error) {
 
 func (sm substrateManager) Request(t string) (interface{}, error) {
 	switch t {
-	case services.FMRequestState:
+	case FMRequestState:
 		return sm.getFluxState()
 	}
 	return nil, errors.New("request type is not implemented")
@@ -64,7 +63,7 @@ func (sm substrateManager) Request(t string) (interface{}, error) {
 
 func (sm substrateManager) Subscribe(t string, ch chan<- interface{}) error {
 	switch t {
-	case services.FMSubscribeEvents:
+	case FMSubscribeEvents:
 		return sm.SubscribeToFluxMonitor(ch)
 	}
 	return errors.New("subscribe type is not implemented")
@@ -264,7 +263,7 @@ func (sm substrateManager) queryState(prefix, method string, t interface{}, args
 	}
 }
 
-func (sm substrateManager) getFluxState() (*services.FluxAggregatorState, error) {
+func (sm substrateManager) getFluxState() (*FluxAggregatorState, error) {
 	// Call chainlinkFeed.feeds(FeedId) to get the latest round
 	// Return back `latest_round`
 	// - payment
@@ -301,7 +300,7 @@ func (sm substrateManager) getFluxState() (*services.FluxAggregatorState, error)
 	timeout := uint32(feedConfig.Timeout)
 	restartDelay := int32(feedConfig.Restart_Delay)
 
-	return &services.FluxAggregatorState{
+	return &FluxAggregatorState{
 		CurrentRoundID: &roundId,
 		LatestAnswer:   latestAnswer,
 		MinSubmission:  &minSubmission,
@@ -393,7 +392,7 @@ func (sm substrateManager) subscribeNewRounds(ch chan<- interface{}) error {
 				continue
 			}
 			roundId := int32(round.RoundId)
-			ch <- services.FluxAggregatorState{
+			ch <- FluxAggregatorState{
 				CurrentRoundID: &roundId,
 			}
 		}
@@ -407,7 +406,7 @@ func (sm substrateManager) subscribeAnswerUpdated(ch chan<- interface{}) error {
 				continue
 			}
 			latestAnswer := decimal.NewFromBigInt(update.Value.Int, 10)
-			ch <- services.FluxAggregatorState{
+			ch <- FluxAggregatorState{
 				LatestAnswer: &latestAnswer,
 			}
 		}
@@ -422,7 +421,7 @@ func (sm substrateManager) subscribeOraclePermissions(ch chan<- interface{}) err
 			}
 			// TODO: Verify is correct
 			canSubmit := bool(update.Bool)
-			ch <- services.FluxAggregatorState{
+			ch <- FluxAggregatorState{
 				CanSubmit: &canSubmit,
 			}
 		}

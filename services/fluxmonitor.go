@@ -4,10 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/smartcontractkit/external-initiator/blockchain"
-	"github.com/smartcontractkit/external-initiator/store"
 	"io/ioutil"
-	"math/big"
 	"net/http"
 	"net/url"
 	"sort"
@@ -16,13 +13,10 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/smartcontractkit/chainlink/core/logger"
+	"github.com/smartcontractkit/external-initiator/blockchain"
+	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/tidwall/gjson"
-)
-
-const (
-	FMRequestState    = "fm_requestState"
-	FMSubscribeEvents = "fm_subscribeEvents"
 )
 
 type FluxMonitorConfig struct {
@@ -56,19 +50,6 @@ func ParseFMSpec(jsonSpec json.RawMessage) FluxMonitorConfig {
 	return fmConfig
 }
 
-type FluxAggregatorState struct {
-	CurrentRoundID *int32
-	LatestAnswer   *decimal.Decimal
-	MinSubmission  *decimal.Decimal
-	MaxSubmission  *decimal.Decimal
-	Payment        *big.Int
-	Timeout        *uint32
-	RestartDelay   *int32
-	//not sure if needed
-	// LatestRoundID int32
-	CanSubmit *bool
-}
-
 type AdapterResponse struct {
 	Price decimal.Decimal `json:"result"`
 	// might need error response as well
@@ -80,7 +61,7 @@ type AdapterResponse struct {
 // }
 
 type FluxMonitor struct {
-	state  FluxAggregatorState
+	state  blockchain.FluxAggregatorState
 	config FluxMonitorConfig
 
 	blockchain blockchain.Manager
@@ -116,14 +97,14 @@ func NewFluxMonitor(config FluxMonitorConfig, triggerJobRun chan subscriber.Even
 		blockchain: blockchainManager,
 	}
 
-	state, err := srv.blockchain.Request(FMRequestState)
+	state, err := srv.blockchain.Request(blockchain.FMRequestState)
 	if err != nil {
 		return nil, err
 	}
-	srv.state = state.(FluxAggregatorState)
+	srv.state = state.(blockchain.FluxAggregatorState)
 
 	eventListener := make(chan interface{})
-	err = srv.blockchain.Subscribe(FMSubscribeEvents, eventListener)
+	err = srv.blockchain.Subscribe(blockchain.FMSubscribeEvents, eventListener)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +123,7 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 	for {
 		select {
 		case state := <-ch:
-			fmState, ok := state.(FluxAggregatorState)
+			fmState, ok := state.(blockchain.FluxAggregatorState)
 			if !ok {
 				logger.Error("Got invalid state", state)
 				continue
@@ -155,7 +136,7 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 	}
 }
 
-func (fm *FluxMonitor) checkNewState(state FluxAggregatorState) {
+func (fm *FluxMonitor) checkNewState(state blockchain.FluxAggregatorState) {
 	if state.CurrentRoundID != nil {
 		fm.chNewRound <- *state.CurrentRoundID
 	}

@@ -7,7 +7,9 @@ import (
 	"errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/shopspring/decimal"
 	"github.com/smartcontractkit/external-initiator/store"
+	"math/big"
 )
 
 var (
@@ -21,6 +23,24 @@ var (
 	ErrConnectionType = errors.New("unknown connection type")
 	ErrSubscriberType = errors.New("unknown subscriber type")
 )
+
+const (
+	FMRequestState    = "fm_requestState"
+	FMSubscribeEvents = "fm_subscribeEvents"
+)
+
+type FluxAggregatorState struct {
+	CurrentRoundID *int32
+	LatestAnswer   *decimal.Decimal
+	MinSubmission  *decimal.Decimal
+	MaxSubmission  *decimal.Decimal
+	Payment        *big.Int
+	Timeout        *uint32
+	RestartDelay   *int32
+	//not sure if needed
+	// LatestRoundID int32
+	CanSubmit *bool
+}
 
 type Manager interface {
 	Request(t string) (response interface{}, err error)
