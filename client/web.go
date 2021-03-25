@@ -163,17 +163,6 @@ func (srv *HttpService) CreateSubscription(c *gin.Context) {
 		return
 	}
 
-	js := &store.JobSpec{
-		Job:  req.JobID,
-		Spec: req.Params.FluxMonitor,
-	}
-
-	if err := srv.Store.SaveJobSpec(js); err != nil {
-		logger.Error(err)
-		c.JSON(http.StatusInternalServerError, nil)
-		return
-	}
-
 	endpoint, err := srv.Store.GetEndpoint(req.Params.Endpoint)
 	if err != nil {
 		logger.Error(err)
@@ -192,6 +181,17 @@ func (srv *HttpService) CreateSubscription(c *gin.Context) {
 		return
 	}
 
+	js := &store.JobSpec{
+		Job:  req.JobID,
+		Spec: req.Params.FluxMonitor,
+	}
+
+	if err := srv.Store.SaveJobSpec(js); err != nil {
+		logger.Error(err)
+		c.JSON(http.StatusInternalServerError, nil)
+		return
+	}
+
 	sub := &store.Subscription{
 		ReferenceId:  uuid.New().String(),
 		Job:          req.JobID,
@@ -200,7 +200,6 @@ func (srv *HttpService) CreateSubscription(c *gin.Context) {
 	}
 
 	blockchain.CreateSubscription(sub, req.Params)
-	fmt.Println("Before saving the subscription")
 	if err := srv.Store.SaveSubscription(sub); err != nil {
 		logger.Error(err)
 		c.JSON(http.StatusInternalServerError, nil)

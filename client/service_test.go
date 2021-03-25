@@ -4,7 +4,6 @@ import (
 	"errors"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/smartcontractkit/external-initiator/blockchain"
 	"github.com/smartcontractkit/external-initiator/chainlink"
@@ -52,6 +51,14 @@ func (s storeClientFailer) SaveEndpoint(*store.Endpoint) error {
 	return s.error
 }
 
+func (s storeClientFailer) SaveJobSpec(*store.JobSpec) error {
+	return s.error
+}
+
+func (s storeClientFailer) LoadJobSpec(string) (*store.JobSpec, error) {
+	return nil, s.error
+}
+
 type mockSubscription struct{}
 
 func (s mockSubscription) Unsubscribe() {}
@@ -60,19 +67,19 @@ func Test_getSubscriber(t *testing.T) {
 	ethWsManager, err := blockchain.CreateJsonManager(subscriber.WS, store.Subscription{
 		Endpoint: store.Endpoint{
 			Url:  "ws://localhost",
-			Type: blockchain.ETH,
+			Type: blockchain.Substrate,
 		},
 	})
 	require.NoError(t, err)
 
-	ethRpcManager, err := blockchain.CreateJsonManager(subscriber.RPC, store.Subscription{
+	/*ethRpcManager, err := blockchain.CreateJsonManager(subscriber.RPC, store.Subscription{
 		Endpoint: store.Endpoint{
 			Url:  "http://localhost",
 			Type: blockchain.ETH,
 		},
 		Ethereum: store.EthSubscription{},
 	})
-	require.NoError(t, err)
+	require.NoError(t, err)*/
 
 	type args struct {
 		sub store.Subscription
@@ -108,7 +115,7 @@ func Test_getSubscriber(t *testing.T) {
 			args{sub: store.Subscription{
 				Endpoint: store.Endpoint{
 					Url:  "ws://localhost",
-					Type: blockchain.ETH,
+					Type: blockchain.Substrate,
 				},
 			}},
 			subscriber.WebsocketSubscriber{
@@ -117,7 +124,7 @@ func Test_getSubscriber(t *testing.T) {
 			},
 			false,
 		},
-		{
+		/*{
 			"creates RPC subscriber",
 			args{sub: store.Subscription{
 				Endpoint: store.Endpoint{
@@ -132,7 +139,7 @@ func Test_getSubscriber(t *testing.T) {
 				Manager:  ethRpcManager,
 			},
 			false,
-		},
+		},*/
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -340,7 +347,7 @@ func Test_Service_SaveEndpoint(t *testing.T) {
 			fields{
 				store: storeClientFailer{},
 			},
-			args{e: &store.Endpoint{Name: "testEndpoint", Type: blockchain.ETH}},
+			args{e: &store.Endpoint{Name: "testEndpoint", Type: blockchain.Substrate}},
 			false,
 		},
 		{
@@ -356,7 +363,7 @@ func Test_Service_SaveEndpoint(t *testing.T) {
 			fields{
 				store: storeClientFailer{error: errors.New("could not save")},
 			},
-			args{e: &store.Endpoint{Name: "testEndpoint", Type: blockchain.ETH}},
+			args{e: &store.Endpoint{Name: "testEndpoint", Type: blockchain.Substrate}},
 			true,
 		},
 	}
@@ -386,7 +393,7 @@ func Test_validateEndpoint(t *testing.T) {
 		{
 			"successfully validates bare-minimum endpoint",
 			args{store.Endpoint{
-				Type: blockchain.ETH,
+				Type: blockchain.Substrate,
 				Name: "testEndpoint",
 			}},
 			false,
@@ -394,7 +401,7 @@ func Test_validateEndpoint(t *testing.T) {
 		{
 			"fails with invalid URL",
 			args{store.Endpoint{
-				Type: blockchain.ETH,
+				Type: blockchain.Substrate,
 				Name: "testEndpoint",
 				Url:  "http://a b.com/",
 			}},
@@ -411,7 +418,7 @@ func Test_validateEndpoint(t *testing.T) {
 		{
 			"fails with missing name",
 			args{store.Endpoint{
-				Type: blockchain.ETH,
+				Type: blockchain.Substrate,
 				Name: "",
 			}},
 			true,
