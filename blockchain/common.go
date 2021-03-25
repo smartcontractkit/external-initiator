@@ -28,6 +28,7 @@ var (
 const (
 	FMRequestState    = "fm_requestState"
 	FMSubscribeEvents = "fm_subscribeEvents"
+	FMJobRun          = "fm_jobRun"
 )
 
 type FluxAggregatorState struct {
@@ -41,11 +42,14 @@ type FluxAggregatorState struct {
 	//not sure if needed
 	// LatestRoundID int32
 	CanSubmit *bool
+
+	// TODO: Add if oracle was last to start round
 }
 
 type Manager interface {
 	Request(t string) (response interface{}, err error)
 	Subscribe(t string, ch chan<- interface{}) (err error)
+	CreateJobRun(t string, params interface{}) (map[string]interface{}, error)
 }
 
 func CreateManager(sub store.Subscription) (Manager, error) {

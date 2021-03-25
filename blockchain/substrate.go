@@ -69,6 +69,24 @@ func (sm substrateManager) Subscribe(t string, ch chan<- interface{}) error {
 	return errors.New("subscribe type is not implemented")
 }
 
+func (sm substrateManager) CreateJobRun(t string, params interface{}) (map[string]interface{}, error) {
+	switch t {
+	case FMJobRun:
+		fmState, ok := params.(FluxAggregatorState)
+		if !ok {
+			return nil, errors.New("params is not FluxAggregatorState")
+		}
+
+		return map[string]interface{}{
+			"request_type": "fluxmonitor",
+			"feed_id":      fmt.Sprintf("%d", sm.feedId),
+			"round_id":     fmt.Sprintf("%d", fmState.CurrentRoundID),
+		}, nil
+	}
+
+	return nil, errors.New("job run type not implemented")
+}
+
 type substrateSubscribeResponse struct {
 	Subscription string          `json:"subscription"`
 	Result       json.RawMessage `json:"result"`
