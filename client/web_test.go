@@ -58,6 +58,8 @@ func generateCreateSubscriptionReq(id, endpoint string, addresses, topics, accou
 		ServiceName string          `json:"serviceName"`
 		From        string          `json:"from"`
 		FluxMonitor json.RawMessage `json:"fluxmonitor"`
+		FeedId      uint32          `json:"feed_id"`
+		AccountId   string          `json:"account_id"`
 	}{
 		Endpoint:   endpoint,
 		Addresses:  addresses,

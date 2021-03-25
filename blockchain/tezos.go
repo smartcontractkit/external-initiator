@@ -49,7 +49,7 @@ type tezosSubscription struct {
 	jobid        string
 }
 
-func (tz tezosSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ store.RuntimeConfig) (subscriber.ISubscription, error) {
+/*func (tz tezosSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ store.RuntimeConfig) (subscriber.ISubscription, error) {
 	logger.Infof("Using Tezos RPC endpoint: %s\nListening for events on addresses: %v", tz.Endpoint, tz.Addresses)
 
 	tzs := tezosSubscription{
@@ -63,7 +63,7 @@ func (tz tezosSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ s
 	go tzs.readMessagesWithRetry()
 
 	return tzs, nil
-}
+}*/
 
 func (tz tezosSubscriber) Test() error {
 	resp, err := monitor(tz.Endpoint)

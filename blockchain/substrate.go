@@ -9,6 +9,7 @@ import (
 
 	"github.com/centrifuge/go-substrate-rpc-client/v2/scale"
 	"github.com/centrifuge/go-substrate-rpc-client/v2/types"
+	"github.com/shopspring/decimal"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
@@ -29,27 +30,43 @@ type substrateManager struct {
 	feedId    FeedId
 	accountId types.AccountID
 
-	subscriber subscriber.ISubscriberNew
+	subscriber subscriber.ISubscriber
 }
 
-func createSubstrateManager(t subscriber.Type, conf store.Subscription) (*substrateManager, error) {
-	if t != subscriber.WS {
-		return nil, errors.New("only WS connections are allowed for Substrate")
+func createSubstrateManager(sub store.Subscription) (*substrateManager, error) {
+	feedId := types.NewU32(sub.Substrate.FeedId)
+	accountId, err := types.NewAddressFromHexAccountID(sub.Substrate.AccountId)
+	if err != nil {
+		return nil, err
 	}
 
-	var addresses []types.Address
-	for _, id := range conf.Substrate.AccountIds {
-		address, err := types.NewAddressFromHexAccountID(id)
-		if err != nil {
-			logger.Error(err)
-			continue
-		}
-		addresses = append(addresses, address)
+	conn, err := subscriber.NewSubscriber(sub.Endpoint)
+	if err != nil {
+		return nil, err
 	}
 
 	return &substrateManager{
-		endpointName: conf.EndpointName,
+		endpointName: sub.EndpointName,
+		feedId:       FeedId(feedId),
+		accountId:    accountId.AsAccountID,
+		subscriber:   conn,
 	}, nil
+}
+
+func (sm substrateManager) Request(t string) (interface{}, error) {
+	switch t {
+	case FMRequestState:
+		return sm.getFluxState()
+	}
+	return nil, errors.New("request type is not implemented")
+}
+
+func (sm substrateManager) Subscribe(t string, ch chan<- interface{}) error {
+	switch t {
+	case FMSubscribeEvents:
+		return sm.SubscribeToFluxMonitor(ch)
+	}
+	return errors.New("subscribe type is not implemented")
 }
 
 type substrateSubscribeResponse struct {
@@ -246,7 +263,7 @@ func (sm substrateManager) queryState(prefix, method string, t interface{}, args
 	}
 }
 
-func (sm substrateManager) getFluxState() {
+func (sm substrateManager) getFluxState() (*FluxAggregatorState, error) {
 	// Call chainlinkFeed.feeds(FeedId) to get the latest round
 	// Return back `latest_round`
 	// - payment
@@ -258,16 +275,41 @@ func (sm substrateManager) getFluxState() {
 	var feedConfig FeedConfig
 	err := sm.queryState("ChainlinkFeed", "Feeds", &feedConfig, sm.feedId)
 	if err != nil {
-		logger.Error(err)
-		return
+		return nil, err
 	}
 
 	var round Round
+	// TODO: Can be nil?
 	err = sm.queryState("ChainlinkFeed", "Rounds", &round, sm.feedId, feedConfig.Latest_Round)
 	if err != nil {
-		logger.Error(err)
-		return
+		return nil, err
 	}
+
+	roundId := int32(feedConfig.Latest_Round)
+	var latestAnswer *decimal.Decimal
+	if round.Answer.IsSome() {
+		val := decimal.NewFromBigInt(round.Answer.value.Int, 10)
+		latestAnswer = &val
+	}
+
+	minSubmission := decimal.NewFromBigInt(feedConfig.Submission_Value_Bounds.From.Int, 10)
+	maxSubmission := decimal.NewFromBigInt(feedConfig.Submission_Value_Bounds.To.Int, 10)
+	canSubmit := sm.oracleIsEligibleToSubmit()
+
+	payment := feedConfig.Payment_Amount.Int
+	timeout := uint32(feedConfig.Timeout)
+	restartDelay := int32(feedConfig.Restart_Delay)
+
+	return &FluxAggregatorState{
+		CurrentRoundID: &roundId,
+		LatestAnswer:   latestAnswer,
+		MinSubmission:  &minSubmission,
+		MaxSubmission:  &maxSubmission,
+		Payment:        payment,
+		Timeout:        &timeout,
+		RestartDelay:   &restartDelay,
+		CanSubmit:      &canSubmit,
+	}, nil
 }
 
 func (sm substrateManager) oracleIsEligibleToSubmit() bool {
@@ -349,7 +391,10 @@ func (sm substrateManager) subscribeNewRounds(ch chan<- interface{}) error {
 			if round.FeedId != sm.feedId {
 				continue
 			}
-			ch <- round // TODO: Format in new struct
+			roundId := int32(round.RoundId)
+			ch <- FluxAggregatorState{
+				CurrentRoundID: &roundId,
+			}
 		}
 	})
 }
@@ -360,7 +405,10 @@ func (sm substrateManager) subscribeAnswerUpdated(ch chan<- interface{}) error {
 			if update.FeedId != sm.feedId {
 				continue
 			}
-			ch <- update // TODO: Format in new struct
+			latestAnswer := decimal.NewFromBigInt(update.Value.Int, 10)
+			ch <- FluxAggregatorState{
+				LatestAnswer: &latestAnswer,
+			}
 		}
 	})
 }
@@ -371,7 +419,11 @@ func (sm substrateManager) subscribeOraclePermissions(ch chan<- interface{}) err
 			if update.FeedId != sm.feedId || update.AccountId != sm.accountId {
 				continue
 			}
-			ch <- update // TODO: Format in new struct
+			// TODO: Verify is correct
+			canSubmit := bool(update.Bool)
+			ch <- FluxAggregatorState{
+				CanSubmit: &canSubmit,
+			}
 		}
 	})
 }
@@ -382,7 +434,7 @@ func (sm substrateManager) subscribeRoundDetailsUpdate(ch chan<- interface{}) er
 			if update.FeedId != sm.feedId {
 				continue
 			}
-			ch <- update // TODO: Format in new struct
+			// TODO: Anything to do here?
 		}
 	})
 }

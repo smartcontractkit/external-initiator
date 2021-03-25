@@ -5,15 +5,12 @@ package blockchain
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
-	"net/url"
-	"strings"
-
-	"github.com/smartcontractkit/external-initiator/store"
-	"github.com/smartcontractkit/external-initiator/subscriber"
+	"math/big"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/shopspring/decimal"
+	"github.com/smartcontractkit/external-initiator/store"
 )
 
 var (
@@ -27,6 +24,38 @@ var (
 	ErrConnectionType = errors.New("unknown connection type")
 	ErrSubscriberType = errors.New("unknown subscriber type")
 )
+
+const (
+	FMRequestState    = "fm_requestState"
+	FMSubscribeEvents = "fm_subscribeEvents"
+)
+
+type FluxAggregatorState struct {
+	CurrentRoundID *int32
+	LatestAnswer   *decimal.Decimal
+	MinSubmission  *decimal.Decimal
+	MaxSubmission  *decimal.Decimal
+	Payment        *big.Int
+	Timeout        *uint32
+	RestartDelay   *int32
+	//not sure if needed
+	// LatestRoundID int32
+	CanSubmit *bool
+}
+
+type Manager interface {
+	Request(t string) (response interface{}, err error)
+	Subscribe(t string, ch chan<- interface{}) (err error)
+}
+
+func CreateManager(sub store.Subscription) (Manager, error) {
+	switch sub.Endpoint.Type {
+	case Substrate:
+		return createSubstrateManager(sub)
+	}
+
+	return nil, nil
+}
 
 // ExpectsMock variable is set when we run in a mock context
 var ExpectsMock = false
@@ -45,48 +74,10 @@ type Params struct {
 	ServiceName string          `json:"serviceName"`
 	From        string          `json:"from"`
 	FluxMonitor json.RawMessage `json:"fluxmonitor"`
-}
 
-// CreateJsonManager creates a new instance of a JSON blockchain manager with the provided
-// connection type and store.Subscription config.
-func CreateJsonManager(t subscriber.Type, sub store.Subscription) (subscriber.JsonManager, error) {
-	switch sub.Endpoint.Type {
-	case Substrate:
-		// TODO: Implement
-		return nil, nil
-	}
-
-	return nil, fmt.Errorf("unknown blockchain type %v for JSON manager", sub.Endpoint.Type)
-}
-
-// CreateClientManager creates a new instance of a subscriber.ISubscriber with the provided
-// connection type and store.Subscription config.
-func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error) {
-	switch sub.Endpoint.Type {
-	}
-
-	return nil, errors.New("unknown blockchain type for Client subscription")
-}
-
-func GetConnectionType(endpoint store.Endpoint) (subscriber.Type, error) {
-	switch endpoint.Type {
-	// Add blockchain implementations that encapsulate entire connection here
-	case "": // TODO: XTZ, ONT, IOTX, Keeper, BIRITA:
-		return subscriber.Client, nil
-	default:
-		u, err := url.Parse(endpoint.Url)
-		if err != nil {
-			return subscriber.Unknown, err
-		}
-
-		if strings.HasPrefix(u.Scheme, "ws") {
-			return subscriber.WS, nil
-		} else if strings.HasPrefix(u.Scheme, "http") {
-			return subscriber.RPC, nil
-		}
-
-		return subscriber.Unknown, errors.New("unknown connection scheme")
-	}
+	// Substrate FM:
+	FeedId    uint32 `json:"feed_id"`
+	AccountId string `json:"account_id"`
 }
 
 func ValidBlockchain(name string) bool {
@@ -99,9 +90,6 @@ func ValidBlockchain(name string) bool {
 }
 
 func GetValidations(t string, params Params) []int {
-	fmt.Println("T:")
-
-	fmt.Println(t)
 	switch t {
 	case Substrate:
 		return []int{
@@ -120,6 +108,8 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 	case Substrate:
 		sub.Substrate = store.SubstrateSubscription{
 			AccountIds: params.AccountIds,
+			FeedId:     params.FeedId,
+			AccountId:  params.AccountId,
 		}
 	}
 }
