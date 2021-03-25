@@ -70,6 +70,7 @@ type FluxMonitor struct {
 	latestResult           decimal.Decimal
 	latestResultTimestamp  time.Time
 	latestSubmittedRoundID int32
+	latestInitiatedRoundID int32
 
 	quitOnce   sync.Once
 	httpClient http.Client
@@ -143,6 +144,12 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 
 func (fm *FluxMonitor) checkNewState(state blockchain.FluxAggregatorState) {
 	if state.CurrentRoundID != nil {
+		if state.OracleStarted != nil {
+			if *state.OracleStarted {
+				fm.latestInitiatedRoundID = *state.CurrentRoundID
+			}
+			fm.state.OracleStarted = state.OracleStarted
+		}
 		fm.chNewRound <- *state.CurrentRoundID
 	}
 	if state.LatestAnswer != nil {
@@ -153,21 +160,34 @@ func (fm *FluxMonitor) checkNewState(state blockchain.FluxAggregatorState) {
 	}
 }
 
-func (fm *FluxMonitor) checkAndSendJob(triggerJobRun chan subscriber.Event) {
-	if *fm.state.CurrentRoundID != fm.latestSubmittedRoundID && *fm.state.CanSubmit {
-		// TODO: If adapters not working this is going to resubmit an old value. need to handle with timestamp or something else
-		jobRequest, err := fm.blockchain.CreateJobRun(blockchain.FMJobRun, fm.state)
-		if err != nil {
-			logger.Error("Failed to create job run:", err)
-			return
-		}
-		// The "result" key should always be the value
-		jobRequest["result"] = fm.latestResult.String()
-
-		triggerJobRun <- jobRequest
-		fm.latestSubmittedRoundID = *fm.state.CurrentRoundID
-		logger.Info("Triggering Job Run with latest result: ", fm.latestResult)
+func (fm *FluxMonitor) checkAndSendJob(triggerJobRun chan subscriber.Event, initiate bool) {
+	if !*fm.state.CanSubmit {
+		// Oracle cannot submit to this feed
+		return
 	}
+
+	if initiate && *fm.state.CurrentRoundID-fm.latestInitiatedRoundID >= *fm.state.RestartDelay {
+		// Oracle needs to wait until restart delay passes until it can initiate a new round
+		return
+	}
+
+	if *fm.state.CurrentRoundID <= fm.latestSubmittedRoundID {
+		// Oracle already submitted to this round
+		return
+	}
+
+	// TODO: If adapters not working this is going to resubmit an old value. need to handle with timestamp or something else
+	jobRequest, err := fm.blockchain.CreateJobRun(blockchain.FMJobRun, fm.state)
+	if err != nil {
+		logger.Error("Failed to create job run:", err)
+		return
+	}
+	// The "result" key should always be the value
+	jobRequest["result"] = fm.latestResult.String()
+
+	triggerJobRun <- jobRequest
+	fm.latestSubmittedRoundID = *fm.state.CurrentRoundID
+	logger.Info("Triggering Job Run with latest result: ", fm.latestResult)
 }
 
 func (fm *FluxMonitor) hitTrigger(triggerJobRun chan subscriber.Event) {
@@ -183,7 +203,10 @@ func (fm *FluxMonitor) hitTrigger(triggerJobRun chan subscriber.Event) {
 		case newRoundID := <-fm.chNewRound:
 			fm.state.CurrentRoundID = &newRoundID
 			logger.Info("New round: ", fm.state.CurrentRoundID)
-			fm.checkAndSendJob(triggerJobRun)
+			if *fm.state.OracleStarted {
+				continue
+			}
+			fm.checkAndSendJob(triggerJobRun, false)
 		case newAnswer := <-fm.chAnswerUpdated:
 			fm.state.LatestAnswer = &newAnswer
 			logger.Info("Answer updated: ", fm.state.LatestAnswer)
@@ -192,10 +215,10 @@ func (fm *FluxMonitor) hitTrigger(triggerJobRun chan subscriber.Event) {
 			logger.Info("Can submit updated: ", fm.state.CanSubmit)
 		case <-fm.chDeviation:
 			logger.Info("Deviation threshold met.")
-			fm.checkAndSendJob(triggerJobRun)
+			fm.checkAndSendJob(triggerJobRun, true)
 		case <-ticker.C:
 			logger.Info("Heartbeat")
-			fm.checkAndSendJob(triggerJobRun)
+			fm.checkAndSendJob(triggerJobRun, true)
 		case <-fm.chClose:
 			logger.Info("FluxMonitor stopped")
 			return

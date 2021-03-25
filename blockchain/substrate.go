@@ -410,8 +410,10 @@ func (sm substrateManager) subscribeNewRounds(ch chan<- interface{}) error {
 				continue
 			}
 			roundId := int32(round.RoundId)
+			oracleStarted := round.AccountId == sm.accountId
 			ch <- FluxAggregatorState{
 				CurrentRoundID: &roundId,
+				OracleStarted:  &oracleStarted,
 			}
 		}
 	})

@@ -43,7 +43,7 @@ type FluxAggregatorState struct {
 	// LatestRoundID int32
 	CanSubmit *bool
 
-	// TODO: Add if oracle was last to start round
+	OracleStarted *bool
 }
 
 type Manager interface {
