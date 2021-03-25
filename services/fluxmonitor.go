@@ -3,6 +3,7 @@ package services
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -101,7 +102,11 @@ func NewFluxMonitor(config FluxMonitorConfig, triggerJobRun chan subscriber.Even
 	if err != nil {
 		return nil, err
 	}
-	srv.state = state.(blockchain.FluxAggregatorState)
+	fmState, ok := state.(blockchain.FluxAggregatorState)
+	if !ok {
+		return nil, errors.New("didn't receive valid FluxAggreagtorState")
+	}
+	srv.state = fmState
 
 	eventListener := make(chan interface{})
 	err = srv.blockchain.Subscribe(blockchain.FMSubscribeEvents, eventListener)
