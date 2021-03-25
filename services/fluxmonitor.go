@@ -34,8 +34,8 @@ func ParseFMSpec(jsonSpec json.RawMessage) FluxMonitorConfig {
 	res := gjson.GetBytes(jsonSpec, "feeds.#.url")
 	var adapters []url.URL
 	for _, adapter := range res.Array() {
-		url, _ := url.Parse(adapter.String())
-		adapters = append(adapters, *url)
+		u, _ := url.Parse(adapter.String())
+		adapters = append(adapters, *u)
 	}
 	fmConfig.Adapters = adapters
 	fmConfig.From = gjson.GetBytes(jsonSpec, "requestData.data.from").String()
@@ -167,22 +167,20 @@ func (fm *FluxMonitor) getAdapterResponse(endpoint url.URL, from string, to stri
 	logger.Info("Requesting data from adapter: ", endpoint.String())
 	data := map[string]string{"from": from, "to": to}
 	values := map[string]interface{}{"id": "0", "data": data}
-	json_data, err := json.Marshal(values)
+	payload, err := json.Marshal(values)
 
 	if err != nil {
-		logger.Error("Marshal error: ", err)
 		return nil, err
 	}
 
 	resp, err := fm.httpClient.Post(endpoint.String(), "application/json",
-		bytes.NewBuffer(json_data))
+		bytes.NewBuffer(payload))
 
 	if err != nil {
-		logger.Error(err)
 		return nil, err
 	}
 
-	defer resp.Body.Close()
+	defer logger.ErrorIfCalling(resp.Body.Close)
 
 	if resp.StatusCode == 400 {
 		return nil, fmt.Errorf("%s returned 400", endpoint.String())
@@ -194,7 +192,6 @@ func (fm *FluxMonitor) getAdapterResponse(endpoint url.URL, from string, to stri
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		logger.Error("ReadAll error: ", err)
 		return nil, err
 	}
 
@@ -202,10 +199,9 @@ func (fm *FluxMonitor) getAdapterResponse(endpoint url.URL, from string, to stri
 	err = json.Unmarshal(body, &response)
 
 	if err != nil {
-		fmt.Println("Unmarshal error: ", err)
 		return nil, err
 	}
-	logger.Info(fmt.Sprintf("Response from %s: %s ", endpoint.String(), response.Price))
+	logger.Infof("Response from %s: %s ", endpoint.String(), response.Price)
 	return &response.Price, nil
 
 }

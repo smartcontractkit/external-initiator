@@ -99,9 +99,6 @@ func ValidBlockchain(name string) bool {
 }
 
 func GetValidations(t string, params Params) []int {
-	fmt.Println("T:")
-
-	fmt.Println(t)
 	switch t {
 	case Substrate:
 		return []int{
