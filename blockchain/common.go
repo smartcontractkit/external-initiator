@@ -9,7 +9,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/shopspring/decimal"
 	"github.com/smartcontractkit/external-initiator/store"
 )
 
@@ -31,19 +30,28 @@ const (
 	FMJobRun          = "fm_jobRun"
 )
 
-type FluxAggregatorState struct {
-	CurrentRoundID *int32
-	LatestAnswer   *decimal.Decimal
-	MinSubmission  *decimal.Decimal
-	MaxSubmission  *decimal.Decimal
-	Payment        *big.Int
-	Timeout        *uint32
-	RestartDelay   *int32
-	//not sure if needed
-	// LatestRoundID int32
-	CanSubmit *bool
+type FMEventNewRound struct {
+	RoundID         uint32
+	OracleInitiated bool
+}
 
-	OracleStarted *bool
+type FMEventAnswerUpdated struct {
+	LatestAnswer big.Int
+}
+
+type FMEventPermissionsUpdated struct {
+	CanSubmit bool
+}
+
+type FluxAggregatorState struct {
+	RoundID       uint32
+	LatestAnswer  big.Int
+	MinSubmission big.Int
+	MaxSubmission big.Int
+	Payment       big.Int
+	Timeout       uint32
+	RestartDelay  int32
+	CanSubmit     bool
 }
 
 type Manager interface {
