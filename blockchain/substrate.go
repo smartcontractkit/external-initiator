@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"reflect"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v2/scale"
 	"github.com/centrifuge/go-substrate-rpc-client/v2/types"
-	"github.com/shopspring/decimal"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
@@ -80,7 +80,7 @@ func (sm substrateManager) CreateJobRun(t string, params interface{}) (map[strin
 		return map[string]interface{}{
 			"request_type": "fluxmonitor",
 			"feed_id":      fmt.Sprintf("%d", sm.feedId),
-			"round_id":     fmt.Sprintf("%d", fmState.CurrentRoundID),
+			"round_id":     fmt.Sprintf("%d", fmState.RoundID),
 		}, nil
 	}
 
@@ -303,30 +303,22 @@ func (sm substrateManager) getFluxState() (*FluxAggregatorState, error) {
 		return nil, err
 	}
 
-	roundId := int32(feedConfig.Latest_Round)
-	var latestAnswer *decimal.Decimal
+	var latestAnswer big.Int
 	if round.Answer.IsSome() {
-		val := decimal.NewFromBigInt(round.Answer.value.Int, 10)
-		latestAnswer = &val
+		latestAnswer = *round.Answer.value.Int
+	} else {
+		latestAnswer = *big.NewInt(0)
 	}
 
-	minSubmission := decimal.NewFromBigInt(feedConfig.Submission_Value_Bounds.From.Int, 10)
-	maxSubmission := decimal.NewFromBigInt(feedConfig.Submission_Value_Bounds.To.Int, 10)
-	canSubmit := sm.oracleIsEligibleToSubmit()
-
-	payment := feedConfig.Payment_Amount.Int
-	timeout := uint32(feedConfig.Timeout)
-	restartDelay := int32(feedConfig.Restart_Delay)
-
 	return &FluxAggregatorState{
-		CurrentRoundID: &roundId,
-		LatestAnswer:   latestAnswer,
-		MinSubmission:  &minSubmission,
-		MaxSubmission:  &maxSubmission,
-		Payment:        payment,
-		Timeout:        &timeout,
-		RestartDelay:   &restartDelay,
-		CanSubmit:      &canSubmit,
+		RoundID:       uint32(feedConfig.Latest_Round),
+		LatestAnswer:  latestAnswer,
+		MinSubmission: *feedConfig.Submission_Value_Bounds.From.Int,
+		MaxSubmission: *feedConfig.Submission_Value_Bounds.To.Int,
+		Payment:       *feedConfig.Payment_Amount.Int,
+		Timeout:       uint32(feedConfig.Timeout),
+		RestartDelay:  int32(feedConfig.Restart_Delay),
+		CanSubmit:     sm.oracleIsEligibleToSubmit(),
 	}, nil
 }
 
@@ -409,11 +401,9 @@ func (sm substrateManager) subscribeNewRounds(ch chan<- interface{}) error {
 			if round.FeedId != sm.feedId {
 				continue
 			}
-			roundId := int32(round.RoundId)
-			oracleStarted := round.AccountId == sm.accountId
-			ch <- FluxAggregatorState{
-				CurrentRoundID: &roundId,
-				OracleStarted:  &oracleStarted,
+			ch <- FMEventNewRound{
+				RoundID:         uint32(round.RoundId),
+				OracleInitiated: round.AccountId == sm.accountId,
 			}
 		}
 	})
@@ -425,9 +415,8 @@ func (sm substrateManager) subscribeAnswerUpdated(ch chan<- interface{}) error {
 			if update.FeedId != sm.feedId {
 				continue
 			}
-			latestAnswer := decimal.NewFromBigInt(update.Value.Int, 10)
-			ch <- FluxAggregatorState{
-				LatestAnswer: &latestAnswer,
+			ch <- FMEventAnswerUpdated{
+				LatestAnswer: *update.Value.Int,
 			}
 		}
 	})
@@ -440,9 +429,8 @@ func (sm substrateManager) subscribeOraclePermissions(ch chan<- interface{}) err
 				continue
 			}
 			// TODO: Verify is correct
-			canSubmit := bool(update.Bool)
-			ch <- FluxAggregatorState{
-				CanSubmit: &canSubmit,
+			ch <- FMEventPermissionsUpdated{
+				CanSubmit: bool(update.Bool),
 			}
 		}
 	})

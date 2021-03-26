@@ -56,11 +56,6 @@ type AdapterResponse struct {
 	// might need error response as well
 }
 
-// type NewAnswer struct {
-// 	Value   decimal.Decimal
-// 	RoundID int32
-// }
-
 type FluxMonitor struct {
 	state  blockchain.FluxAggregatorState
 	config FluxMonitorConfig
@@ -69,18 +64,19 @@ type FluxMonitor struct {
 
 	latestResult           decimal.Decimal
 	latestResultTimestamp  time.Time
-	latestSubmittedRoundID int32
-	latestInitiatedRoundID int32
+	latestSubmittedRoundID uint32
+	latestInitiatedRoundID uint32
 
 	quitOnce   sync.Once
+	tStart     sync.Once
+	tStop      sync.Once
+	checkMutex sync.Mutex
+
 	httpClient http.Client
 
-	chDeviation chan struct{}
-	chNewRound  chan int32
-	chCanSubmit chan bool
-	// might be replaced with NewAnswer if we need the latest round
-	chAnswerUpdated chan decimal.Decimal
-	chClose         chan struct{}
+	chJobTrigger  chan subscriber.Event
+	chClose       chan struct{}
+	chTickerClose chan struct{}
 }
 
 func NewFluxMonitor(config FluxMonitorConfig, triggerJobRun chan subscriber.Event, sub store.Subscription) (*FluxMonitor, error) {
@@ -90,16 +86,17 @@ func NewFluxMonitor(config FluxMonitorConfig, triggerJobRun chan subscriber.Even
 		return nil, err
 	}
 
-	srv := FluxMonitor{
+	fm := FluxMonitor{
 		config:  config,
 		chClose: make(chan struct{}),
 		httpClient: http.Client{
 			Timeout: config.AdapterTimeout,
 		},
-		blockchain: blockchainManager,
+		blockchain:   blockchainManager,
+		chJobTrigger: triggerJobRun,
 	}
 
-	state, err := srv.blockchain.Request(blockchain.FMRequestState)
+	state, err := fm.blockchain.Request(blockchain.FMRequestState)
 	if err != nil {
 		return nil, err
 	}
@@ -107,20 +104,48 @@ func NewFluxMonitor(config FluxMonitorConfig, triggerJobRun chan subscriber.Even
 	if !ok {
 		return nil, errors.New("didn't receive valid FluxAggreagtorState")
 	}
-	srv.state = fmState
+	fm.state = fmState
+	fm.canSubmitUpdated()
 
 	eventListener := make(chan interface{})
-	err = srv.blockchain.Subscribe(blockchain.FMSubscribeEvents, eventListener)
+	err = fm.blockchain.Subscribe(blockchain.FMSubscribeEvents, eventListener)
 	if err != nil {
 		return nil, err
 	}
 
-	go srv.eventListener(eventListener)
+	go fm.eventListener(eventListener)
 
-	go srv.startPoller()
-	go srv.hitTrigger(triggerJobRun)
+	return &fm, nil
+}
 
-	return &srv, nil
+func (fm *FluxMonitor) Stop() {
+	fm.quitOnce.Do(func() {
+		close(fm.chClose)
+	})
+}
+
+func (fm *FluxMonitor) canSubmitUpdated() {
+	if fm.state.CanSubmit {
+		fm.startTickers()
+	} else {
+		fm.stopTickers()
+	}
+}
+
+func (fm *FluxMonitor) startTickers() {
+	fm.tStart.Do(func() {
+		fm.chTickerClose = make(chan struct{})
+		go fm.startPoller()
+		go fm.hitTrigger()
+		fm.tStop = sync.Once{}
+	})
+}
+
+func (fm *FluxMonitor) stopTickers() {
+	fm.tStop.Do(func() {
+		close(fm.chTickerClose)
+		fm.tStart = sync.Once{}
+	})
 }
 
 func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
@@ -128,51 +153,54 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 
 	for {
 		select {
-		case state := <-ch:
-			fmState, ok := state.(blockchain.FluxAggregatorState)
-			if !ok {
-				logger.Error("Got invalid state", state)
-				continue
+		case rawEvent := <-ch:
+			switch event := rawEvent.(type) {
+			case blockchain.FMEventNewRound:
+				fm.state.RoundID = event.RoundID
+				if event.OracleInitiated {
+					fm.latestInitiatedRoundID = event.RoundID
+					continue
+				}
+				fm.checkAndSendJob(false)
+			case blockchain.FMEventAnswerUpdated:
+				fm.state.LatestAnswer = event.LatestAnswer
+				fm.checkDeviation()
+			case blockchain.FMEventPermissionsUpdated:
+				fm.state.CanSubmit = event.CanSubmit
+				fm.canSubmitUpdated()
 			}
-			logger.Debug("New state", fmState)
-			fm.checkNewState(fmState)
 		case <-fm.chClose:
 			return
 		}
 	}
 }
 
-func (fm *FluxMonitor) checkNewState(state blockchain.FluxAggregatorState) {
-	if state.CurrentRoundID != nil {
-		if state.OracleStarted != nil {
-			if *state.OracleStarted {
-				fm.latestInitiatedRoundID = *state.CurrentRoundID
-			}
-			fm.state.OracleStarted = state.OracleStarted
-		}
-		fm.chNewRound <- *state.CurrentRoundID
+func (fm *FluxMonitor) canSubmitToRound(initiate bool) bool {
+	if !fm.state.CanSubmit {
+		// Oracle cannot submit to this feed
+		return false
 	}
-	if state.LatestAnswer != nil {
-		fm.chAnswerUpdated <- *state.LatestAnswer
+
+	if initiate && int32(fm.state.RoundID+1-fm.latestInitiatedRoundID) <= fm.state.RestartDelay {
+		// Oracle needs to wait until restart delay passes until it can initiate a new round
+		return false
 	}
-	if state.CanSubmit != nil {
-		fm.chCanSubmit <- *state.CanSubmit
+
+	if fm.latestSubmittedRoundID >= fm.state.RoundID {
+		// Oracle already submitted to this round
+		return false
 	}
+
+	return true
 }
 
-func (fm *FluxMonitor) checkAndSendJob(triggerJobRun chan subscriber.Event, initiate bool) {
-	if !*fm.state.CanSubmit {
-		// Oracle cannot submit to this feed
-		return
-	}
+func (fm *FluxMonitor) checkAndSendJob(initiate bool) {
+	// Add a lock for checks so we prevent multiple rounds being started at the same time
+	fm.checkMutex.Lock()
+	defer fm.checkMutex.Unlock()
 
-	if initiate && *fm.state.CurrentRoundID-fm.latestInitiatedRoundID >= *fm.state.RestartDelay {
-		// Oracle needs to wait until restart delay passes until it can initiate a new round
-		return
-	}
-
-	if *fm.state.CurrentRoundID <= fm.latestSubmittedRoundID {
-		// Oracle already submitted to this round
+	if !fm.canSubmitToRound(initiate) {
+		// Oracle can't submit to this round
 		return
 	}
 
@@ -182,45 +210,30 @@ func (fm *FluxMonitor) checkAndSendJob(triggerJobRun chan subscriber.Event, init
 		logger.Error("Failed to create job run:", err)
 		return
 	}
-	// The "result" key should always be the value
-	jobRequest["result"] = fm.latestResult.String()
 
-	triggerJobRun <- jobRequest
-	fm.latestSubmittedRoundID = *fm.state.CurrentRoundID
+	// Add common keys that should always be included
+	jobRequest["result"] = fm.latestResult.String()
+	jobRequest["payment"] = fm.state.Payment.String()
+
 	logger.Info("Triggering Job Run with latest result: ", fm.latestResult)
+	fm.chJobTrigger <- jobRequest
+	fm.latestSubmittedRoundID = fm.state.RoundID
 }
 
-func (fm *FluxMonitor) hitTrigger(triggerJobRun chan subscriber.Event) {
-	fm.chDeviation = make(chan struct{})
-	fm.chNewRound = make(chan int32)
-	fm.chAnswerUpdated = make(chan decimal.Decimal)
-	fm.chCanSubmit = make(chan bool)
-
+func (fm *FluxMonitor) hitTrigger() {
 	ticker := time.NewTicker(fm.config.Heartbeat)
 	defer ticker.Stop()
+
 	for {
 		select {
-		case newRoundID := <-fm.chNewRound:
-			fm.state.CurrentRoundID = &newRoundID
-			logger.Info("New round: ", fm.state.CurrentRoundID)
-			if *fm.state.OracleStarted {
-				continue
-			}
-			fm.checkAndSendJob(triggerJobRun, false)
-		case newAnswer := <-fm.chAnswerUpdated:
-			fm.state.LatestAnswer = &newAnswer
-			logger.Info("Answer updated: ", fm.state.LatestAnswer)
-		case canSubmit := <-fm.chCanSubmit:
-			fm.state.CanSubmit = &canSubmit
-			logger.Info("Can submit updated: ", fm.state.CanSubmit)
-		case <-fm.chDeviation:
-			logger.Info("Deviation threshold met.")
-			fm.checkAndSendJob(triggerJobRun, true)
 		case <-ticker.C:
 			logger.Info("Heartbeat")
-			fm.checkAndSendJob(triggerJobRun, true)
+			fm.checkAndSendJob(true)
 		case <-fm.chClose:
 			logger.Info("FluxMonitor stopped")
+			return
+		case <-fm.chTickerClose:
+			logger.Info("Stopping heartbeat timer")
 			return
 		}
 	}
@@ -238,6 +251,9 @@ func (fm *FluxMonitor) startPoller() {
 			fm.poll()
 		case <-fm.chClose:
 			fmt.Println("stopping polling adapter")
+			return
+		case <-fm.chTickerClose:
+			logger.Info("stopping poller")
 			return
 		}
 	}
@@ -316,10 +332,15 @@ func (fm *FluxMonitor) poll() {
 	fm.latestResult = median
 	fm.latestResultTimestamp = time.Now()
 	logger.Info("Latest result: ", median)
-	if outOfDeviation(*fm.state.LatestAnswer, fm.latestResult, fm.config.Threshold, fm.config.AbsoluteThreshold) {
-		fm.chDeviation <- struct{}{}
+	fm.checkDeviation()
+}
+
+func (fm *FluxMonitor) checkDeviation() {
+	if !outOfDeviation(decimal.NewFromBigInt(&fm.state.LatestAnswer, 10), fm.latestResult, fm.config.Threshold, fm.config.AbsoluteThreshold) {
+		return
 	}
 
+	fm.checkAndSendJob(true)
 }
 
 func calculateMedian(prices []*decimal.Decimal) decimal.Decimal {
@@ -333,12 +354,6 @@ func calculateMedian(prices []*decimal.Decimal) decimal.Decimal {
 	}
 
 	return (prices[mNumber-1].Add(*prices[mNumber])).Div(decimal.NewFromInt(2))
-}
-
-func (fm *FluxMonitor) Stop() {
-	fm.quitOnce.Do(func() {
-		close(fm.chClose)
-	})
 }
 
 func outOfDeviation(currentAnswer, nextAnswer, percentageThreshold, absoluteThreshold decimal.Decimal) bool {
