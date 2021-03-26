@@ -118,6 +118,12 @@ func NewFluxMonitor(config FluxMonitorConfig, triggerJobRun chan subscriber.Even
 	return &fm, nil
 }
 
+func (fm *FluxMonitor) Stop() {
+	fm.quitOnce.Do(func() {
+		close(fm.chClose)
+	})
+}
+
 func (fm *FluxMonitor) canSubmitUpdated() {
 	if fm.state.CanSubmit {
 		fm.startTickers()
@@ -169,23 +175,32 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 	}
 }
 
+func (fm *FluxMonitor) canSubmitToRound(initiate bool) bool {
+	if !fm.state.CanSubmit {
+		// Oracle cannot submit to this feed
+		return false
+	}
+
+	if initiate && int32(fm.state.RoundID+1-fm.latestInitiatedRoundID) <= fm.state.RestartDelay {
+		// Oracle needs to wait until restart delay passes until it can initiate a new round
+		return false
+	}
+
+	if fm.latestSubmittedRoundID >= fm.state.RoundID {
+		// Oracle already submitted to this round
+		return false
+	}
+
+	return true
+}
+
 func (fm *FluxMonitor) checkAndSendJob(initiate bool) {
 	// Add a lock for checks so we prevent multiple rounds being started at the same time
 	fm.checkMutex.Lock()
 	defer fm.checkMutex.Unlock()
 
-	if !fm.state.CanSubmit {
-		// Oracle cannot submit to this feed
-		return
-	}
-
-	if initiate && int32(fm.state.RoundID-fm.latestInitiatedRoundID) >= fm.state.RestartDelay {
-		// Oracle needs to wait until restart delay passes until it can initiate a new round
-		return
-	}
-
-	if fm.state.RoundID <= fm.latestSubmittedRoundID {
-		// Oracle already submitted to this round
+	if !fm.canSubmitToRound(initiate) {
+		// Oracle can't submit to this round
 		return
 	}
 
@@ -195,6 +210,7 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) {
 		logger.Error("Failed to create job run:", err)
 		return
 	}
+
 	// Add common keys that should always be included
 	jobRequest["result"] = fm.latestResult.String()
 	jobRequest["payment"] = fm.state.Payment.String()
@@ -338,12 +354,6 @@ func calculateMedian(prices []*decimal.Decimal) decimal.Decimal {
 	}
 
 	return (prices[mNumber-1].Add(*prices[mNumber])).Div(decimal.NewFromInt(2))
-}
-
-func (fm *FluxMonitor) Stop() {
-	fm.quitOnce.Do(func() {
-		close(fm.chClose)
-	})
 }
 
 func outOfDeviation(currentAnswer, nextAnswer, percentageThreshold, absoluteThreshold decimal.Decimal) bool {
