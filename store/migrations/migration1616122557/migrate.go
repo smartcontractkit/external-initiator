@@ -2,6 +2,7 @@ package migration1616122557
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
@@ -14,6 +15,8 @@ type JobSpec struct {
 }
 
 func Migrate(tx *gorm.DB) error {
+	fmt.Println("aAAA")
+
 	err := tx.AutoMigrate(&JobSpec{}).Error
 	if err != nil {
 		return errors.Wrap(err, "failed to auto migrate Subscription")
