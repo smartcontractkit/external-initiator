@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"bytes"
+	"context"
 	"encoding/gob"
 	"encoding/hex"
 	"encoding/json"
@@ -33,10 +34,10 @@ func newMockSubscriber() (*mockSubscriber, *map[string]chan []byte) {
 	return &m, &m.responses
 }
 
-func (m *mockSubscriber) Subscribe(method string, _ json.RawMessage, responses chan<- []byte) (func(), error) {
+func (m *mockSubscriber) Subscribe(ctx context.Context, method, _ string, _ json.RawMessage, responses chan<- json.RawMessage) error {
 	ch, ok := m.responses[method]
 	if !ok {
-		return nil, errors.New("doesnt have a response channel")
+		return errors.New("doesnt have a response channel")
 	}
 
 	stop := make(chan struct{})
@@ -51,16 +52,16 @@ func (m *mockSubscriber) Subscribe(method string, _ json.RawMessage, responses c
 					return
 				}
 				responses <- resp
+			case <-ctx.Done():
+				return
 			}
 		}
 	}()
 
-	return func() {
-		close(stop)
-	}, nil
+	return nil
 }
 
-func (m *mockSubscriber) Request(method string, _ json.RawMessage) ([]byte, error) {
+func (m *mockSubscriber) Request(_ context.Context, method string, _ json.RawMessage) (json.RawMessage, error) {
 	ch, ok := m.responses[method]
 	if !ok {
 		return nil, errors.New("doesnt have a response channel")

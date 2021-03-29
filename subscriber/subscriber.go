@@ -4,6 +4,7 @@
 package subscriber
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/url"
@@ -75,10 +76,10 @@ func NewJsonrpcMessage(nonce uint64, method string, params json.RawMessage) ([]b
 // ISubscriber holds the interface for interacting with a blockchain node
 type ISubscriber interface {
 	// Subscribe to events of type t. Events are pushed to ch.
-	Subscribe(method string, params json.RawMessage, ch chan<- []byte) (unsubscribe func(), err error)
+	Subscribe(ctx context.Context, method, unsubscribeMethod string, params json.RawMessage, ch chan<- json.RawMessage) error
 	// Request data of type t.
-	Request(method string, params json.RawMessage) (result []byte, err error)
-	// Stop the subscriber and close all connections
+	Request(ctx context.Context, method string, params json.RawMessage) (result json.RawMessage, err error)
+	// Stop the subscriber and Stop all connections
 	Stop()
 }
 
@@ -90,7 +91,7 @@ func NewSubscriber(endpoint store.Endpoint) (ISubscriber, error) {
 
 	switch u.Scheme {
 	case "ws", "wss":
-		return NewWebsocketSubscriber(endpoint.Url)
+		return NewWebsocketConnection(endpoint.Url)
 	case "http", "https":
 		// TODO: Implement
 		return nil, nil

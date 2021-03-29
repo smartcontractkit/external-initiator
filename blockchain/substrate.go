@@ -2,11 +2,13 @@ package blockchain
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
 	"reflect"
+	"time"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v2/scale"
 	"github.com/centrifuge/go-substrate-rpc-client/v2/types"
@@ -240,8 +242,9 @@ func getStorageKey(meta *types.Metadata, prefix, method string, args ...interfac
 	return types.CreateStorageKey(meta, prefix, method, encoded[0], encoded[1])
 }
 
-func subscribeToStorage(meta *types.Metadata, prefix, method string, args ...interface{}) (key types.StorageKey, m string, params json.RawMessage, err error) {
+func subscribeToStorage(meta *types.Metadata, prefix, method string, args ...interface{}) (key types.StorageKey, m, um string, params json.RawMessage, err error) {
 	m = "state_subscribeStorage"
+	um = "state_unsubscribeStorage"
 
 	key, err = getStorageKey(meta, prefix, method, args...)
 	if err != nil {
@@ -254,30 +257,35 @@ func subscribeToStorage(meta *types.Metadata, prefix, method string, args ...int
 }
 
 func (sm substrateManager) queryState(prefix, method string, t interface{}, args ...interface{}) error {
-	key, rpcMethod, params, err := subscribeToStorage(sm.meta, prefix, method, args...)
+	key, rpcMethod, unsubscribeMethod, params, err := subscribeToStorage(sm.meta, prefix, method, args...)
 	if err != nil {
 		return err
 	}
 
-	responses := make(chan []byte)
-	unsubscribe, err := sm.subscriber.Subscribe(rpcMethod, params, responses)
+	responses := make(chan json.RawMessage)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	err = sm.subscriber.Subscribe(ctx, rpcMethod, unsubscribeMethod, params, responses)
 	if err != nil {
 		return err
 	}
-	defer unsubscribe()
 
 	for {
-		response := <-responses
-		err = parseChange(key, response, t)
-		if err == ErrorResultIsNull {
-			return err
-		}
-		if err != nil {
-			logger.Error(err)
-			continue
-		}
+		select {
+		case response := <-responses:
+			err = parseChange(key, response, t)
+			if err == ErrorResultIsNull {
+				return err
+			}
+			if err != nil {
+				logger.Error(err)
+				continue
+			}
 
-		return nil
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
 }
 
@@ -360,19 +368,21 @@ func noneShouldError(errs ...error) error {
 }
 
 func (sm substrateManager) subscribe(method string, handler func(event EventRecords)) error {
-	key, rpcMethod, params, err := subscribeToStorage(sm.meta, "ChainlinkFeed", method)
+	key, rpcMethod, unsubscribeMethod, params, err := subscribeToStorage(sm.meta, "ChainlinkFeed", method)
 	if err != nil {
 		return err
 	}
 
-	responses := make(chan []byte)
-	unsubscribe, err := sm.subscriber.Subscribe(rpcMethod, params, responses)
+	responses := make(chan json.RawMessage)
+	ctx, cancel := context.WithCancel(context.Background())
+	err = sm.subscriber.Subscribe(ctx, rpcMethod, unsubscribeMethod, params, responses)
 	if err != nil {
+		cancel()
 		return err
 	}
 
 	go func() {
-		defer unsubscribe()
+		defer cancel()
 
 		for {
 			response, ok := <-responses
