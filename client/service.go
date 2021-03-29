@@ -256,10 +256,7 @@ func (srv *Service) subscribe(sub *store.Subscription) error {
 }
 
 func (srv *Service) SaveJobSpec(arg *store.JobSpec) error {
-	if err := srv.store.SaveJobSpec(arg); err != nil {
-		return err
-	}
-	return nil
+	return srv.store.SaveJobSpec(arg)
 }
 
 func (srv *Service) LoadJobSpec(jobid string) (*store.JobSpec, error) {

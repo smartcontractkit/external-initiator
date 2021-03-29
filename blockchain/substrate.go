@@ -55,7 +55,7 @@ func createSubstrateManager(sub store.Subscription) (*substrateManager, error) {
 	}, nil
 }
 
-func (sm substrateManager) Request(t string) (interface{}, error) {
+func (sm *substrateManager) Request(t string) (interface{}, error) {
 	switch t {
 	case FMRequestState:
 		return sm.getFluxState()
@@ -63,7 +63,7 @@ func (sm substrateManager) Request(t string) (interface{}, error) {
 	return nil, errors.New("request type is not implemented")
 }
 
-func (sm substrateManager) Subscribe(t string, ch chan<- interface{}) error {
+func (sm *substrateManager) Subscribe(t string, ch chan<- interface{}) error {
 	switch t {
 	case FMSubscribeEvents:
 		return sm.SubscribeToFluxMonitor(ch)
@@ -169,7 +169,8 @@ func parseEvents(meta *types.Metadata, key types.StorageKey, data []byte) ([]Eve
 	var events []EventRecords
 	for _, change := range changes {
 		eventRecords := EventRecords{}
-		err = types.EventRecordsRaw(change.StorageData).DecodeEventRecords(meta, &eventRecords)
+		raw := types.EventRecordsRaw(change.StorageData)
+		err = DecodeEventRecords(meta, raw, &eventRecords)
 		if err != nil {
 			logger.Errorw("Failed parsing EventRecords:",
 				"err", err,
@@ -185,39 +186,33 @@ func parseEvents(meta *types.Metadata, key types.StorageKey, data []byte) ([]Eve
 	return events, nil
 }
 
-// LEGACY: Getting the metadata
-
-func (sm *substrateManager) GetTestJson() []byte {
-	msg := JsonrpcMessage{
-		Version: "2.0",
-		ID:      json.RawMessage(`1`),
-		Method:  "state_getMetadata",
+func (sm *substrateManager) getMetadata() (*types.Metadata, error) {
+	if sm.meta != nil {
+		return sm.meta, nil
 	}
-	data, _ := json.Marshal(msg)
-	return data
-}
 
-func (sm *substrateManager) ParseTestResponse(data []byte) error {
-	var msg JsonrpcMessage
-	err := json.Unmarshal(data, &msg)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	response, err := sm.subscriber.Request(ctx, "state_getMetadata", nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var res string
-	err = json.Unmarshal(msg.Result, &res)
+	err = json.Unmarshal(response, &res)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var metadata types.Metadata
 	err = types.DecodeFromHexString(res, &metadata)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	sm.meta = &metadata
-	return nil
+
+	return sm.meta, nil
 }
 
 // Events to send to FM
@@ -256,8 +251,12 @@ func subscribeToStorage(meta *types.Metadata, prefix, method string, args ...int
 	return
 }
 
-func (sm substrateManager) queryState(prefix, method string, t interface{}, args ...interface{}) error {
-	key, rpcMethod, unsubscribeMethod, params, err := subscribeToStorage(sm.meta, prefix, method, args...)
+func (sm *substrateManager) queryState(prefix, method string, t interface{}, args ...interface{}) error {
+	meta, err := sm.getMetadata()
+	if err != nil {
+		return err
+	}
+	key, rpcMethod, unsubscribeMethod, params, err := subscribeToStorage(meta, prefix, method, args...)
 	if err != nil {
 		return err
 	}
@@ -289,7 +288,7 @@ func (sm substrateManager) queryState(prefix, method string, t interface{}, args
 	}
 }
 
-func (sm substrateManager) getFluxState() (*FluxAggregatorState, error) {
+func (sm *substrateManager) getFluxState() (*FluxAggregatorState, error) {
 	// Call chainlinkFeed.feeds(FeedId) to get the latest round
 	// Return back `latest_round`
 	// - payment
@@ -305,9 +304,8 @@ func (sm substrateManager) getFluxState() (*FluxAggregatorState, error) {
 	}
 
 	var round Round
-	// TODO: Can be nil?
 	err = sm.queryState("ChainlinkFeed", "Rounds", &round, sm.feedId, feedConfig.Latest_Round)
-	if err != nil {
+	if err != nil && err != ErrorResultIsNull {
 		return nil, err
 	}
 
@@ -330,7 +328,7 @@ func (sm substrateManager) getFluxState() (*FluxAggregatorState, error) {
 	}, nil
 }
 
-func (sm substrateManager) oracleIsEligibleToSubmit() bool {
+func (sm *substrateManager) oracleIsEligibleToSubmit() bool {
 	var oracleStatus OracleStatus
 	err := sm.queryState("ChainlinkFeed", "OracleStati", &oracleStatus, sm.feedId, sm.accountId)
 	if err == ErrorResultIsNull {
@@ -344,31 +342,54 @@ func (sm substrateManager) oracleIsEligibleToSubmit() bool {
 	return oracleStatus.Ending_Round.IsNone()
 }
 
-func (sm substrateManager) SubscribeToFluxMonitor(ch chan<- interface{}) error {
+func (sm *substrateManager) SubscribeToFluxMonitor(ch chan<- interface{}) error {
 	// Subscribe to events and watch for NewRound
 	// This should increment the round ID on FM – but it should also return if this account was the initiator of the round
 	// Also watch for OraclePermissionsUpdated - this tells if the oracle loses permission to submit new answers
 	// Also needs to watch for RoundDetailsUpdated – this tells if timeout/restart delay/payment changes
 
-	return noneShouldError(
-		sm.subscribeNewRounds(ch),
-		sm.subscribeAnswerUpdated(ch),
-		sm.subscribeOraclePermissions(ch),
-		sm.subscribeRoundDetailsUpdate(ch),
-	)
-}
-
-func noneShouldError(errs ...error) error {
-	for _, e := range errs {
-		if e != nil {
-			return e
+	return sm.subscribe("System", "Events", func(event EventRecords) {
+		for _, round := range event.ChainlinkFeed_NewRound {
+			if round.FeedId != sm.feedId {
+				continue
+			}
+			ch <- FMEventNewRound{
+				RoundID:         uint32(round.RoundId),
+				OracleInitiated: round.AccountId == sm.accountId && !ExpectsMock,
+			}
 		}
-	}
-	return nil
+		for _, update := range event.ChainlinkFeed_AnswerUpdated {
+			if update.FeedId != sm.feedId {
+				continue
+			}
+			ch <- FMEventAnswerUpdated{
+				LatestAnswer: *update.Value.Int,
+			}
+		}
+		for _, update := range event.ChainlinkFeed_OraclePermissionsUpdated {
+			if update.FeedId != sm.feedId || update.AccountId != sm.accountId {
+				continue
+			}
+			// TODO: Verify is correct
+			ch <- FMEventPermissionsUpdated{
+				CanSubmit: bool(update.Bool),
+			}
+		}
+		for _, update := range event.ChainlinkFeed_RoundDetailsUpdated {
+			if update.FeedId != sm.feedId {
+				continue
+			}
+			// TODO: Anything to do here?
+		}
+	})
 }
 
-func (sm substrateManager) subscribe(method string, handler func(event EventRecords)) error {
-	key, rpcMethod, unsubscribeMethod, params, err := subscribeToStorage(sm.meta, "ChainlinkFeed", method)
+func (sm *substrateManager) subscribe(prefix, method string, handler func(event EventRecords)) error {
+	meta, err := sm.getMetadata()
+	if err != nil {
+		return err
+	}
+	key, rpcMethod, unsubscribeMethod, params, err := subscribeToStorage(meta, prefix, method)
 	if err != nil {
 		return err
 	}
@@ -403,56 +424,4 @@ func (sm substrateManager) subscribe(method string, handler func(event EventReco
 	}()
 
 	return nil
-}
-
-func (sm substrateManager) subscribeNewRounds(ch chan<- interface{}) error {
-	return sm.subscribe("NewRound", func(event EventRecords) {
-		for _, round := range event.ChainlinkFeeds_NewRound {
-			if round.FeedId != sm.feedId {
-				continue
-			}
-			ch <- FMEventNewRound{
-				RoundID:         uint32(round.RoundId),
-				OracleInitiated: round.AccountId == sm.accountId,
-			}
-		}
-	})
-}
-
-func (sm substrateManager) subscribeAnswerUpdated(ch chan<- interface{}) error {
-	return sm.subscribe("AnswerUpdated", func(event EventRecords) {
-		for _, update := range event.ChainlinkFeeds_AnswerUpdated {
-			if update.FeedId != sm.feedId {
-				continue
-			}
-			ch <- FMEventAnswerUpdated{
-				LatestAnswer: *update.Value.Int,
-			}
-		}
-	})
-}
-
-func (sm substrateManager) subscribeOraclePermissions(ch chan<- interface{}) error {
-	return sm.subscribe("OraclePermissionsUpdated", func(event EventRecords) {
-		for _, update := range event.ChainlinkFeeds_OraclePermissionsUpdated {
-			if update.FeedId != sm.feedId || update.AccountId != sm.accountId {
-				continue
-			}
-			// TODO: Verify is correct
-			ch <- FMEventPermissionsUpdated{
-				CanSubmit: bool(update.Bool),
-			}
-		}
-	})
-}
-
-func (sm substrateManager) subscribeRoundDetailsUpdate(ch chan<- interface{}) error {
-	return sm.subscribe("RoundDetailsUpdated", func(event EventRecords) {
-		for _, update := range event.ChainlinkFeeds_RoundDetailsUpdated {
-			if update.FeedId != sm.feedId {
-				continue
-			}
-			// TODO: Anything to do here?
-		}
-	})
 }

@@ -5,6 +5,7 @@ package blockchain
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -65,8 +66,7 @@ func CreateManager(sub store.Subscription) (Manager, error) {
 	case Substrate:
 		return createSubstrateManager(sub)
 	}
-	return nil, nil
-
+	return nil, fmt.Errorf("unknown endpoint type: %s", sub.Endpoint.Type)
 }
 
 // ExpectsMock variable is set when we run in a mock context
@@ -105,17 +105,15 @@ func GetValidations(t string, params Params) []int {
 	switch t {
 	case Substrate:
 		return []int{
-			len(params.AccountIds) + len(params.FluxMonitor),
+			len(params.FluxMonitor),
+			len(params.AccountId),
 		}
 	}
 
 	return nil
 }
 
-func CreateSubscription(sub *store.Subscription, params Params) {
-	// fmConfig := services.ParseFMSpec(params.FluxMonitor)
-	// go services.NewFluxMonitor(fmConfig)
-	// FM probably needs to get started at createsubscription too. Check how to handle this.
+func CreateSubscription(sub store.Subscription, params Params) store.Subscription {
 	switch sub.Endpoint.Type {
 	case Substrate:
 		sub.Substrate = store.SubstrateSubscription{
@@ -124,6 +122,8 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 			AccountId:  params.AccountId,
 		}
 	}
+
+	return sub
 }
 
 // JsonrpcMessage declares JSON-RPC message type
