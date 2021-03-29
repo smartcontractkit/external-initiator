@@ -65,8 +65,8 @@ func CreateManager(sub store.Subscription) (Manager, error) {
 	case Substrate:
 		return createSubstrateManager(sub)
 	}
-
 	return nil, nil
+
 }
 
 // ExpectsMock variable is set when we run in a mock context
