@@ -80,11 +80,6 @@ type FluxMonitor struct {
 
 func NewFluxMonitor(config FluxMonitorConfig, triggerJobRun chan subscriber.Event, blockchainManager blockchain.Manager) (*FluxMonitor, error) {
 	logger.Infof("New FluxMonitor with config: %+v", config)
-	//might initialize BM outside and pass it in constructor of NewFM?
-	// blockchainManager, err := blockchain.CreateManager(sub)
-	// if err != nil {
-	// 	return nil, err
-	// }
 
 	fm := FluxMonitor{
 		config:        config,
