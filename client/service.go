@@ -214,7 +214,12 @@ func (srv *Service) subscribe(sub *store.Subscription) error {
 	fmConfig := services.ParseFMSpec(js.Spec)
 	fmConfig.AdapterTimeout = srv.runtimeConfig.FMAdapterTimeout
 	triggerJobRun := make(chan subscriber.Event)
-	fm, err := services.NewFluxMonitor(fmConfig, triggerJobRun, *sub)
+	blockchainManager, err := blockchain.CreateManager(*sub)
+	if err != nil {
+		return err
+	}
+
+	fm, err := services.NewFluxMonitor(fmConfig, triggerJobRun, blockchainManager)
 	if err != nil {
 		return err
 	}
