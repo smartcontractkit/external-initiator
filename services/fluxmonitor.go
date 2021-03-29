@@ -98,12 +98,15 @@ func NewFluxMonitor(config FluxMonitorConfig, triggerJobRun chan subscriber.Even
 		return nil, err
 	}
 
-	faState, ok := state.(blockchain.FluxAggregatorState)
+	faState, ok := state.(*blockchain.FluxAggregatorState)
 	if !ok {
 		return nil, errors.New("didn't receive valid FluxAggregatorState")
 	}
+	if faState == nil {
+		return nil, errors.New("received nil FluxAggregatorState")
+	}
 
-	fm.state = faState
+	fm.state = *faState
 
 	err = fm.blockchain.Subscribe(blockchain.FMSubscribeEvents, FAEvents)
 	if err != nil {
@@ -157,6 +160,7 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 			case blockchain.FMEventNewRound:
 				fm.state.RoundID = event.RoundID
 				if event.OracleInitiated {
+					fm.latestSubmittedRoundID = event.RoundID
 					fm.latestInitiatedRoundID = event.RoundID
 					continue
 				}

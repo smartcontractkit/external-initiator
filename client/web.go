@@ -192,15 +192,15 @@ func (srv *HttpService) CreateSubscription(c *gin.Context) {
 		return
 	}
 
-	sub := &store.Subscription{
+	sub := store.Subscription{
 		ReferenceId:  uuid.New().String(),
 		Job:          req.JobID,
 		EndpointName: req.Params.Endpoint,
 		Endpoint:     *endpoint,
 	}
 
-	blockchain.CreateSubscription(sub, req.Params)
-	if err := srv.Store.SaveSubscription(sub); err != nil {
+	sub = blockchain.CreateSubscription(sub, req.Params)
+	if err := srv.Store.SaveSubscription(&sub); err != nil {
 		logger.Error(err)
 		c.JSON(http.StatusInternalServerError, nil)
 		return

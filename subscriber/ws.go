@@ -51,10 +51,12 @@ func NewWebsocketConnection(endpoint string) (*websocketConnection, error) {
 	}
 
 	wsc := &websocketConnection{
-		endpoint:          endpoint,
-		conn:              conn,
-		chSubscriptionIds: make(chan string),
-		chClose:           make(chan struct{}),
+		endpoint:              endpoint,
+		conn:                  conn,
+		subscriptionListeners: make(map[string]chan<- json.RawMessage),
+		nonceListeners:        make(map[uint64]chan<- json.RawMessage),
+		chSubscriptionIds:     make(chan string),
+		chClose:               make(chan struct{}),
 	}
 
 	go wsc.read()
@@ -176,10 +178,10 @@ func (wsc *websocketConnection) processIncomingMessage(payload json.RawMessage) 
 	if err == nil && nonce > 0 {
 		ch, ok := wsc.nonceListeners[nonce]
 		if !ok {
-			logger.Errorf("Could not find listener for nonce: %v", nonce)
 			return
 		}
 		ch <- msg.Result
+		return
 	}
 
 	var params struct {
@@ -187,21 +189,17 @@ func (wsc *websocketConnection) processIncomingMessage(payload json.RawMessage) 
 	}
 	err = json.Unmarshal(msg.Params, &params)
 	if err != nil {
-		logger.Errorf("Unable to find subscription ID in message: %s", payload)
 		return
 	}
 
 	ch, ok := wsc.subscriptionListeners[params.Subscription]
 	if !ok {
-		logger.Errorf("Could not find listener for subscription: %s", params.Subscription)
-		logger.Debug("Waiting 1s before trying again...")
+		// TODO: Should be improved in a way
 		time.Sleep(1 * time.Second)
 		ch, ok = wsc.subscriptionListeners[params.Subscription]
 		if !ok {
-			logger.Debug("listener did not start")
 			return
 		}
-		logger.Debug("listener now exists")
 	}
 
 	ch <- msg.Params
@@ -222,20 +220,22 @@ func (wsc *websocketConnection) subscribe(req *subscribeRequest) error {
 			close(listener)
 		}()
 
-		select {
-		case msg := <-listener:
-			req.ch <- msg
-		case <-req.ctx.Done():
-			req.stopped = true
-			payload, err := NewJsonrpcMessage(wsc.nonce.Inc(), req.unsubscribeMethod, []byte(fmt.Sprintf("[%s]", subscriptionId)))
-			if err != nil {
-				logger.Error(err)
+		for {
+			select {
+			case msg := <-listener:
+				req.ch <- msg
+			case <-req.ctx.Done():
+				req.stopped = true
+				payload, err := NewJsonrpcMessage(wsc.nonce.Inc(), req.unsubscribeMethod, []byte(fmt.Sprintf(`["%s"]`, subscriptionId)))
+				if err != nil {
+					logger.Error(err)
+					return
+				}
+				logger.ErrorIf(wsc.sendMessage(payload))
+				return
+			case <-wsc.chClose:
 				return
 			}
-			logger.ErrorIf(wsc.sendMessage(payload))
-			return
-		case <-wsc.chClose:
-			return
 		}
 	}()
 

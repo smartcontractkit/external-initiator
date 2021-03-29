@@ -7,29 +7,36 @@ export const getTests = () => {
       expectedRuns: 1,
       params: {
         endpoint: 'substrate-mock-ws',
-        accountIds: getAccountId(1),
-      },
-    },
-    {
-      name: 'WS mock with account #2',
-      expectedRuns: 1,
-      params: {
-        endpoint: 'substrate-mock-ws',
-        accountIds: getAccountId(2),
-      },
-    },
-    {
-      name: 'WS mock with account #3',
-      expectedRuns: 1,
-      params: {
-        endpoint: 'substrate-mock-ws',
-        accountIds: getAccountId(3),
+        feed_id: 0,
+        account_id: getAccountId(1),
+        fluxmonitor: {
+          requestData: {
+            data: {
+              from: "BTC",
+              to: "USD"
+            }
+          },
+          feeds: [
+            {
+              url: "https://pastebin.com/raw/MbzRmTst"
+            }
+          ],
+          threshold: 1,
+          absoluteThreshold: 0,
+          precision: 2,
+          pollTimer: {
+            period: "40s"
+          },
+          idleTimer: {
+            duration: "3m"
+          }
+        }
       },
     },
   ]
 }
 
-const getAccountId = (i: number): string[] => {
+const getAccountId = (i: number): string => {
   const defaultIds = []
   // Secret phrase `dry squeeze youth enjoy provide blouse claw engage host what horn next` is account:
   //  Secret seed:      0x2875481aae0807cf598d6097c901a33b36241c761158c85852a6d79a8f20bc62
@@ -53,5 +60,5 @@ const getAccountId = (i: number): string[] => {
   defaultIds.push('0xfaa31acde43e8859565f7576d5a37e6e8ee1b0f6a7c1ae2e8b0ce2bf76248467')
 
   const _accountIdEnvVar = (i: number) => `SUBSTRATE_OPERATOR_${i}_ACCOUNT_ID`
-  return [process.env[_accountIdEnvVar(i)] || defaultIds[i - 1] || '']
+  return process.env[_accountIdEnvVar(i)] || defaultIds[i - 1] || ''
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pkg/errors"
+	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store/migrations"
 )
 
@@ -107,7 +108,6 @@ func (client Client) Close() error {
 }
 
 func (client Client) prepareSubscription(rawSub *Subscription) (*Subscription, error) {
-
 	endpoint, err := client.LoadEndpoint(rawSub.EndpointName)
 	if err != nil {
 		return nil, err
@@ -178,13 +178,13 @@ func (client Client) LoadSubscriptions() ([]Subscription, error) {
 
 	var subs []Subscription
 	for _, sqlSub := range sqlSubs {
-		// sub, err := client.prepareSubscription(sqlSub)
-		// if err != nil {
-		// 	logger.Error(err)
-		// 	continue
-		// }
+		sub, err := client.prepareSubscription(sqlSub)
+		if err != nil {
+			logger.Error(err)
+			continue
+		}
 
-		subs = append(subs, *sqlSub)
+		subs = append(subs, *sub)
 	}
 
 	return subs, nil
@@ -342,9 +342,8 @@ type SubstrateSubscription struct {
 	gorm.Model
 	SubscriptionId uint
 	AccountIds     SQLStringArray
-	// TODO: Create migration:
-	FeedId    uint32
-	AccountId string
+	FeedId         uint32
+	AccountId      string
 }
 
 type OntSubscription struct {
