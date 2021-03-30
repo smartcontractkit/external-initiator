@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"testing"
 	"time"
 
@@ -61,84 +62,95 @@ func (sm *mockBlockchainManager) CreateJobRun(t string, roundId uint32) (map[str
 	return nil, errors.New("job run type not implemented")
 }
 func TestNewFluxMonitor(t *testing.T) {
-	payload, _ := json.Marshal(map[string]interface{}{"jobRunID": "1", "result": 55000, "statusCode": 200})
-	mockAdapter1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, bytes.NewBuffer(payload))
-	}))
+	tests := []struct {
+		name              string
+		adapterResult     int64
+		threshold         decimal.Decimal
+		absoluteThreshold decimal.Decimal
+		heartbeat         time.Duration
+		pollInterval      time.Duration
+		want              string
+	}{
+		{
+			"1 adapter",
+			50000,
+			decimal.NewFromFloat(0.01),
+			decimal.NewFromInt(600),
+			15 * time.Millisecond,
+			3 * time.Millisecond,
+			"50000",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			payload, _ := json.Marshal(map[string]interface{}{"jobRunID": "1", "result": tt.adapterResult, "statusCode": 200})
+			mockAdapter1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprintln(w, bytes.NewBuffer(payload))
+			}))
 
-	defer mockAdapter1.Close()
+			defer mockAdapter1.Close()
+			adapter1, _ := url.Parse(mockAdapter1.URL)
+			// adapter2, _ := url.Parse(mockAdapter2.URL)
+			// adapter3, _ := url.Parse(mockAdapter3.URL)
+			triggerJobRun := make(chan subscriber.Event)
+			var fmConfig FluxMonitorConfig
 
-	payload, _ = json.Marshal(map[string]interface{}{"jobRunID": "1", "result": 60000, "statusCode": 200})
-	mockAdapter2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, bytes.NewBuffer(payload))
-	}))
+			fmConfig.Adapters = []url.URL{*adapter1}
+			fmConfig.From = "BTC"
+			fmConfig.To = "USD"
+			fmConfig.Multiply = 18
+			fmConfig.Threshold = tt.threshold
+			fmConfig.AbsoluteThreshold = tt.absoluteThreshold
+			fmConfig.Heartbeat = tt.heartbeat
+			fmConfig.PollInterval = tt.heartbeat
 
-	defer mockAdapter2.Close()
-
-	payload, _ = json.Marshal(map[string]interface{}{"jobRunID": "1", "result": 62000, "statusCode": 200})
-	mockAdapter3 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, bytes.NewBuffer(payload))
-	}))
-
-	defer mockAdapter3.Close()
-
-	// res, err := http.Get(ts.URL)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// result, err := ioutil.ReadAll(res.Body)
-	// res.Body.Close()
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// fmt.Printf("%s", result)
-	adapter1, _ := url.Parse(mockAdapter1.URL)
-	adapter2, _ := url.Parse(mockAdapter2.URL)
-	adapter3, _ := url.Parse(mockAdapter3.URL)
-	triggerJobRun := make(chan subscriber.Event)
-	var fmConfig FluxMonitorConfig
-
-	fmConfig.Adapters = []url.URL{*adapter1, *adapter2, *adapter3}
-	fmConfig.From = "BTC"
-	fmConfig.To = "USD"
-	fmConfig.Multiply = 18
-	fmConfig.Threshold = decimal.NewFromFloat(0.01)
-	fmConfig.AbsoluteThreshold = decimal.NewFromInt(0)
-	fmConfig.Heartbeat = 15 * time.Second
-	fmConfig.PollInterval = 1 * time.Second
-
-	fm, err := NewFluxMonitor(fmConfig, triggerJobRun, &mockBlockchainManager{})
-	require.NoError(t, err)
-	go func() {
-		for range time.Tick(time.Second * 2) {
+			fm, err := NewFluxMonitor(fmConfig, triggerJobRun, &mockBlockchainManager{})
+			require.NoError(t, err)
 			fmt.Println("New round event, initiated")
 			FAEvents <- blockchain.FMEventNewRound{
 				RoundID:         fm.state.RoundID + 1,
 				OracleInitiated: true,
 			}
-		}
-	}()
-	go func() {
-		for range time.Tick(time.Second * 7) {
-			fmt.Println("New round event, not initiated")
-			FAEvents <- blockchain.FMEventNewRound{
-				RoundID:         fm.state.RoundID + 1,
-				OracleInitiated: false,
+			job := <-triggerJobRun
+			fmt.Println("Job triggered", job["result"])
+			fm.Stop()
+
+			if err == nil {
+				if got := job["result"]; !reflect.DeepEqual(got, tt.want) {
+					t.Errorf("GetTriggerJson() = %s, want %s", got, tt.want)
+				}
 			}
-		}
-	}()
-	go func() {
-		for range time.Tick(time.Second * 9) {
-			newAnswer := &big.Int{}
-			newAnswer = newAnswer.Add(&fm.state.LatestAnswer, big.NewInt(1))
-			fmt.Println("Answer updated: ", newAnswer)
-			fm.state.LatestAnswer = *newAnswer
-			FAEvents <- blockchain.FMEventAnswerUpdated{
-				LatestAnswer: fm.state.LatestAnswer,
-			}
-		}
-	}()
+		})
+	}
+	// go func() {
+	// 	for range time.Tick(time.Second * 2) {
+	// 		fmt.Println("New round event, initiated")
+	// 		FAEvents <- blockchain.FMEventNewRound{
+	// 			RoundID:         fm.state.RoundID + 1,
+	// 			OracleInitiated: true,
+	// 		}
+	// 	}
+	// }()
+	// go func() {
+	// 	for range time.Tick(time.Second * 7) {
+	// 		fmt.Println("New round event, not initiated")
+	// 		FAEvents <- blockchain.FMEventNewRound{
+	// 			RoundID:         fm.state.RoundID + 1,
+	// 			OracleInitiated: false,
+	// 		}
+	// 	}
+	// }()
+	// go func() {
+	// 	for range time.Tick(time.Second * 9) {
+	// 		newAnswer := &big.Int{}
+	// 		newAnswer = newAnswer.Add(&fm.state.LatestAnswer, big.NewInt(1))
+	// 		fmt.Println("Answer updated: ", newAnswer)
+	// 		fm.state.LatestAnswer = *newAnswer
+	// 		FAEvents <- blockchain.FMEventAnswerUpdated{
+	// 			LatestAnswer: fm.state.LatestAnswer,
+	// 		}
+	// 	}
+	// }()
 	// go func() {
 	// 	for range time.Tick(time.Second * 17) {
 	// 		fmt.Println("Permissions false")
@@ -155,11 +167,11 @@ func TestNewFluxMonitor(t *testing.T) {
 	// 		}
 	// 	}
 	// }()
-	for {
-		job := <-triggerJobRun
-		go func() {
-			fmt.Println("Job triggered", job)
-			fmt.Println("Current state", prettyPrint(fm.state))
-		}()
-	}
+	// 	for {
+	// 		job := <-triggerJobRun
+	// 		go func() {
+	// 			fmt.Println("Job triggered", job)
+	// 			fmt.Println("Current state", prettyPrint(fm.state))
+	// 		}()
+	// 	}
 }
