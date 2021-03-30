@@ -215,16 +215,7 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 		return err
 	}
 
-	if fm.latestResult.IsZero() {
-		logger.Warn("Polling because result is zero")
-		err := fm.poll()
-		if err != nil {
-			logger.Error("cannot retrieve result from polling")
-			return err
-		}
-	}
-
-	// If latestResult is an old value for some reason, try to fetch new
+	// If latestResult is an old value or have not been set yet, try to fetch new
 	if time.Since(fm.latestResultTimestamp) > fm.config.PollInterval+fm.config.AdapterTimeout {
 		logger.Warn("Polling again because result is old")
 		err := fm.poll()
