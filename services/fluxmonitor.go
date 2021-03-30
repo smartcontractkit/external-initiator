@@ -70,7 +70,6 @@ type FluxMonitor struct {
 	tStart     sync.Once
 	tStop      sync.Once
 	checkMutex sync.Mutex
-	pollMutex  sync.Mutex
 
 	httpClient http.Client
 
@@ -216,7 +215,7 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 	}
 
 	// If latestResult is an old value for some reason, try to fetch new
-	if time.Now().After(fm.latestResultTimestamp.Add(fm.config.PollInterval).Add(fm.config.AdapterTimeout)) {
+	if time.Since(fm.latestResultTimestamp) > fm.config.PollInterval+fm.config.AdapterTimeout {
 		logger.Warn("Polling again because result is old")
 		err := fm.poll()
 		if err != nil {
@@ -322,8 +321,6 @@ func (fm *FluxMonitor) getAdapterResponse(endpoint url.URL, from string, to stri
 }
 
 func (fm *FluxMonitor) poll() error {
-	fm.pollMutex.Lock()
-	defer fm.pollMutex.Unlock()
 
 	numSources := len(fm.config.Adapters)
 	ch := make(chan *decimal.Decimal)
