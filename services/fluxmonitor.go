@@ -70,6 +70,7 @@ type FluxMonitor struct {
 	tStart     sync.Once
 	tStop      sync.Once
 	checkMutex sync.Mutex
+	pollMutex  sync.Mutex
 
 	httpClient http.Client
 
@@ -160,12 +161,12 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 			case blockchain.FMEventNewRound:
 				fm.state.RoundID = event.RoundID
 				if event.OracleInitiated {
-					fm.latestSubmittedRoundID = event.RoundID
 					fm.latestInitiatedRoundID = event.RoundID
 					continue
 				}
 				fm.checkAndSendJob(false)
 			case blockchain.FMEventAnswerUpdated:
+				fmt.Println("State change")
 				fm.state.LatestAnswer = event.LatestAnswer
 				fm.checkDeviation()
 			case blockchain.FMEventPermissionsUpdated:
@@ -180,21 +181,18 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 
 func (fm *FluxMonitor) canSubmitToRound(initiate bool) bool {
 	if !fm.state.CanSubmit {
-		// Oracle cannot submit to this feed
 		logger.Info("Oracle can't submit to this feed")
 
 		return false
 	}
 
 	if initiate && int32(fm.state.RoundID+1-fm.latestInitiatedRoundID) <= fm.state.RestartDelay {
-		// Oracle needs to wait until restart delay passes until it can initiate a new round
 		logger.Info("Oracle needs to wait until restart delay passes until it can initiate a new round")
 
 		return false
 	}
 
 	if fm.latestSubmittedRoundID >= fm.state.RoundID {
-		// Oracle already submitted to this round
 		logger.Info("Oracle already submitted to this round")
 
 		return false
@@ -203,31 +201,38 @@ func (fm *FluxMonitor) canSubmitToRound(initiate bool) bool {
 	return true
 }
 
-func (fm *FluxMonitor) checkAndSendJob(initiate bool) {
+func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 	// Add a lock for checks so we prevent multiple rounds being started at the same time
 	fm.checkMutex.Lock()
 	defer fm.checkMutex.Unlock()
 
 	if !fm.canSubmitToRound(initiate) {
-		// Oracle can't submit to this round
-		logger.Info("Oracle can't submit to this round")
-		return
+		return errors.New("oracle can't submit to this round")
 	}
 
 	jobRequest, err := fm.blockchain.CreateJobRun(blockchain.FMJobRun, fm.state)
 	if err != nil {
-		logger.Error("Failed to create job run:", err)
-		return
+		return err
+	}
+
+	// If latestResult is an old value for some reason, try to fetch new
+	if time.Now().After(fm.latestResultTimestamp.Add(fm.config.PollInterval).Add(fm.config.AdapterTimeout)) {
+		logger.Warn("Polling again because result is old")
+		err := fm.poll()
+		if err != nil {
+			logger.Error("cannot retrieve result from polling")
+			return err
+		}
 	}
 
 	// Add common keys that should always be included
-	// TODO: If adapters not working, latestResult is going to be an old value. need to handle with timestamp or something else
 	jobRequest["result"] = fm.latestResult.String()
 	jobRequest["payment"] = fm.state.Payment.String()
 	logger.Info("Triggering Job Run with latest result: ", fm.latestResult)
 	fm.chJobTrigger <- jobRequest
 
 	fm.latestSubmittedRoundID = fm.state.RoundID
+	return nil
 }
 
 func (fm *FluxMonitor) hitTrigger() {
@@ -238,6 +243,7 @@ func (fm *FluxMonitor) hitTrigger() {
 		select {
 		case <-ticker.C:
 			logger.Info("Heartbeat")
+			fm.poll()
 			fm.checkAndSendJob(true)
 		case <-fm.chClose:
 			logger.Info("FluxMonitor stopped")
@@ -259,6 +265,7 @@ func (fm *FluxMonitor) startPoller() {
 		case <-ticker.C:
 			logger.Info("polling adapters")
 			fm.poll()
+			fm.checkDeviation()
 		case <-fm.chClose:
 			fmt.Println("stopping polling adapter")
 			return
@@ -314,7 +321,10 @@ func (fm *FluxMonitor) getAdapterResponse(endpoint url.URL, from string, to stri
 
 }
 
-func (fm *FluxMonitor) poll() {
+func (fm *FluxMonitor) poll() error {
+	fm.pollMutex.Lock()
+	defer fm.pollMutex.Unlock()
+
 	numSources := len(fm.config.Adapters)
 	ch := make(chan *decimal.Decimal)
 	for _, adapter := range fm.config.Adapters {
@@ -334,19 +344,18 @@ func (fm *FluxMonitor) poll() {
 	}
 
 	if len(values) <= numSources/2 {
-		logger.Info("Unable to get values from more than 50% of data sources")
-		return
+		return errors.New("unable to get values from more than 50% of data sources")
 	}
 
 	median := calculateMedian(values)
 	fm.latestResult = median
 	fm.latestResultTimestamp = time.Now()
-	logger.Info("Latest result: ", median)
-	fm.checkDeviation()
+	logger.Info("Latest result from adapter polling: ", median)
+	return nil
 }
 
 func (fm *FluxMonitor) checkDeviation() {
-	if !outOfDeviation(decimal.NewFromBigInt(&fm.state.LatestAnswer, 10), fm.latestResult, fm.config.Threshold, fm.config.AbsoluteThreshold) {
+	if !outOfDeviation(decimal.NewFromBigInt(&fm.state.LatestAnswer, 0), fm.latestResult, fm.config.Threshold, fm.config.AbsoluteThreshold) {
 		return
 	}
 

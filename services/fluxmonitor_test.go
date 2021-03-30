@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"net/url"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// does not print big.int pointers
 func prettyPrint(i interface{}) string {
 	s, _ := json.MarshalIndent(i, "", "\t")
 	return string(s)
@@ -24,11 +26,13 @@ type mockBlockchainManager struct{}
 
 var FAEvents = make(chan<- interface{})
 
-func (sm mockBlockchainManager) Request(t string) (interface{}, error) {
+func (sm *mockBlockchainManager) Request(t string) (interface{}, error) {
 	switch t {
 	case blockchain.FMRequestState:
-		return blockchain.FluxAggregatorState{
-			CanSubmit: true,
+		return &blockchain.FluxAggregatorState{
+			CanSubmit:    true,
+			LatestAnswer: *big.NewInt(50000),
+			// RestartDelay: 2,
 		}, nil
 		// return &FluxAggregatorState{}, nil
 		// maybe initialize with reasonable defaults
@@ -36,7 +40,7 @@ func (sm mockBlockchainManager) Request(t string) (interface{}, error) {
 	return nil, errors.New("request type is not implemented")
 }
 
-func (sm mockBlockchainManager) Subscribe(t string, ch chan<- interface{}) error {
+func (sm *mockBlockchainManager) Subscribe(t string, ch chan<- interface{}) error {
 	switch t {
 	case blockchain.FMSubscribeEvents:
 		FAEvents = ch
@@ -45,7 +49,7 @@ func (sm mockBlockchainManager) Subscribe(t string, ch chan<- interface{}) error
 	return errors.New("subscribe type is not implemented")
 }
 
-func (sm mockBlockchainManager) CreateJobRun(t string, params interface{}) (map[string]interface{}, error) {
+func (sm *mockBlockchainManager) CreateJobRun(t string, params interface{}) (map[string]interface{}, error) {
 	switch t {
 	case blockchain.FMJobRun:
 		return map[string]interface{}{}, nil
@@ -67,14 +71,13 @@ func TestNewFluxMonitor(t *testing.T) {
 	fmConfig.Threshold = decimal.NewFromFloat(0.01)
 	fmConfig.AbsoluteThreshold = decimal.NewFromInt(0)
 	fmConfig.Heartbeat = 15 * time.Second
-	fmConfig.PollInterval = 5 * time.Second
+	fmConfig.PollInterval = 1 * time.Second
 
-	fm, err := NewFluxMonitor(fmConfig, triggerJobRun, mockBlockchainManager{})
+	fm, err := NewFluxMonitor(fmConfig, triggerJobRun, &mockBlockchainManager{})
 	require.NoError(t, err)
-	fm.state.CanSubmit = true
 	go func() {
 		for range time.Tick(time.Second * 2) {
-			fmt.Println("New round event")
+			fmt.Println("New round event, initiated")
 			FAEvents <- blockchain.FMEventNewRound{
 				RoundID:         fm.state.RoundID + 1,
 				OracleInitiated: true,
@@ -83,28 +86,39 @@ func TestNewFluxMonitor(t *testing.T) {
 	}()
 	go func() {
 		for range time.Tick(time.Second * 7) {
-			fmt.Println("Answer updated")
+			fmt.Println("New round event, not initiated")
+			FAEvents <- blockchain.FMEventNewRound{
+				RoundID:         fm.state.RoundID + 1,
+				OracleInitiated: false,
+			}
+		}
+	}()
+	go func() {
+		for range time.Tick(time.Second * 9) {
+			newAnswer := &big.Int{}
+			newAnswer = newAnswer.Add(&fm.state.LatestAnswer, big.NewInt(1))
+			fmt.Println("Answer updated: ", newAnswer)
 			FAEvents <- blockchain.FMEventAnswerUpdated{
 				LatestAnswer: fm.state.LatestAnswer,
 			}
 		}
 	}()
-	go func() {
-		for range time.Tick(time.Second * 17) {
-			fmt.Println("Permissions false")
-			FAEvents <- blockchain.FMEventPermissionsUpdated{
-				CanSubmit: false,
-			}
-		}
-	}()
-	go func() {
-		for range time.Tick(time.Second * 6) {
-			fmt.Println("Permissions true")
-			FAEvents <- blockchain.FMEventPermissionsUpdated{
-				CanSubmit: true,
-			}
-		}
-	}()
+	// go func() {
+	// 	for range time.Tick(time.Second * 17) {
+	// 		fmt.Println("Permissions false")
+	// 		FAEvents <- blockchain.FMEventPermissionsUpdated{
+	// 			CanSubmit: false,
+	// 		}
+	// 	}
+	// }()
+	// go func() {
+	// 	for range time.Tick(time.Second * 6) {
+	// 		fmt.Println("Permissions true")
+	// 		FAEvents <- blockchain.FMEventPermissionsUpdated{
+	// 			CanSubmit: true,
+	// 		}
+	// 	}
+	// }()
 	for {
 		job := <-triggerJobRun
 		go func() {
