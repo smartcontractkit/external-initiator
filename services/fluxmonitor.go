@@ -114,7 +114,8 @@ func NewFluxMonitor(config FluxMonitorConfig, triggerJobRun chan subscriber.Even
 	}
 
 	fm.canSubmitUpdated()
-
+	// make an initial sumbission on startup
+	fm.checkAndSendJob(false)
 	go fm.eventListener(FAEvents)
 
 	return &fm, nil
@@ -179,7 +180,6 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 }
 
 func (fm *FluxMonitor) canSubmitToRound(initiate bool) bool {
-
 	if !fm.state.CanSubmit {
 		logger.Info("Oracle can't submit to this feed")
 
@@ -213,6 +213,15 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 	jobRequest, err := fm.blockchain.CreateJobRun(blockchain.FMJobRun, fm.state)
 	if err != nil {
 		return err
+	}
+
+	if fm.latestResult.IsZero() {
+		logger.Warn("Polling because result is zero")
+		err := fm.poll()
+		if err != nil {
+			logger.Error("cannot retrieve result from polling")
+			return err
+		}
 	}
 
 	// If latestResult is an old value for some reason, try to fetch new
@@ -257,7 +266,6 @@ func (fm *FluxMonitor) hitTrigger() {
 
 func (fm *FluxMonitor) startPoller() {
 	fm.poll()
-	fm.checkAndSendJob(false)
 	ticker := time.NewTicker(fm.config.PollInterval)
 	defer ticker.Stop()
 
