@@ -1,10 +1,13 @@
 package services
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"testing"
 	"time"
@@ -58,13 +61,45 @@ func (sm *mockBlockchainManager) CreateJobRun(t string, roundId uint32) (map[str
 	return nil, errors.New("job run type not implemented")
 }
 func TestNewFluxMonitor(t *testing.T) {
-	cryptoapis, _ := url.Parse("http://localhost:8081")
-	coingecko, _ := url.Parse("http://localhost:8082")
-	amberdata, _ := url.Parse("http://localhost:8083")
+	payload, _ := json.Marshal(map[string]interface{}{"jobRunID": "1", "result": 55000, "statusCode": 200})
+	mockAdapter1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, bytes.NewBuffer(payload))
+	}))
+
+	defer mockAdapter1.Close()
+
+	payload, _ = json.Marshal(map[string]interface{}{"jobRunID": "1", "result": 60000, "statusCode": 200})
+	mockAdapter2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, bytes.NewBuffer(payload))
+	}))
+
+	defer mockAdapter2.Close()
+
+	payload, _ = json.Marshal(map[string]interface{}{"jobRunID": "1", "result": 62000, "statusCode": 200})
+	mockAdapter3 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, bytes.NewBuffer(payload))
+	}))
+
+	defer mockAdapter3.Close()
+
+	// res, err := http.Get(ts.URL)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// result, err := ioutil.ReadAll(res.Body)
+	// res.Body.Close()
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	// fmt.Printf("%s", result)
+	adapter1, _ := url.Parse(mockAdapter1.URL)
+	adapter2, _ := url.Parse(mockAdapter2.URL)
+	adapter3, _ := url.Parse(mockAdapter3.URL)
 	triggerJobRun := make(chan subscriber.Event)
 	var fmConfig FluxMonitorConfig
 
-	fmConfig.Adapters = []url.URL{*cryptoapis, *coingecko, *amberdata}
+	fmConfig.Adapters = []url.URL{*adapter1, *adapter2, *adapter3}
 	fmConfig.From = "BTC"
 	fmConfig.To = "USD"
 	fmConfig.Multiply = 18
@@ -98,6 +133,7 @@ func TestNewFluxMonitor(t *testing.T) {
 			newAnswer := &big.Int{}
 			newAnswer = newAnswer.Add(&fm.state.LatestAnswer, big.NewInt(1))
 			fmt.Println("Answer updated: ", newAnswer)
+			fm.state.LatestAnswer = *newAnswer
 			FAEvents <- blockchain.FMEventAnswerUpdated{
 				LatestAnswer: fm.state.LatestAnswer,
 			}
