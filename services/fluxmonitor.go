@@ -114,7 +114,8 @@ func NewFluxMonitor(config FluxMonitorConfig, triggerJobRun chan subscriber.Even
 	}
 
 	fm.canSubmitUpdated()
-
+	// make an initial sumbission on startup
+	fm.checkAndSendJob(false)
 	go fm.eventListener(FAEvents)
 
 	return &fm, nil
@@ -214,7 +215,7 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 		return err
 	}
 
-	// If latestResult is an old value for some reason, try to fetch new
+	// If latestResult is an old value or have not been set yet, try to fetch new
 	if time.Since(fm.latestResultTimestamp) > fm.config.PollInterval+fm.config.AdapterTimeout {
 		logger.Warn("Polling again because result is old")
 		err := fm.poll()
