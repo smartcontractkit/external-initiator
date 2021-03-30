@@ -179,6 +179,7 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 }
 
 func (fm *FluxMonitor) canSubmitToRound(initiate bool) bool {
+
 	if !fm.state.CanSubmit {
 		logger.Info("Oracle can't submit to this feed")
 
@@ -256,6 +257,7 @@ func (fm *FluxMonitor) hitTrigger() {
 
 func (fm *FluxMonitor) startPoller() {
 	fm.poll()
+	fm.checkAndSendJob(false)
 	ticker := time.NewTicker(fm.config.PollInterval)
 	defer ticker.Stop()
 
