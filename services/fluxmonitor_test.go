@@ -61,10 +61,21 @@ func (sm *mockBlockchainManager) CreateJobRun(t string, roundId uint32) (map[str
 
 	return nil, errors.New("job run type not implemented")
 }
+
+func createMockAdapter(result int64) *url.URL {
+	payload, _ := json.Marshal(map[string]interface{}{"jobRunID": "1", "result": result, "statusCode": 200})
+	mockAdapter := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, bytes.NewBuffer(payload))
+	}))
+	adapter, _ := url.Parse(mockAdapter.URL)
+	return adapter
+
+	// return mockAdapter
+}
 func TestNewFluxMonitor(t *testing.T) {
 	tests := []struct {
 		name              string
-		adapterResult     int64
+		adapterResults    []int64
 		threshold         decimal.Decimal
 		absoluteThreshold decimal.Decimal
 		heartbeat         time.Duration
@@ -73,29 +84,44 @@ func TestNewFluxMonitor(t *testing.T) {
 	}{
 		{
 			"1 adapter",
-			50000,
+			[]int64{50000},
 			decimal.NewFromFloat(0.01),
 			decimal.NewFromInt(600),
 			15 * time.Millisecond,
 			3 * time.Millisecond,
 			"50000",
 		},
+		{
+			"2 adapters",
+			[]int64{50000, 51000},
+			decimal.NewFromFloat(0.01),
+			decimal.NewFromInt(600),
+			15 * time.Millisecond,
+			3 * time.Millisecond,
+			"50500",
+		},
+		{
+			"3 adapters",
+			[]int64{50000, 51000, 52000},
+			decimal.NewFromFloat(0.01),
+			decimal.NewFromInt(600),
+			15 * time.Millisecond,
+			3 * time.Millisecond,
+			"51000",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			payload, _ := json.Marshal(map[string]interface{}{"jobRunID": "1", "result": tt.adapterResult, "statusCode": 200})
-			mockAdapter1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				fmt.Fprintln(w, bytes.NewBuffer(payload))
-			}))
 
-			defer mockAdapter1.Close()
-			adapter1, _ := url.Parse(mockAdapter1.URL)
-			// adapter2, _ := url.Parse(mockAdapter2.URL)
-			// adapter3, _ := url.Parse(mockAdapter3.URL)
+			var mockAdapters []url.URL
+			for _, v := range tt.adapterResults {
+				mockAdapters = append(mockAdapters, *createMockAdapter(v))
+			}
+
 			triggerJobRun := make(chan subscriber.Event)
 			var fmConfig FluxMonitorConfig
 
-			fmConfig.Adapters = []url.URL{*adapter1}
+			fmConfig.Adapters = mockAdapters
 			fmConfig.From = "BTC"
 			fmConfig.To = "USD"
 			fmConfig.Multiply = 18
