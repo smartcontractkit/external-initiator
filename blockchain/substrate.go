@@ -71,18 +71,13 @@ func (sm *substrateManager) Subscribe(t string, ch chan<- interface{}) error {
 	return errors.New("subscribe type is not implemented")
 }
 
-func (sm substrateManager) CreateJobRun(t string, params interface{}) (map[string]interface{}, error) {
+func (sm substrateManager) CreateJobRun(t string, roundId uint32) (map[string]interface{}, error) {
 	switch t {
 	case FMJobRun:
-		fmState, ok := params.(FluxAggregatorState)
-		if !ok {
-			return nil, errors.New("params is not FluxAggregatorState")
-		}
-
 		return map[string]interface{}{
 			"request_type": "fluxmonitor",
 			"feed_id":      fmt.Sprintf("%d", sm.feedId),
-			"round_id":     fmt.Sprintf("%d", fmState.RoundID),
+			"round_id":     fmt.Sprintf("%d", roundId),
 		}, nil
 	}
 
@@ -330,7 +325,7 @@ func (sm *substrateManager) getFluxState() (*FluxAggregatorState, error) {
 
 func (sm *substrateManager) oracleIsEligibleToSubmit() bool {
 	var oracleStatus OracleStatus
-	err := sm.queryState("ChainlinkFeed", "OracleStati", &oracleStatus, sm.feedId, sm.accountId)
+	err := sm.queryState("ChainlinkFeed", "OracleStatuses", &oracleStatus, sm.feedId, sm.accountId)
 	if err == ErrorResultIsNull {
 		return false
 	}

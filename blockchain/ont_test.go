@@ -1,15 +1,6 @@
 package blockchain
 
-import (
-	"bytes"
-	"testing"
-
-	"github.com/ontio/ontology-go-sdk/common"
-	"github.com/smartcontractkit/external-initiator/store"
-	"github.com/stretchr/testify/assert"
-)
-
-func TestCreateOntSubscriber(t *testing.T) {
+/*func TestCreateOntSubscriber(t *testing.T) {
 	t.Run("creates ontSubscriber from subscription",
 		func(t *testing.T) {
 			sub := store.Subscription{
@@ -192,4 +183,4 @@ func TestNotifyTrigger(t *testing.T) {
 			}
 		})
 	}
-}
+}*/

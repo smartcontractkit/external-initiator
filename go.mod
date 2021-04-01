@@ -19,7 +19,6 @@ require (
 	github.com/jinzhu/gorm v1.9.16
 	github.com/magiconair/properties v1.8.1
 	github.com/mattn/go-sqlite3 v2.0.1+incompatible // indirect
-	github.com/ontio/ontology-go-sdk v1.11.8
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.8.0
 	github.com/shopspring/decimal v1.2.0

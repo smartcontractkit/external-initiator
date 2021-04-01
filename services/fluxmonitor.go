@@ -192,7 +192,7 @@ func (fm *FluxMonitor) canSubmitToRound(initiate bool) bool {
 		return false
 	}
 
-	if fm.latestSubmittedRoundID >= fm.state.RoundID {
+	if fm.latestSubmittedRoundID != 0 && fm.latestSubmittedRoundID >= fm.state.RoundID {
 		logger.Info("Oracle already submitted to this round")
 
 		return false
@@ -210,7 +210,12 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 		return errors.New("oracle can't submit to this round")
 	}
 
-	jobRequest, err := fm.blockchain.CreateJobRun(blockchain.FMJobRun, fm.state)
+	roundId := fm.state.RoundID
+	if initiate {
+		roundId++
+	}
+
+	jobRequest, err := fm.blockchain.CreateJobRun(blockchain.FMJobRun, roundId)
 	if err != nil {
 		return err
 	}
