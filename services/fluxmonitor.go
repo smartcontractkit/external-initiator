@@ -82,9 +82,8 @@ func NewFluxMonitor(config FluxMonitorConfig, triggerJobRun chan subscriber.Even
 	logger.Infof("New FluxMonitor with config: %+v", config)
 
 	fm := FluxMonitor{
-		config:        config,
-		chClose:       make(chan struct{}),
-		chTickerClose: make(chan struct{}),
+		config:  config,
+		chClose: make(chan struct{}),
 		httpClient: http.Client{
 			Timeout: config.AdapterTimeout,
 		},
@@ -138,8 +137,8 @@ func (fm *FluxMonitor) canSubmitUpdated() {
 func (fm *FluxMonitor) startTickers() {
 	fm.tStart.Do(func() {
 		fm.chTickerClose = make(chan struct{})
-		go fm.startPoller()
-		go fm.hitTrigger()
+		go fm.deviationChecker()
+		go fm.heartbeatTicker()
 		fm.tStop = sync.Once{}
 	})
 }
@@ -165,6 +164,8 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 					continue
 				}
 				fm.checkAndSendJob(false)
+				fm.stopTickers()
+				go fm.heartbeatTicker()
 			case blockchain.FMEventAnswerUpdated:
 				fmt.Println("State change")
 				fm.state.LatestAnswer = event.LatestAnswer
@@ -235,7 +236,11 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 	return nil
 }
 
-func (fm *FluxMonitor) hitTrigger() {
+func (fm *FluxMonitor) heartbeatTicker() {
+	if fm.config.Heartbeat == 0 {
+		logger.Info("Not starting heartbeat ticker, because config.Heartbeat is not set")
+		return
+	}
 	ticker := time.NewTicker(fm.config.Heartbeat)
 	defer ticker.Stop()
 
@@ -255,7 +260,11 @@ func (fm *FluxMonitor) hitTrigger() {
 	}
 }
 
-func (fm *FluxMonitor) startPoller() {
+func (fm *FluxMonitor) deviationChecker() {
+	if fm.config.PollInterval == 0 {
+		logger.Info("Not starting deviation checker, because config.PollInterval is not set")
+		return
+	}
 	fm.poll()
 	ticker := time.NewTicker(fm.config.PollInterval)
 	defer ticker.Stop()
