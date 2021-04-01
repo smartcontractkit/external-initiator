@@ -341,8 +341,6 @@ func (fm *FluxMonitor) getAdapterResponse(endpoint url.URL, from string, to stri
 }
 
 func (fm *FluxMonitor) poll() error {
-	fm.pollMutex.Lock()
-	defer fm.pollMutex.Unlock()
 	numSources := len(fm.config.Adapters)
 	ch := make(chan *decimal.Decimal)
 	for _, adapter := range fm.config.Adapters {
@@ -367,8 +365,10 @@ func (fm *FluxMonitor) poll() error {
 	}
 
 	median := calculateMedian(values)
+	fm.pollMutex.Lock()
 	fm.latestResult = median
 	fm.latestResultTimestamp = time.Now()
+	fm.pollMutex.Unlock()
 	logger.Info("Latest result from adapter polling: ", median)
 	return nil
 }
