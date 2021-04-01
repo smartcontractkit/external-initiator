@@ -219,31 +219,26 @@ func (srv *Service) subscribe(sub *store.Subscription) error {
 		return err
 	}
 
-	fm, err := services.NewFluxMonitor(fmConfig, triggerJobRun, blockchainManager)
-	if err != nil {
-		return err
-	}
-
 	go func() {
 		// Add a second of delay to let services (Chainlink core)
 		// sync up before sending the first job run trigger.
 		time.Sleep(1 * time.Second)
 
 		for {
-			// we should send here event from FluxMonitor
 			trigger := <-triggerJobRun
 			go func() {
-				// data := new(bytes.Buffer)
-				// binary.Write(data, binary.LittleEndian, trigger)
 				err := srv.clNode.TriggerJob(sub.Job, trigger)
 				if err != nil {
 					logger.Error("Failed sending job run trigger: ", err)
-					logger.Info("Closing FM service, just for testing")
-					fm.Stop()
 				}
 			}()
 		}
 	}()
+
+	fm, err := services.NewFluxMonitor(fmConfig, triggerJobRun, blockchainManager)
+	if err != nil {
+		return err
+	}
 
 	subscription := activeSubscription{
 		Subscription: sub,
