@@ -167,7 +167,8 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 					fm.latestInitiatedRoundID = event.RoundID
 					continue
 				}
-				fm.checkAndSendJob(false)
+				err := fm.checkAndSendJob(false)
+				logger.Error(err)
 				fm.stopTickers()
 				go fm.heartbeatTicker()
 			case blockchain.FMEventAnswerUpdated:
@@ -223,16 +224,16 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 
 	jobRequest, err := fm.blockchain.CreateJobRun(blockchain.FMJobRun, roundId)
 	if err != nil {
-		return err
+		logger.Error(err)
+		return errors.New("failed to create job request from blockchain manager")
 	}
 
-	// If latestResult is an old value or have not been set yet, try to fetch new
 	if time.Since(fm.latestResultTimestamp) > fm.config.PollInterval+fm.config.AdapterTimeout {
-		logger.Warn("Polling again because result is old")
+		logger.Warn("Polling again because result is old or have not been set yet")
 		err := fm.poll()
 		if err != nil {
-			logger.Error("cannot retrieve result from polling")
-			return err
+			logger.Error(err)
+			return errors.New("cannot retrieve recent result")
 		}
 	}
 
@@ -259,7 +260,8 @@ func (fm *FluxMonitor) heartbeatTicker() {
 		case <-ticker.C:
 			logger.Info("Heartbeat")
 			fm.poll()
-			fm.checkAndSendJob(true)
+			err := fm.checkAndSendJob(true)
+			logger.Error(err)
 		case <-fm.chClose:
 			logger.Info("FluxMonitor stopped")
 			return
@@ -360,7 +362,6 @@ func (fm *FluxMonitor) poll() error {
 	}
 
 	if len(values) <= numSources/2 {
-		logger.Info("unable to get values from more than 50% of data sources")
 		return errors.New("unable to get values from more than 50% of data sources")
 	}
 
@@ -379,7 +380,8 @@ func (fm *FluxMonitor) checkDeviation() {
 		return
 	}
 
-	fm.checkAndSendJob(true)
+	err := fm.checkAndSendJob(true)
+	logger.Error(err)
 }
 
 func calculateMedian(prices []*decimal.Decimal) decimal.Decimal {

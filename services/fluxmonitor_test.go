@@ -136,6 +136,33 @@ func TestNewFluxMonitor(t *testing.T) {
 			3 * time.Millisecond,
 			"no_job",
 		},
+		{
+			"3 adapters, 1 errored, no heartbeat",
+			[]string{"50000", "51000", ""},
+			decimal.NewFromFloat(0.01),
+			decimal.NewFromInt(600),
+			0,
+			3 * time.Millisecond,
+			"50500",
+		},
+		{
+			"3 adapters, 1 errored, no polling",
+			[]string{"50000", "51000", ""},
+			decimal.NewFromFloat(0.01),
+			decimal.NewFromInt(600),
+			15 * time.Millisecond,
+			0,
+			"50500",
+		},
+		{
+			"3 adapters, 1 errored, no heartbeat, no polling",
+			[]string{"50000", "51000", ""},
+			decimal.NewFromFloat(0.01),
+			decimal.NewFromInt(600),
+			0,
+			0,
+			"50500",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
