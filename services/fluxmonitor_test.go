@@ -49,7 +49,7 @@ func (sm *mockBlockchainManager) Subscribe(t string, ch chan<- interface{}) erro
 	return errors.New("subscribe type is not implemented")
 }
 
-func (sm *mockBlockchainManager) CreateJobRun(t string, params interface{}) (map[string]interface{}, error) {
+func (sm *mockBlockchainManager) CreateJobRun(t string, roundId uint32) (map[string]interface{}, error) {
 	switch t {
 	case blockchain.FMJobRun:
 		return map[string]interface{}{}, nil

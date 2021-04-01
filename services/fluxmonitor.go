@@ -357,8 +357,9 @@ func (fm *FluxMonitor) poll() error {
 	return nil
 }
 
+// fm.latestResult.Mul(decimal.NewFromInt(fm.config.Multiply))
 func (fm *FluxMonitor) checkDeviation() {
-	if !outOfDeviation(decimal.NewFromBigInt(&fm.state.LatestAnswer, 0), fm.latestResult, fm.config.Threshold, fm.config.AbsoluteThreshold) {
+	if !outOfDeviation(decimal.NewFromBigInt(&fm.state.LatestAnswer, -int32(fm.config.Multiply)), (fm.latestResult), fm.config.Threshold, fm.config.AbsoluteThreshold) {
 		return
 	}
 
