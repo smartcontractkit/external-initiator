@@ -58,7 +58,7 @@ type FluxAggregatorState struct {
 type Manager interface {
 	Request(t string) (response interface{}, err error)
 	Subscribe(t string, ch chan<- interface{}) (err error)
-	CreateJobRun(t string, params interface{}) (map[string]interface{}, error)
+	CreateJobRun(t string, roundId uint32) (map[string]interface{}, error)
 }
 
 func CreateManager(sub store.Subscription) (Manager, error) {

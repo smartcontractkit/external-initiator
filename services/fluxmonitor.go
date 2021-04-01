@@ -210,7 +210,12 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 		return errors.New("oracle can't submit to this round")
 	}
 
-	jobRequest, err := fm.blockchain.CreateJobRun(blockchain.FMJobRun, fm.state)
+	roundId := fm.state.RoundID
+	if initiate {
+		roundId++
+	}
+
+	jobRequest, err := fm.blockchain.CreateJobRun(blockchain.FMJobRun, roundId)
 	if err != nil {
 		return err
 	}
