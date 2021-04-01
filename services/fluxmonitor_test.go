@@ -170,12 +170,16 @@ func TestNewFluxMonitor(t *testing.T) {
 			// FAEvents <- blockchain.FMEventAnswerUpdated{
 			// 	LatestAnswer: fm.state.LatestAnswer,
 			// }
-			// timeout in case no job run is going to be send
-			go func() {
-				time.Sleep(3 * time.Second)
-				fmt.Println("Timeout of 3 seconds. Sending a mock job to end the test")
-				triggerJobRun <- map[string]interface{}{"result": "no_job"}
-			}()
+			if tt.want == "no_job" {
+				// timeout in case no job run is going to be send, in order not to continue running
+				go func() {
+					// might set this as variable
+					time.Sleep(3 * time.Second)
+					fmt.Println("Timeout of 3 seconds. Sending a mock job to end the test")
+					triggerJobRun <- map[string]interface{}{"result": "no_job"}
+				}()
+			}
+
 			job := <-triggerJobRun
 			fmt.Println("Job triggered", job["result"])
 
