@@ -1,17 +1,7 @@
 package blockchain
 
 import (
-	"encoding/hex"
-	"fmt"
 	"time"
-
-	ontology_go_sdk "github.com/ontio/ontology-go-sdk"
-	"github.com/ontio/ontology-go-sdk/common"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/smartcontractkit/chainlink/core/logger"
-	"github.com/smartcontractkit/chainlink/core/store/models"
-	"github.com/smartcontractkit/external-initiator/store"
-	"github.com/smartcontractkit/external-initiator/subscriber"
 )
 
 const (
@@ -19,7 +9,7 @@ const (
 	scanInterval = 5 * time.Second
 )
 
-func createOntSubscriber(sub store.Subscription) *ontSubscriber {
+/*func createOntSubscriber(sub store.Subscription) *ontSubscriber {
 	sdk := ontology_go_sdk.NewOntologySdk()
 	sdk.NewRpcClient().SetAddress(sub.Endpoint.Url)
 	return &ontSubscriber{
@@ -47,7 +37,7 @@ type ontSubscription struct {
 	isDone       bool
 }
 
-/*func (ot *ontSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ store.RuntimeConfig) (subscriber.ISubscription, error) {
+func (ot *ontSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ store.RuntimeConfig) (subscriber.ISubscription, error) {
 	logger.Infof("Using Ontology RPC endpoint: Listening for events on addresses: %v\n", ot.Addresses)
 	addresses := make(map[string]bool)
 	for _, a := range ot.Addresses {
@@ -64,7 +54,7 @@ type ontSubscription struct {
 	go ontSubscription.scanWithRetry()
 
 	return ontSubscription, nil
-}*/
+}
 
 func (ot *ontSubscriber) Test() error {
 	_, err := ot.Sdk.GetCurrentBlockHeight()
@@ -199,4 +189,4 @@ func (ots *ontSubscription) notifyTrigger(notify *common.NotifyEventInfo) ([]byt
 		return event, true
 	}
 	return nil, false
-}
+}*/
