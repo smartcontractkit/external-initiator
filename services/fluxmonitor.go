@@ -137,7 +137,7 @@ func (fm *FluxMonitor) canSubmitUpdated() {
 func (fm *FluxMonitor) startTickers() {
 	fm.tStart.Do(func() {
 		fm.chTickerClose = make(chan struct{})
-		go fm.deviationChecker()
+		go fm.pollingTicker()
 		go fm.heartbeatTicker()
 		fm.tStop = sync.Once{}
 	})
@@ -265,9 +265,9 @@ func (fm *FluxMonitor) heartbeatTicker() {
 	}
 }
 
-func (fm *FluxMonitor) deviationChecker() {
+func (fm *FluxMonitor) pollingTicker() {
 	if fm.config.PollInterval == 0 {
-		logger.Info("Not starting deviation checker, because config.PollInterval is not set")
+		logger.Info("Not starting polling adapters, because config.PollInterval is not set")
 		return
 	}
 	fm.poll()
