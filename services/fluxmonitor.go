@@ -192,7 +192,7 @@ func (fm *FluxMonitor) canSubmitToRound(initiate bool) bool {
 		return false
 	}
 
-	if fm.latestSubmittedRoundID >= fm.state.RoundID {
+	if fm.latestSubmittedRoundID != 0 && fm.latestSubmittedRoundID >= fm.state.RoundID {
 		logger.Info("Oracle already submitted to this round")
 
 		return false
