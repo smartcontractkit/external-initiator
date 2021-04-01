@@ -70,6 +70,7 @@ type FluxMonitor struct {
 	tStart     sync.Once
 	tStop      sync.Once
 	checkMutex sync.Mutex
+	pollMutex  sync.Mutex
 
 	httpClient http.Client
 
@@ -113,8 +114,10 @@ func NewFluxMonitor(config FluxMonitorConfig, triggerJobRun chan subscriber.Even
 	}
 
 	fm.canSubmitUpdated()
+
 	// make an initial sumbission on startup
 	fm.checkAndSendJob(false)
+
 	go fm.eventListener(FAEvents)
 
 	return &fm, nil
@@ -158,6 +161,7 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 		case rawEvent := <-ch:
 			switch event := rawEvent.(type) {
 			case blockchain.FMEventNewRound:
+				fmt.Println("FMEventNewRound triggered")
 				fm.state.RoundID = event.RoundID
 				if event.OracleInitiated {
 					fm.latestInitiatedRoundID = event.RoundID
@@ -167,10 +171,11 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 				fm.stopTickers()
 				go fm.heartbeatTicker()
 			case blockchain.FMEventAnswerUpdated:
-				fmt.Println("State change")
+				fmt.Println("FMEventAnswerUpdated triggered")
 				fm.state.LatestAnswer = event.LatestAnswer
 				fm.checkDeviation()
 			case blockchain.FMEventPermissionsUpdated:
+				fmt.Println("FMEventPermissionsUpdated triggered")
 				fm.state.CanSubmit = event.CanSubmit
 				fm.canSubmitUpdated()
 			}
@@ -234,7 +239,7 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 	// Add common keys that should always be included
 	jobRequest["result"] = fm.latestResult.String()
 	jobRequest["payment"] = fm.state.Payment.String()
-	logger.Info("Triggering Job Run with latest result: ", fm.latestResult)
+	logger.Info("Triggering Job Run: ", jobRequest)
 	fm.chJobTrigger <- jobRequest
 
 	fm.latestSubmittedRoundID = fm.state.RoundID
@@ -310,7 +315,7 @@ func (fm *FluxMonitor) getAdapterResponse(endpoint url.URL, from string, to stri
 	}
 
 	defer logger.ErrorIfCalling(resp.Body.Close)
-
+	// potentially log the actual error messages
 	if resp.StatusCode == 400 {
 		return nil, fmt.Errorf("%s returned 400", endpoint.String())
 	}
@@ -336,7 +341,8 @@ func (fm *FluxMonitor) getAdapterResponse(endpoint url.URL, from string, to stri
 }
 
 func (fm *FluxMonitor) poll() error {
-
+	fm.pollMutex.Lock()
+	defer fm.pollMutex.Unlock()
 	numSources := len(fm.config.Adapters)
 	ch := make(chan *decimal.Decimal)
 	for _, adapter := range fm.config.Adapters {
@@ -356,6 +362,7 @@ func (fm *FluxMonitor) poll() error {
 	}
 
 	if len(values) <= numSources/2 {
+		logger.Info("unable to get values from more than 50% of data sources")
 		return errors.New("unable to get values from more than 50% of data sources")
 	}
 
