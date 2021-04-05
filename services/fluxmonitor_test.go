@@ -67,7 +67,7 @@ func createMockAdapter(result string) *url.URL {
 	var statusCode int
 	if result != "" {
 		statusCode = 200
-		payload, _ = json.Marshal(map[string]interface{}{"jobRunID": "1", "result": result, "statusCode": statusCode})
+		payload = []byte(fmt.Sprintf(`{"jobRunID": "1", "result": "%s", "statusCode": %d}`))
 	} else {
 		statusCode = 400
 		payload, _ = json.Marshal(map[string]interface{}{"jobRunID": "1", "status": "errored", "statusCode": statusCode})
