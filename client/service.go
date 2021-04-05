@@ -231,7 +231,7 @@ func (srv *Service) subscribe(sub *store.Subscription) error {
 		for {
 			trigger := <-triggerJobRun
 			go func() {
-				err := srv.clNode.TriggerJob(sub.Job, trigger)
+				err = srv.clNode.TriggerJob(sub.Job, trigger)
 				if err != nil {
 					logger.Error("Failed sending job run trigger: ", err)
 				}
