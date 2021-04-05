@@ -211,7 +211,11 @@ func (srv *Service) subscribe(sub *store.Subscription) error {
 
 	logger.Info("Starting FluxMonitor for Job: ", js.Job)
 
-	fmConfig := services.ParseFMSpec(js.Spec)
+	fmConfig, err := services.ParseFMSpec(js.Spec)
+	if err != nil {
+		return err
+	}
+
 	fmConfig.AdapterTimeout = srv.runtimeConfig.FMAdapterTimeout
 	triggerJobRun := make(chan subscriber.Event)
 	blockchainManager, err := blockchain.CreateManager(*sub)

@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shopspring/decimal"
 	"github.com/smartcontractkit/external-initiator/blockchain"
 
 	"github.com/smartcontractkit/external-initiator/subscriber"
@@ -68,8 +67,8 @@ func TestNewFluxMonitor(t *testing.T) {
 	fmConfig.From = "BTC"
 	fmConfig.To = "USD"
 	fmConfig.Multiply = 18
-	fmConfig.Threshold = decimal.NewFromFloat(0.01)
-	fmConfig.AbsoluteThreshold = decimal.NewFromInt(0)
+	fmConfig.Threshold = 0.01
+	fmConfig.AbsoluteThreshold = 0
 	fmConfig.Heartbeat = 15 * time.Second
 	fmConfig.PollInterval = 1 * time.Second
 
