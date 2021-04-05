@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shopspring/decimal"
 	"github.com/smartcontractkit/external-initiator/blockchain"
 
 	"github.com/smartcontractkit/external-initiator/subscriber"
@@ -85,8 +84,8 @@ func TestNewFluxMonitor(t *testing.T) {
 	tests := []struct {
 		name              string
 		adapterResults    []string
-		threshold         decimal.Decimal
-		absoluteThreshold decimal.Decimal
+		threshold         float64
+		absoluteThreshold float64
 		heartbeat         time.Duration
 		pollInterval      time.Duration
 		want              string
@@ -94,8 +93,8 @@ func TestNewFluxMonitor(t *testing.T) {
 		{
 			"1 adapter",
 			[]string{"50000"},
-			decimal.NewFromFloat(0.01),
-			decimal.NewFromInt(600),
+			0.01,
+			600,
 			3 * time.Second,
 			1 * time.Second,
 			"50000",
@@ -103,8 +102,8 @@ func TestNewFluxMonitor(t *testing.T) {
 		{
 			"2 adapters",
 			[]string{"50000", "51000"},
-			decimal.NewFromFloat(0.01),
-			decimal.NewFromInt(600),
+			0.01,
+			600,
 			15 * time.Millisecond,
 			3 * time.Millisecond,
 			"50500",
@@ -112,8 +111,8 @@ func TestNewFluxMonitor(t *testing.T) {
 		{
 			"3 adapters",
 			[]string{"50000", "51000", "52000"},
-			decimal.NewFromFloat(0.01),
-			decimal.NewFromInt(600),
+			0.01,
+			600,
 			15 * time.Millisecond,
 			3 * time.Millisecond,
 			"51000",
@@ -121,8 +120,8 @@ func TestNewFluxMonitor(t *testing.T) {
 		{
 			"3 adapters, 1 errored",
 			[]string{"50000", "51000", ""},
-			decimal.NewFromFloat(0.01),
-			decimal.NewFromInt(600),
+			0.01,
+			600,
 			15 * time.Millisecond,
 			3 * time.Millisecond,
 			"50500",
@@ -130,8 +129,8 @@ func TestNewFluxMonitor(t *testing.T) {
 		{
 			"3 adapters, 2 errored",
 			[]string{"50000", "", ""},
-			decimal.NewFromFloat(0.01),
-			decimal.NewFromInt(600),
+			0.01,
+			600,
 			15 * time.Millisecond,
 			3 * time.Millisecond,
 			"no_job",
@@ -139,8 +138,8 @@ func TestNewFluxMonitor(t *testing.T) {
 		{
 			"3 adapters, 1 errored, no heartbeat",
 			[]string{"50000", "51000", ""},
-			decimal.NewFromFloat(0.01),
-			decimal.NewFromInt(600),
+			0.01,
+			600,
 			0,
 			3 * time.Millisecond,
 			"50500",
@@ -148,8 +147,8 @@ func TestNewFluxMonitor(t *testing.T) {
 		{
 			"3 adapters, 1 errored, no polling",
 			[]string{"50000", "51000", ""},
-			decimal.NewFromFloat(0.01),
-			decimal.NewFromInt(600),
+			0.01,
+			600,
 			15 * time.Millisecond,
 			0,
 			"50500",
@@ -157,8 +156,8 @@ func TestNewFluxMonitor(t *testing.T) {
 		{
 			"3 adapters, 1 errored, no heartbeat, no polling",
 			[]string{"50000", "51000", ""},
-			decimal.NewFromFloat(0.01),
-			decimal.NewFromInt(600),
+			0.01,
+			600,
 			0,
 			0,
 			"50500",
