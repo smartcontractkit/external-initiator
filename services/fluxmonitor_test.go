@@ -5,7 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
+	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -14,6 +18,37 @@ import (
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/stretchr/testify/require"
 )
+
+var mockAdapterUrl string
+
+func TestMain(m *testing.M) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+
+		if r.Header.Get("Content-Type") != "application/json" {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if r.URL.Path != "/success" {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"result":1234}`))
+		return
+	}))
+	defer ts.Close()
+
+	mockAdapterUrl = ts.URL
+
+	code := m.Run()
+	os.Exit(code)
+}
 
 // does not print big.int pointers
 func prettyPrint(i interface{}) string {
@@ -31,10 +66,7 @@ func (sm *mockBlockchainManager) Request(t string) (interface{}, error) {
 		return &blockchain.FluxAggregatorState{
 			CanSubmit:    true,
 			LatestAnswer: *big.NewInt(50000),
-			// RestartDelay: 2,
 		}, nil
-		// return &FluxAggregatorState{}, nil
-		// maybe initialize with reasonable defaults
 	}
 	return nil, errors.New("request type is not implemented")
 }
@@ -56,14 +88,17 @@ func (sm *mockBlockchainManager) CreateJobRun(t string, roundId uint32) (map[str
 
 	return nil, errors.New("job run type not implemented")
 }
+
 func TestNewFluxMonitor(t *testing.T) {
-	cryptoapis, _ := url.Parse("http://localhost:8081")
-	coingecko, _ := url.Parse("http://localhost:8082")
-	amberdata, _ := url.Parse("http://localhost:8083")
+	mockAdapter, err := url.Parse(mockAdapterUrl)
+	require.NoError(t, err)
+	successAdapter := *mockAdapter
+	successAdapter.Path = "/success"
+
 	triggerJobRun := make(chan subscriber.Event)
 	var fmConfig FluxMonitorConfig
 
-	fmConfig.Adapters = []url.URL{*cryptoapis, *coingecko, *amberdata}
+	fmConfig.Adapters = []url.URL{successAdapter}
 	fmConfig.From = "BTC"
 	fmConfig.To = "USD"
 	fmConfig.Multiply = 18
@@ -72,57 +107,26 @@ func TestNewFluxMonitor(t *testing.T) {
 	fmConfig.Heartbeat = 15 * time.Second
 	fmConfig.PollInterval = 1 * time.Second
 
-	fm, err := NewFluxMonitor(fmConfig, triggerJobRun, &mockBlockchainManager{})
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+
+		timeout := time.NewTimer(2 * time.Second)
+		defer timeout.Stop()
+
+		select {
+		case <-triggerJobRun:
+			fmt.Println("Got job run trigger")
+		case <-timeout.C:
+			t.Error("Did not get job run")
+			t.Fail()
+		}
+	}()
+
+	_, err = NewFluxMonitor(fmConfig, triggerJobRun, &mockBlockchainManager{})
 	require.NoError(t, err)
-	go func() {
-		for range time.Tick(time.Second * 2) {
-			fmt.Println("New round event, initiated")
-			FAEvents <- blockchain.FMEventNewRound{
-				RoundID:         fm.state.RoundID + 1,
-				OracleInitiated: true,
-			}
-		}
-	}()
-	go func() {
-		for range time.Tick(time.Second * 7) {
-			fmt.Println("New round event, not initiated")
-			FAEvents <- blockchain.FMEventNewRound{
-				RoundID:         fm.state.RoundID + 1,
-				OracleInitiated: false,
-			}
-		}
-	}()
-	go func() {
-		for range time.Tick(time.Second * 9) {
-			newAnswer := &big.Int{}
-			newAnswer = newAnswer.Add(&fm.state.LatestAnswer, big.NewInt(1))
-			fmt.Println("Answer updated: ", newAnswer)
-			FAEvents <- blockchain.FMEventAnswerUpdated{
-				LatestAnswer: fm.state.LatestAnswer,
-			}
-		}
-	}()
-	// go func() {
-	// 	for range time.Tick(time.Second * 17) {
-	// 		fmt.Println("Permissions false")
-	// 		FAEvents <- blockchain.FMEventPermissionsUpdated{
-	// 			CanSubmit: false,
-	// 		}
-	// 	}
-	// }()
-	// go func() {
-	// 	for range time.Tick(time.Second * 6) {
-	// 		fmt.Println("Permissions true")
-	// 		FAEvents <- blockchain.FMEventPermissionsUpdated{
-	// 			CanSubmit: true,
-	// 		}
-	// 	}
-	// }()
-	for {
-		job := <-triggerJobRun
-		go func() {
-			fmt.Println("Job triggered", job)
-			fmt.Println("Current state", prettyPrint(fm.state))
-		}()
-	}
+
+	wg.Wait()
 }
