@@ -247,8 +247,7 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 
 	jobRequest, err := fm.blockchain.CreateJobRun(blockchain.FMJobRun, roundId)
 	if err != nil {
-		logger.Error(err)
-		return errors.New("failed to create job request from blockchain manager")
+		return errors.Wrap(err, "failed to create job request from blockchain manager")
 	}
 
 	if time.Since(fm.latestResultTimestamp) > fm.config.PollInterval+fm.config.AdapterTimeout {
