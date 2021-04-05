@@ -211,7 +211,11 @@ func (srv *Service) subscribe(sub *store.Subscription) error {
 
 	logger.Info("Starting FluxMonitor for Job: ", js.Job)
 
-	fmConfig := services.ParseFMSpec(js.Spec)
+	fmConfig, err := services.ParseFMSpec(js.Spec)
+	if err != nil {
+		return err
+	}
+
 	fmConfig.AdapterTimeout = srv.runtimeConfig.FMAdapterTimeout
 	triggerJobRun := make(chan subscriber.Event)
 	blockchainManager, err := blockchain.CreateManager(*sub)
@@ -227,7 +231,7 @@ func (srv *Service) subscribe(sub *store.Subscription) error {
 		for {
 			trigger := <-triggerJobRun
 			go func() {
-				err := srv.clNode.TriggerJob(sub.Job, trigger)
+				err = srv.clNode.TriggerJob(sub.Job, trigger)
 				if err != nil {
 					logger.Error("Failed sending job run trigger: ", err)
 				}

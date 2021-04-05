@@ -3,7 +3,6 @@ package services
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -12,8 +11,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	"github.com/smartcontractkit/chainlink/core/logger"
+	"github.com/smartcontractkit/chainlink/core/utils"
 	"github.com/smartcontractkit/external-initiator/blockchain"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/tidwall/gjson"
@@ -23,35 +24,56 @@ type FluxMonitorConfig struct {
 	Adapters          []url.URL
 	From              string
 	To                string
-	Multiply          int64
-	Threshold         decimal.Decimal
-	AbsoluteThreshold decimal.Decimal
+	Multiply          int32
+	Threshold         float64
+	AbsoluteThreshold float64
 	Heartbeat         time.Duration
 	PollInterval      time.Duration
 	AdapterTimeout    time.Duration
 }
 
-func ParseFMSpec(jsonSpec json.RawMessage) FluxMonitorConfig {
+func ParseFMSpec(jsonSpec json.RawMessage) (FluxMonitorConfig, error) {
 	var fmConfig FluxMonitorConfig
+
 	res := gjson.GetBytes(jsonSpec, "feeds.#.url")
 	var adapters []url.URL
 	for _, adapter := range res.Array() {
 		u, _ := url.Parse(adapter.String())
 		adapters = append(adapters, *u)
 	}
+
 	fmConfig.Adapters = adapters
 	fmConfig.From = gjson.GetBytes(jsonSpec, "requestData.data.from").String()
 	fmConfig.To = gjson.GetBytes(jsonSpec, "requestData.data.to").String()
-	fmConfig.Multiply = gjson.GetBytes(jsonSpec, "precision").Int()
-	fmConfig.Threshold, _ = decimal.NewFromString(gjson.GetBytes(jsonSpec, "threshold").String())
-	fmConfig.AbsoluteThreshold, _ = decimal.NewFromString(gjson.GetBytes(jsonSpec, "absoluteThreshold").String())
-	fmConfig.Heartbeat, _ = time.ParseDuration(gjson.GetBytes(jsonSpec, "idleTimer.duration").String())
-	fmConfig.PollInterval, _ = time.ParseDuration(gjson.GetBytes(jsonSpec, "pollTimer.period").String())
-	return fmConfig
+	fmConfig.Multiply = int32(gjson.GetBytes(jsonSpec, "precision").Int())
+	fmConfig.Threshold = gjson.GetBytes(jsonSpec, "threshold").Float()
+	fmConfig.AbsoluteThreshold = gjson.GetBytes(jsonSpec, "absoluteThreshold").Float()
+
+	var err error
+	if !gjson.GetBytes(jsonSpec, "idleTimer.disabled").Bool() {
+		fmConfig.Heartbeat, err = time.ParseDuration(gjson.GetBytes(jsonSpec, "idleTimer.duration").String())
+		if err != nil {
+			return FluxMonitorConfig{}, errors.Wrap(err, "unable to parse idleTimer duration")
+		}
+		if fmConfig.Heartbeat < 1*time.Second {
+			return FluxMonitorConfig{}, errors.New("idleTimer duration is less than 1s")
+		}
+	}
+	if !gjson.GetBytes(jsonSpec, "pollTimer.disabled").Bool() {
+		fmConfig.PollInterval, err = time.ParseDuration(gjson.GetBytes(jsonSpec, "pollTimer.period").String())
+		if err != nil {
+			return FluxMonitorConfig{}, errors.Wrap(err, "unable to parse pollTimer period")
+		}
+		if fmConfig.PollInterval < 1*time.Second {
+			return FluxMonitorConfig{}, errors.New("pollTimer period is less than 1s")
+		}
+	}
+
+	return fmConfig, nil
 }
 
 type AdapterResponse struct {
-	Price decimal.Decimal `json:"result"`
+	Price *decimal.Decimal `json:"result"`
 	// might need error response as well
 }
 
@@ -65,6 +87,9 @@ type FluxMonitor struct {
 	latestResultTimestamp  time.Time
 	latestSubmittedRoundID uint32
 	latestInitiatedRoundID uint32
+
+	pollTicker utils.PausableTicker
+	idleTimer  utils.ResettableTimer
 
 	quitOnce   sync.Once
 	tStart     sync.Once
@@ -89,6 +114,8 @@ func NewFluxMonitor(config FluxMonitorConfig, triggerJobRun chan subscriber.Even
 		},
 		blockchain:   blockchainManager,
 		chJobTrigger: triggerJobRun,
+		pollTicker:   utils.NewPausableTicker(config.PollInterval),
+		idleTimer:    utils.NewResettableTimer(),
 	}
 	FAEvents := make(chan interface{})
 
@@ -113,8 +140,8 @@ func NewFluxMonitor(config FluxMonitorConfig, triggerJobRun chan subscriber.Even
 	}
 
 	fm.canSubmitUpdated()
-	// make an initial sumbission on startup
-	fm.checkAndSendJob(false)
+	// make an initial submission on startup
+	logger.ErrorIf(fm.checkAndSendJob(false))
 	go fm.eventListener(FAEvents)
 
 	return &fm, nil
@@ -138,7 +165,7 @@ func (fm *FluxMonitor) startTickers() {
 	fm.tStart.Do(func() {
 		fm.chTickerClose = make(chan struct{})
 		go fm.pollingTicker()
-		go fm.heartbeatTicker()
+		go fm.heartbeatTimer()
 		fm.tStop = sync.Once{}
 	})
 }
@@ -158,19 +185,20 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 		case rawEvent := <-ch:
 			switch event := rawEvent.(type) {
 			case blockchain.FMEventNewRound:
+				logger.Debug("Got new round event: ", event)
 				fm.state.RoundID = event.RoundID
 				if event.OracleInitiated {
 					fm.latestInitiatedRoundID = event.RoundID
 					continue
 				}
-				fm.checkAndSendJob(false)
-				fm.stopTickers()
-				go fm.heartbeatTicker()
+				logger.ErrorIf(fm.checkAndSendJob(false))
+				fm.idleTimer.Reset(fm.config.Heartbeat)
 			case blockchain.FMEventAnswerUpdated:
-				fmt.Println("State change")
+				logger.Debug("Got answer updated event: ", event)
 				fm.state.LatestAnswer = event.LatestAnswer
 				fm.checkDeviation()
 			case blockchain.FMEventPermissionsUpdated:
+				logger.Debug("Got permissions updated event: ", event)
 				fm.state.CanSubmit = event.CanSubmit
 				fm.canSubmitUpdated()
 			}
@@ -226,8 +254,7 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 		logger.Warn("Polling again because result is old")
 		err := fm.poll()
 		if err != nil {
-			logger.Error("cannot retrieve result from polling")
-			return err
+			return errors.Wrap(err, "unable to get result from polling")
 		}
 	}
 
@@ -241,20 +268,26 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 	return nil
 }
 
-func (fm *FluxMonitor) heartbeatTicker() {
+func (fm *FluxMonitor) heartbeatTimer() {
 	if fm.config.Heartbeat == 0 {
 		logger.Info("Not starting heartbeat ticker, because config.Heartbeat is not set")
 		return
 	}
-	ticker := time.NewTicker(fm.config.Heartbeat)
-	defer ticker.Stop()
+	fm.idleTimer.Reset(fm.config.Heartbeat)
+	defer fm.idleTimer.Stop()
 
 	for {
 		select {
-		case <-ticker.C:
+		case <-fm.idleTimer.Ticks():
 			logger.Info("Heartbeat")
-			fm.poll()
-			fm.checkAndSendJob(true)
+			err := fm.poll()
+			if err != nil {
+				logger.Error("Failed to poll at heartbeat: ", err)
+			}
+			err = fm.checkAndSendJob(true)
+			if err != nil {
+				logger.Error("Failed to initiate new round at heartbeat: ", err)
+			}
 		case <-fm.chClose:
 			logger.Info("FluxMonitor stopped")
 			return
@@ -270,16 +303,18 @@ func (fm *FluxMonitor) pollingTicker() {
 		logger.Info("Not starting polling adapters, because config.PollInterval is not set")
 		return
 	}
-	fm.poll()
-	ticker := time.NewTicker(fm.config.PollInterval)
-	defer ticker.Stop()
+	logger.ErrorIf(fm.poll())
+	fm.pollTicker.Resume()
+	defer fm.pollTicker.Destroy()
 
 	for {
 		select {
-		case <-ticker.C:
+		case <-fm.pollTicker.Ticks():
+			fm.pollTicker.Pause()
 			logger.Info("polling adapters")
-			fm.poll()
+			logger.ErrorIf(fm.poll())
 			fm.checkDeviation()
+			fm.pollTicker.Resume()
 		case <-fm.chClose:
 			fmt.Println("stopping polling adapter")
 			return
@@ -324,15 +359,10 @@ func (fm *FluxMonitor) getAdapterResponse(endpoint url.URL, from string, to stri
 		return nil, err
 	}
 
+	logger.Infof("%s returned: %s ", endpoint.String(), body)
+
 	var response AdapterResponse
-	err = json.Unmarshal(body, &response)
-
-	if err != nil {
-		return nil, err
-	}
-	logger.Infof("Response from %s: %s ", endpoint.String(), response.Price)
-	return &response.Price, nil
-
+	return response.Price, json.Unmarshal(body, &response)
 }
 
 func (fm *FluxMonitor) poll() error {
@@ -346,13 +376,13 @@ func (fm *FluxMonitor) poll() error {
 		}(adapter)
 	}
 
-	var values []*decimal.Decimal
+	var values []decimal.Decimal
 	for i := 0; i < numSources; i++ {
 		val := <-ch
 		if val == nil {
 			continue
 		}
-		values = append(values, val)
+		values = append(values, *val)
 	}
 
 	if len(values) <= numSources/2 {
@@ -366,29 +396,28 @@ func (fm *FluxMonitor) poll() error {
 	return nil
 }
 
-// fm.latestResult.Mul(decimal.NewFromInt(fm.config.Multiply))
 func (fm *FluxMonitor) checkDeviation() {
-	if !outOfDeviation(decimal.NewFromBigInt(&fm.state.LatestAnswer, -int32(fm.config.Multiply)), (fm.latestResult), fm.config.Threshold, fm.config.AbsoluteThreshold) {
+	if !outOfDeviation(decimal.NewFromBigInt(&fm.state.LatestAnswer, -fm.config.Multiply), fm.latestResult, fm.config.Threshold, fm.config.AbsoluteThreshold) {
 		return
 	}
 
-	fm.checkAndSendJob(true)
+	logger.ErrorIf(fm.checkAndSendJob(true))
 }
 
-func calculateMedian(prices []*decimal.Decimal) decimal.Decimal {
+func calculateMedian(prices []decimal.Decimal) decimal.Decimal {
 	sort.Slice(prices, func(i, j int) bool {
-		return (*prices[i]).LessThan(*prices[j])
+		return (prices[i]).LessThan(prices[j])
 	})
 	mNumber := len(prices) / 2
 
 	if len(prices)%2 == 1 {
-		return *prices[mNumber]
+		return prices[mNumber]
 	}
 
-	return (prices[mNumber-1].Add(*prices[mNumber])).Div(decimal.NewFromInt(2))
+	return (prices[mNumber-1].Add(prices[mNumber])).Div(decimal.NewFromInt(2))
 }
 
-func outOfDeviation(currentAnswer, nextAnswer, percentageThreshold, absoluteThreshold decimal.Decimal) bool {
+func outOfDeviation(currentAnswer, nextAnswer decimal.Decimal, percentageThreshold, absoluteThreshold float64) bool {
 	loggerFields := []interface{}{
 		"threshold", percentageThreshold,
 		"absoluteThreshold", absoluteThreshold,
@@ -397,7 +426,7 @@ func outOfDeviation(currentAnswer, nextAnswer, percentageThreshold, absoluteThre
 	}
 	logger.Infow(
 		"Deviation checker ", loggerFields...)
-	if absoluteThreshold == decimal.NewFromInt(0) && percentageThreshold == decimal.NewFromInt(0) {
+	if absoluteThreshold == 0 && percentageThreshold == 0 {
 		logger.Debugw(
 			"Deviation thresholds both zero; short-circuiting deviation checker to "+
 				"true, regardless of feed values", loggerFields...)
@@ -405,8 +434,9 @@ func outOfDeviation(currentAnswer, nextAnswer, percentageThreshold, absoluteThre
 	}
 
 	diff := currentAnswer.Sub(nextAnswer).Abs()
+	loggerFields = append(loggerFields, "absoluteDeviation", diff)
 
-	if !diff.GreaterThan(absoluteThreshold) {
+	if !diff.GreaterThan(decimal.NewFromFloat(absoluteThreshold)) {
 		logger.Debugw("Absolute deviation threshold not met", loggerFields...)
 		return false
 	}
@@ -422,13 +452,13 @@ func outOfDeviation(currentAnswer, nextAnswer, percentageThreshold, absoluteThre
 
 	// 100*|new-old|/|old|: Deviation (relative to curAnswer) as a percentage
 	percentage := diff.Div(currentAnswer.Abs()).Mul(decimal.NewFromInt(100))
-
 	loggerFields = append(loggerFields, "percentage", percentage)
 
-	if percentage.LessThan(percentageThreshold) {
+	if percentage.LessThan(decimal.NewFromFloat(percentageThreshold)) {
 		logger.Debugw("Relative deviation threshold not met", loggerFields...)
 		return false
 	}
+
 	logger.Infow("Relative and absolute deviation thresholds both met", loggerFields...)
 	return true
 }
