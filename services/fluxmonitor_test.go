@@ -166,10 +166,6 @@ func TestNewFluxMonitor(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// cryptoapis, _ := url.Parse("http://localhost:8081")
-			// coingecko, _ := url.Parse("http://localhost:8082")
-			// amberdata, _ := url.Parse("http://localhost:8083")
-
 			var mockAdapters []url.URL
 			for _, v := range tt.adapterResults {
 				mockAdapters = append(mockAdapters, *createMockAdapter(v))
@@ -179,7 +175,6 @@ func TestNewFluxMonitor(t *testing.T) {
 			var fmConfig FluxMonitorConfig
 
 			fmConfig.Adapters = mockAdapters
-			// fmConfig.Adapters = []url.URL{*cryptoapis, *coingecko, *amberdata}
 			fmConfig.From = "BTC"
 			fmConfig.To = "USD"
 			fmConfig.Multiply = 18
@@ -193,15 +188,11 @@ func TestNewFluxMonitor(t *testing.T) {
 			wg := sync.WaitGroup{}
 			wg.Add(1)
 			fmt.Println(prettyPrint(fm.state))
-			// time.Sleep(1 * time.Second)
 			fmt.Println("New round event, initiated: ", fm.state.RoundID+1)
 			FAEvents <- blockchain.FMEventNewRound{
 				RoundID:         fm.state.RoundID + 1,
 				OracleInitiated: false,
 			}
-			// FAEvents <- blockchain.FMEventAnswerUpdated{
-			// 	LatestAnswer: fm.state.LatestAnswer,
-			// }
 
 			go func() {
 				defer wg.Done()
