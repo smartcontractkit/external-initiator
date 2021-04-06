@@ -208,20 +208,24 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 func (fm *FluxMonitor) canSubmitToRound(initiate bool) bool {
 	if !fm.state.CanSubmit {
 		logger.Info("Oracle can't submit to this feed")
-
 		return false
 	}
 
-	if initiate && int32(fm.state.RoundID+1-fm.latestInitiatedRoundID) <= fm.state.RestartDelay {
-		logger.Info("Oracle needs to wait until restart delay passes until it can initiate a new round")
+	if initiate {
+		if int32(fm.state.RoundID+1-fm.latestInitiatedRoundID) <= fm.state.RestartDelay {
+			logger.Info("Oracle needs to wait until restart delay passes until it can initiate a new round")
+			return false
+		}
 
-		return false
-	}
-
-	if fm.latestSubmittedRoundID != 0 && fm.latestSubmittedRoundID >= fm.state.RoundID {
-		logger.Info("Oracle already submitted to this round")
-
-		return false
+		if fm.latestSubmittedRoundID >= fm.state.RoundID+1 {
+			logger.Info("Oracle already submitted to this round")
+			return false
+		}
+	} else {
+		if fm.latestSubmittedRoundID != 0 && fm.latestSubmittedRoundID >= fm.state.RoundID {
+			logger.Info("Oracle already submitted to this round")
+			return false
+		}
 	}
 
 	return true

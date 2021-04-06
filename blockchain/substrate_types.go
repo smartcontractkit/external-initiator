@@ -8,6 +8,7 @@ import (
 	"github.com/centrifuge/go-substrate-rpc-client/v2/scale"
 	"github.com/centrifuge/go-substrate-rpc-client/v2/types"
 	"github.com/pkg/errors"
+	"github.com/smartcontractkit/chainlink/core/logger"
 )
 
 type option struct {
@@ -165,7 +166,7 @@ type EventNewRound struct {
 type EventRoundDetailsUpdated struct {
 	Phase            types.Phase
 	FeedId           FeedId
-	Balance          Balance
+	Balance          types.U128
 	SubmissionBounds TupleU32
 	RoundId          RoundID
 	BlockNumber      types.U32
@@ -184,9 +185,18 @@ type EventAnswerUpdated struct {
 	Phase       types.Phase
 	FeedId      FeedId
 	RoundId     RoundID
-	Value       Value
+	Value       types.U128
 	BlockNumber types.U32
 	Topics      []types.Hash
+}
+
+type EventSubmissionReceived struct {
+	Phase     types.Phase
+	FeedId    FeedId
+	RoundId   RoundID
+	Value     types.U128
+	AccountId types.AccountID
+	Topics    []types.Hash
 }
 
 type EventRecords struct {
@@ -196,6 +206,7 @@ type EventRecords struct {
 	ChainlinkFeed_RoundDetailsUpdated      []EventRoundDetailsUpdated      //nolint:stylecheck,golint
 	ChainlinkFeed_OraclePermissionsUpdated []EventOraclePermissionsUpdated //nolint:stylecheck,golint
 	ChainlinkFeed_AnswerUpdated            []EventAnswerUpdated            //nolint:stylecheck,golint
+	ChainlinkFeed_SubmissionReceived       []EventSubmissionReceived       //nolint:stylecheck,golint
 }
 
 // Copied from https://github.com/centrifuge/go-substrate-rpc-client/blob/904cb0b931a9949b08e731fa14c24ed62226a748/types/event_record.go#L221
@@ -250,12 +261,14 @@ func DecodeEventRecords(m *types.Metadata, e types.EventRecordsRaw, t interface{
 		moduleName, eventName, err := m.FindEventNamesForEventID(id)
 		// moduleName, eventName, err := "System", "ExtrinsicSuccess", nil
 		if err != nil {
+			logger.Errorf("Unable to find %s (%s, %s, %s)", id, moduleName, eventName, err)
 			continue
 		}
 
 		// check whether name for eventID exists in t
 		field := val.FieldByName(fmt.Sprintf("%v_%v", moduleName, eventName))
 		if !field.IsValid() {
+			logger.Errorf("Event name is not valid (%v_%v): %s", moduleName, eventName, field.String())
 			continue
 		}
 
