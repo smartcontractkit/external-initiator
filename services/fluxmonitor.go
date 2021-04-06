@@ -95,6 +95,7 @@ type FluxMonitor struct {
 	tStart     sync.Once
 	tStop      sync.Once
 	checkMutex sync.Mutex
+	pollMutex  sync.Mutex
 
 	httpClient http.Client
 
@@ -246,12 +247,11 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 
 	jobRequest, err := fm.blockchain.CreateJobRun(blockchain.FMJobRun, roundId)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to create job request from blockchain manager")
 	}
 
-	// If latestResult is an old value or have not been set yet, try to fetch new
 	if time.Since(fm.latestResultTimestamp) > fm.config.PollInterval+fm.config.AdapterTimeout {
-		logger.Warn("Polling again because result is old")
+		logger.Warn("Polling again because result is old or have not been set yet")
 		err := fm.poll()
 		if err != nil {
 			return errors.Wrap(err, "unable to get result from polling")
@@ -261,7 +261,7 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 	// Add common keys that should always be included
 	jobRequest["result"] = fm.latestResult.String()
 	jobRequest["payment"] = fm.state.Payment.String()
-	logger.Info("Triggering Job Run with latest result: ", fm.latestResult)
+	logger.Info("Triggering Job Run: ", jobRequest)
 	fm.chJobTrigger <- jobRequest
 
 	fm.latestSubmittedRoundID = fm.state.RoundID
@@ -366,12 +366,14 @@ func (fm *FluxMonitor) getAdapterResponse(endpoint url.URL, from string, to stri
 }
 
 func (fm *FluxMonitor) poll() error {
-
+	fm.pollMutex.Lock()
+	defer fm.pollMutex.Unlock()
 	numSources := len(fm.config.Adapters)
 	ch := make(chan *decimal.Decimal)
 	for _, adapter := range fm.config.Adapters {
 		go func(adapter url.URL) {
-			var price, _ = fm.getAdapterResponse(adapter, fm.config.From, fm.config.To)
+			var price, err = fm.getAdapterResponse(adapter, fm.config.From, fm.config.To)
+			logger.Error(fmt.Sprintf("Adapter response error. URL: %s from: %s to: %s error: ", adapter.Host, fm.config.From, fm.config.To), err)
 			ch <- price
 		}(adapter)
 	}
