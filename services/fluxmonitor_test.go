@@ -203,7 +203,7 @@ func TestNewFluxMonitor(t *testing.T) {
 					if tt.want == "no_job" {
 						t.Errorf("Job received. Want %s", tt.want)
 					}
-					if got := job["result"]; !reflect.DeepEqual(got, tt.want) {
+					if got := job["result"]; !reflect.DeepEqual(fmt.Sprintf("%s", got), fmt.Sprintf("%s", tt.want)) {
 						t.Errorf("GetTriggerJson() = %s, want %s", got, tt.want)
 					}
 
