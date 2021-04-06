@@ -174,8 +174,7 @@ func TestNewFluxMonitor(t *testing.T) {
 			var fmConfig FluxMonitorConfig
 
 			fmConfig.Adapters = mockAdapters
-			fmConfig.From = "BTC"
-			fmConfig.To = "USD"
+			fmConfig.RequestData = `{"from":"BTC","to":"USD"}`
 			fmConfig.Multiply = 18
 			fmConfig.Threshold = tt.threshold
 			fmConfig.AbsoluteThreshold = tt.absoluteThreshold
