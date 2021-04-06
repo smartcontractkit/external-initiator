@@ -52,12 +52,11 @@ func (srv *HttpService) createRouter() {
 	blockchain.SetHttpRoutes(r)
 	r.GET("/ws/:platform", srv.HandleWs)
 	r.POST("/rpc/:platform", srv.HandleRpc)
+	r.POST("/static", srv.HandleStatic)
 
 	srv.Router = r
 }
 
-// CreateSubscription expects a CreateSubscriptionReq payload,
-// validates the request and subscribes to the job.
 func (srv *HttpService) HandleRpc(c *gin.Context) {
 	var req blockchain.JsonrpcMessage
 	if err := c.BindJSON(&req); err != nil {
@@ -128,6 +127,12 @@ func (srv *HttpService) HandleWs(c *gin.Context) {
 			}
 		}
 	}
+}
+
+func (srv *HttpService) HandleStatic(c *gin.Context) {
+	c.JSON(http.StatusOK, map[string]interface{}{
+		"result": 12345678,
+	})
 }
 
 // Inspired by https://github.com/gin-gonic/gin/issues/961

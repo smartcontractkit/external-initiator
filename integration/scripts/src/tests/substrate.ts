@@ -18,7 +18,7 @@ export const getTests = () => {
           },
           feeds: [
             {
-              url: "https://pastebin.com/raw/MbzRmTst"
+              url: "http://mock:8080/static"
             }
           ],
           threshold: 1,
