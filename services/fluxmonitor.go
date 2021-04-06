@@ -345,7 +345,7 @@ func (fm *FluxMonitor) getAdapterResponse(endpoint url.URL, from string, to stri
 	}
 
 	defer logger.ErrorIfCalling(resp.Body.Close)
-	// potentially log the actual error messages
+
 	if resp.StatusCode == 400 {
 		return nil, fmt.Errorf("%s returned 400", endpoint.String())
 	}
@@ -366,11 +366,13 @@ func (fm *FluxMonitor) getAdapterResponse(endpoint url.URL, from string, to stri
 }
 
 func (fm *FluxMonitor) poll() error {
+	fm.pollMutex.Lock()
 	numSources := len(fm.config.Adapters)
 	ch := make(chan *decimal.Decimal)
 	for _, adapter := range fm.config.Adapters {
 		go func(adapter url.URL) {
-			var price, _ = fm.getAdapterResponse(adapter, fm.config.From, fm.config.To)
+			var price, err = fm.getAdapterResponse(adapter, fm.config.From, fm.config.To)
+			logger.Error(fmt.Sprintf("Adapter response error. URL: %s from: %s to: %s error: ", adapter.Host, fm.config.From, fm.config.To), err)
 			ch <- price
 		}(adapter)
 	}
@@ -389,11 +391,10 @@ func (fm *FluxMonitor) poll() error {
 	}
 
 	median := calculateMedian(values)
-	fm.pollMutex.Lock()
 	fm.latestResult = median
 	fm.latestResultTimestamp = time.Now()
-	fm.pollMutex.Unlock()
 	logger.Info("Latest result from adapter polling: ", median)
+	fm.pollMutex.Unlock()
 	return nil
 }
 

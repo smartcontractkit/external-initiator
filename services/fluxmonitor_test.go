@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -67,10 +68,10 @@ func createMockAdapter(result string) *url.URL {
 	var statusCode int
 	if result != "" {
 		statusCode = 200
-		payload = []byte(fmt.Sprintf(`{"jobRunID": "1", "result": "%s", "statusCode": %d}`))
+		payload = []byte(fmt.Sprintf(`{"jobRunID": "1", "result": "%s", "statusCode": %d}`, result, statusCode))
 	} else {
 		statusCode = 400
-		payload, _ = json.Marshal(map[string]interface{}{"jobRunID": "1", "status": "errored", "statusCode": statusCode})
+		payload = []byte(fmt.Sprintf(`{"jobRunID": "1", "status": "errored", "statusCode": %d}`, statusCode))
 	}
 
 	mockAdapter := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -165,7 +166,9 @@ func TestNewFluxMonitor(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fmt.Println("Starting test: ", tt.name)
+			// cryptoapis, _ := url.Parse("http://localhost:8081")
+			// coingecko, _ := url.Parse("http://localhost:8082")
+			// amberdata, _ := url.Parse("http://localhost:8083")
 
 			var mockAdapters []url.URL
 			for _, v := range tt.adapterResults {
@@ -176,6 +179,7 @@ func TestNewFluxMonitor(t *testing.T) {
 			var fmConfig FluxMonitorConfig
 
 			fmConfig.Adapters = mockAdapters
+			// fmConfig.Adapters = []url.URL{*cryptoapis, *coingecko, *amberdata}
 			fmConfig.From = "BTC"
 			fmConfig.To = "USD"
 			fmConfig.Multiply = 18
@@ -186,6 +190,8 @@ func TestNewFluxMonitor(t *testing.T) {
 
 			fm, err := NewFluxMonitor(fmConfig, triggerJobRun, &mockBlockchainManager{})
 			require.NoError(t, err)
+			wg := sync.WaitGroup{}
+			wg.Add(1)
 			fmt.Println(prettyPrint(fm.state))
 			// time.Sleep(1 * time.Second)
 			fmt.Println("New round event, initiated: ", fm.state.RoundID+1)
@@ -196,97 +202,31 @@ func TestNewFluxMonitor(t *testing.T) {
 			// FAEvents <- blockchain.FMEventAnswerUpdated{
 			// 	LatestAnswer: fm.state.LatestAnswer,
 			// }
-			if tt.want == "no_job" {
-				// timeout in case no job run is going to be send, in order not to continue running
-				go func() {
-					// might set this as variable
-					time.Sleep(3 * time.Second)
-					fmt.Println("Timeout of 3 seconds. Sending a mock job to end the test")
-					triggerJobRun <- map[string]interface{}{"result": "no_job"}
-				}()
-			}
 
-			job := <-triggerJobRun
-			fmt.Println("Job triggered", job["result"])
+			go func() {
+				defer wg.Done()
+				timeout := time.NewTimer(2 * time.Second)
+				defer timeout.Stop()
 
-			if got := job["result"]; !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetTriggerJson() = %s, want %s", got, tt.want)
-			}
+				select {
+				case job := <-triggerJobRun:
+					fmt.Println("Job triggered", job["result"])
+					if tt.want == "no_job" {
+						t.Errorf("Job received. Want %s", tt.want)
+					}
+					if got := job["result"]; !reflect.DeepEqual(got, tt.want) {
+						t.Errorf("GetTriggerJson() = %s, want %s", got, tt.want)
+					}
 
-			fm.Stop()
+				case <-timeout.C:
+					fmt.Println("Job timeout")
+					if tt.want != "no_job" {
+						t.Errorf("No Job received, timeout. Want %s", tt.want)
+					}
+				}
 
+			}()
+			wg.Wait()
 		})
 	}
-
 }
-
-// func TestNewFluxMonitor_Run(t *testing.T) {
-// 	cryptoapis, _ := url.Parse("http://localhost:8081")
-// 	coingecko, _ := url.Parse("http://localhost:8082")
-// 	amberdata, _ := url.Parse("http://localhost:8083")
-// 	triggerJobRun := make(chan subscriber.Event)
-// 	var fmConfig FluxMonitorConfig
-
-// 	fmConfig.Adapters = []url.URL{*cryptoapis, *coingecko, *amberdata}
-// 	fmConfig.From = "BTC"
-// 	fmConfig.To = "USD"
-// 	fmConfig.Multiply = 18
-// 	fmConfig.Threshold = decimal.NewFromFloat(0.01)
-// 	fmConfig.AbsoluteThreshold = decimal.NewFromInt(0)
-// 	fmConfig.Heartbeat = 15 * time.Second
-// 	fmConfig.PollInterval = 1 * time.Second
-
-// 	fm, err := NewFluxMonitor(fmConfig, triggerJobRun, &mockBlockchainManager{})
-// 	require.NoError(t, err)
-// 	go func() {
-// 		for range time.Tick(time.Second * 2) {
-// 			fmt.Println("New round event, initiated")
-// 			FAEvents <- blockchain.FMEventNewRound{
-// 				RoundID:         fm.state.RoundID + 1,
-// 				OracleInitiated: true,
-// 			}
-// 		}
-// 	}()
-// 	go func() {
-// 		for range time.Tick(time.Second * 7) {
-// 			fmt.Println("New round event, not initiated")
-// 			FAEvents <- blockchain.FMEventNewRound{
-// 				RoundID:         fm.state.RoundID + 1,
-// 				OracleInitiated: false,
-// 			}
-// 		}
-// 	}()
-// 	go func() {
-// 		for range time.Tick(time.Second * 9) {
-// 			newAnswer := &big.Int{}
-// 			newAnswer = newAnswer.Add(&fm.state.LatestAnswer, big.NewInt(1))
-// 			fmt.Println("Answer updated: ", newAnswer)
-// 			FAEvents <- blockchain.FMEventAnswerUpdated{
-// 				LatestAnswer: fm.state.LatestAnswer,
-// 			}
-// 		}
-// 	}()
-// 	// go func() {
-// 	// 	for range time.Tick(time.Second * 17) {
-// 	// 		fmt.Println("Permissions false")
-// 	// 		FAEvents <- blockchain.FMEventPermissionsUpdated{
-// 	// 			CanSubmit: false,
-// 	// 		}
-// 	// 	}
-// 	// }()
-// 	// go func() {
-// 	// 	for range time.Tick(time.Second * 6) {
-// 	// 		fmt.Println("Permissions true")
-// 	// 		FAEvents <- blockchain.FMEventPermissionsUpdated{
-// 	// 			CanSubmit: true,
-// 	// 		}
-// 	// 	}
-// 	// }()
-// 	for {
-// 		job := <-triggerJobRun
-// 		go func() {
-// 			fmt.Println("Job triggered", job)
-// 			fmt.Println("Current state", prettyPrint(fm.state))
-// 		}()
-// 	}
-// }
