@@ -141,8 +141,6 @@ func NewFluxMonitor(config FluxMonitorConfig, triggerJobRun chan subscriber.Even
 	}
 
 	fm.canSubmitUpdated()
-	// make an initial submission on startup
-	logger.ErrorIf(fm.checkAndSendJob(false))
 	go fm.eventListener(FAEvents)
 
 	return &fm, nil
