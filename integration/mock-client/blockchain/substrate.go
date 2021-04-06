@@ -69,9 +69,9 @@ func getParamsFromStorageKey(key string) json.RawMessage {
 	// Round()
 	case "0x1ae70894dea2956c24d9c19ac4d15d337b45e7c782afb68af72fc5ebb26b974bb4def25cfda6ef3a":
 		change = "0x1a0000000100000000000000000000000000000000011a0000000100000000"
-	// OracleStati()
-	case "0x1ae70894dea2956c24d9c19ac4d15d33d6e0ca5ff50f58afe0ab51e6398dda4fb4def25cfda6ef3a":
-		change = "0x0000000000010600000001060000000138150000000000000000000000000000"
+	// OracleStatuses()
+	case "0x1ae70894dea2956c24d9c19ac4d15d33c14583c03f87d922a243137f267f4ce0b4def25cfda6ef3a":
+		change = "0x0000000000000000"
 	default:
 		fmt.Println("unknown key:", key)
 		return nil
