@@ -22,8 +22,7 @@ import (
 
 type FluxMonitorConfig struct {
 	Adapters          []url.URL
-	From              string
-	To                string
+	RequestData       string
 	Multiply          int32
 	Threshold         float64
 	AbsoluteThreshold float64
@@ -43,8 +42,7 @@ func ParseFMSpec(jsonSpec json.RawMessage) (FluxMonitorConfig, error) {
 	}
 
 	fmConfig.Adapters = adapters
-	fmConfig.From = gjson.GetBytes(jsonSpec, "requestData.data.from").String()
-	fmConfig.To = gjson.GetBytes(jsonSpec, "requestData.data.to").String()
+	fmConfig.RequestData = gjson.GetBytes(jsonSpec, "requestData").Raw
 	fmConfig.Multiply = int32(gjson.GetBytes(jsonSpec, "precision").Int())
 	fmConfig.Threshold = gjson.GetBytes(jsonSpec, "threshold").Float()
 	fmConfig.AbsoluteThreshold = gjson.GetBytes(jsonSpec, "absoluteThreshold").Float()
@@ -325,23 +323,12 @@ func (fm *FluxMonitor) pollingTicker() {
 
 // could use the fm service values but also can use arguments for standalone functionality and potential reuseability
 // httpClient passing and initial setup could be handled in standalone service if we don't want to interfere with fm service state
-func (fm *FluxMonitor) getAdapterResponse(endpoint url.URL, from string, to string) (*decimal.Decimal, error) {
+func (fm *FluxMonitor) getAdapterResponse(endpoint url.URL, requestData string) (*decimal.Decimal, error) {
 	logger.Info("Requesting data from adapter: ", endpoint.String())
-	data := map[string]string{"from": from, "to": to}
-	values := map[string]interface{}{"id": "0", "data": data}
-	payload, err := json.Marshal(values)
-
+	resp, err := fm.httpClient.Post(endpoint.String(), "application/json", bytes.NewBuffer([]byte(requestData)))
 	if err != nil {
 		return nil, err
 	}
-
-	resp, err := fm.httpClient.Post(endpoint.String(), "application/json",
-		bytes.NewBuffer(payload))
-
-	if err != nil {
-		return nil, err
-	}
-
 	defer logger.ErrorIfCalling(resp.Body.Close)
 
 	if resp.StatusCode == 400 {
@@ -370,8 +357,10 @@ func (fm *FluxMonitor) poll() error {
 	ch := make(chan *decimal.Decimal)
 	for _, adapter := range fm.config.Adapters {
 		go func(adapter url.URL) {
-			var price, err = fm.getAdapterResponse(adapter, fm.config.From, fm.config.To)
-			logger.Error(fmt.Sprintf("Adapter response error. URL: %s from: %s to: %s error: ", adapter.Host, fm.config.From, fm.config.To), err)
+			price, err := fm.getAdapterResponse(adapter, fm.config.RequestData)
+			if err != nil {
+				logger.Error(fmt.Sprintf("Adapter response error. URL: %s requestData: %s error: ", adapter.Host, fm.config.RequestData), err)
+			}
 			ch <- price
 		}(adapter)
 	}
