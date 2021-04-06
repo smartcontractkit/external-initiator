@@ -76,7 +76,7 @@ func createMockAdapter(result string) *url.URL {
 
 	mockAdapter := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(statusCode)
-		_, _ = w.Write([]byte(fmt.Sprint(bytes.NewBuffer(payload))))
+		_, _ = w.Write(payload)
 	}))
 	adapter, _ := url.Parse(mockAdapter.URL)
 	return adapter
