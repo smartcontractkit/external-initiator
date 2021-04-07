@@ -182,7 +182,7 @@ func TestNewFluxMonitor(t *testing.T) {
 			fmConfig.PollInterval = tt.heartbeat
 			fmConfig.RuntimeConfig = store.RuntimeConfig{FMAdapterTimeout: 1 * time.Second, FMAdapterRetryAttempts: 1, FMAdapterRetryDelay: 1 * time.Second}
 
-			fm, err := NewFluxMonitor(fmConfig, triggerJobRun, &mockBlockchainManager{})
+			fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
 			require.NoError(t, err)
 			defer fm.Stop()
 			wg := sync.WaitGroup{}
