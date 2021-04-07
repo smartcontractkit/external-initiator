@@ -21,8 +21,8 @@ Initiate Chainlink job runs from external sources.
 | `EI_CI_SECRET`             | The External Initiator secret, used for traffic flowing from Chainlink to this service     | `h23MjHx17UJKBf3b0MWNI2P/UPh3c3O7/j8ivKCBhvcWH3H+xso4Gehny/lgpAht` |
 | `EI_KEEPER_BLOCK_COOLDOWN` | Number of blocks to cool down before triggering a new run for a Keeper job.                | `3`                                                                |
 | `EI_FM_ADAPTER_TIMEOUT`    | Request timeout for FM adapter polls                                                       | `3s`                                                               |
-| `EI_FM_RETRY_ATTEMPTS`     | Number of retry attempts for FM adapter polls                                              | `3`                                                                |
-| `EI_FM_RETRY_DELAY`        | Timeout between attempts for FM adapter polls                                              | `3s`                                                               |
+| `EI_FM_ADAPTER_RETRY_ATTEMPTS`     | Number of retry attempts for FM adapter polls                                      | `3`                                                                |
+| `EI_FM_ADAPTER_RETRY_DELAY`        | Timeout between attempts for FM adapter polls                                      | `3s`                                                               |
 
 ## Usage
 
@@ -34,22 +34,22 @@ Usage:
   external-initiator [endpoint configs] [flags]
 
 Flags:
-      --chainlinkurl string           The URL of the Chainlink Core Service (default "localhost:6688")
-      --ci_accesskey string           The External Initiator access key, used for traffic flowing from Chainlink to this Service
-      --ci_secret string              The External Initiator secret, used for traffic flowing from Chainlink to this Service
-      --cl_retry_attempts uint        The maximum number of attempts that will be made for job run triggers (default 3)
-      --cl_retry_delay duration       The delay between attempts for job run triggers (default 1s)
-      --cl_timeout duration           The timeout for job run triggers to the Chainlink node (default 5s)
-      --databaseurl string            DatabaseURL configures the URL for external initiator to connect to. This must be a properly formatted URL, with a valid scheme (postgres://). (default "postgresql://postgres:password@localhost:5432/ei?sslmode=disable")
-      --fm_adapter_timeout duration   The timeout for FluxMonitor adapter polling (default 5s)
-      --fm_retry_attempts uint        The maximum number of attempts that will be made for FM adapter polls (default 3)
-      --fm_retry_delay duration       The delay between FM adapter poll attempts (default 1s)
-  -h, --help                          help for external-initiator
-      --ic_accesskey string           The Chainlink access key, used for traffic flowing from this Service to Chainlink
-      --ic_secret string              The Chainlink secret, used for traffic flowing from this Service to Chainlink
-      --keeper_block_cooldown int     Number of blocks to cool down before triggering a new run for a Keeper job (default 3)
-      --mock                          Set to true if the External Initiator should expect mock events from the blockchains
-      --port int                      The port for the EI API to listen on (default 8080)
+      --chainlinkurl string               The URL of the Chainlink Core Service (default "localhost:6688")
+      --ci_accesskey string               The External Initiator access key, used for traffic flowing from Chainlink to this Service
+      --ci_secret string                  The External Initiator secret, used for traffic flowing from Chainlink to this Service
+      --cl_retry_attempts uint            The maximum number of attempts that will be made for job run triggers (default 3)
+      --cl_retry_delay duration           The delay between attempts for job run triggers (default 1s)
+      --cl_timeout duration               The timeout for job run triggers to the Chainlink node (default 5s)
+      --databaseurl string                DatabaseURL configures the URL for external initiator to connect to. This must be a properly formatted URL, with a valid scheme (postgres://). (default "postgresql://postgres:password@localhost:5432/ei?sslmode=disable")
+      --fm_adapter_retry_attempts uint    The maximum number of attempts that will be made for FM adapter polls (default 3)
+      --fm_adapter_retry_delay duration   The delay between FM adapter poll attempts (default 1s)
+      --fm_adapter_timeout duration       The timeout for FluxMonitor adapter polling (default 5s)
+  -h, --help                              help for external-initiator
+      --ic_accesskey string               The Chainlink access key, used for traffic flowing from this Service to Chainlink
+      --ic_secret string                  The Chainlink secret, used for traffic flowing from this Service to Chainlink
+      --keeper_block_cooldown int         Number of blocks to cool down before triggering a new run for a Keeper job (default 3)
+      --mock                              Set to true if the External Initiator should expect mock events from the blockchains
+      --port int                          The port for the EI API to listen on (default 8080)
 ```
 
 ### Supply Endpoint configs via HTTP
