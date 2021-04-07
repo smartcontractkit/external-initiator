@@ -253,13 +253,15 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 		return errors.Wrap(err, "failed to create job request from blockchain manager")
 	}
 
-	result, err := fm.PollAndGetAnswer()
-	if err != nil {
-		return err
+	if !fm.ValidLatestResult() {
+		err := fm.pollWithRetry()
+		if err != nil {
+			return err
+		}
 	}
 
 	// Add common keys that should always be included
-	jobRequest["result"] = result
+	jobRequest["result"] = fm.latestResult
 	jobRequest["payment"] = fm.state.Payment.String()
 	logger.Info("Triggering Job Run: ", jobRequest)
 	fm.chJobTrigger <- jobRequest
@@ -299,7 +301,7 @@ func (fm *FluxMonitor) pollingTicker() {
 		logger.Info("Not starting polling adapters, because config.PollInterval is not set")
 		return
 	}
-	err := fm.ForceNewPoll()
+	err := fm.pollWithRetry()
 	if err != nil {
 		logger.Error(err)
 	}
@@ -311,7 +313,7 @@ func (fm *FluxMonitor) pollingTicker() {
 		case <-fm.pollTicker.Ticks():
 			fm.pollTicker.Pause()
 			logger.Info("polling adapters")
-			err = fm.ForceNewPoll()
+			err = fm.pollWithRetry()
 			if err != nil {
 				logger.Error(err)
 			}
@@ -356,29 +358,22 @@ func (fm *FluxMonitor) getAdapterResponse(endpoint url.URL, requestData string) 
 	return response.Price, json.Unmarshal(body, &response)
 }
 
-// PollAndGetAnswer() will poll if the latest answer is older than the polling interval
-// and then return the latest value
-func (fm *FluxMonitor) PollAndGetAnswer() (decimal.Decimal, error) {
+func (fm *FluxMonitor) ValidLatestResult() bool {
 	fm.pollMutex.Lock()
 	defer fm.pollMutex.Unlock()
 
 	if time.Since(fm.latestResultTimestamp) <= fm.config.PollInterval+fm.config.RuntimeConfig.FMAdapterTimeout {
 		// The result we have is from within our polling interval, so we can use it
-		return fm.latestResult, nil
+		fmt.Println("poll result is valid for use")
+		return true
 	}
-
-	return fm.pollWithRetry()
+	fmt.Println("poll result is outdated and not valid for use")
+	return false
 }
 
-func (fm *FluxMonitor) ForceNewPoll() error {
+func (fm *FluxMonitor) pollWithRetry() error {
 	fm.pollMutex.Lock()
 	defer fm.pollMutex.Unlock()
-
-	_, err := fm.pollWithRetry()
-	return err
-}
-
-func (fm *FluxMonitor) pollWithRetry() (decimal.Decimal, error) {
 	for i := 0; i < int(fm.config.RuntimeConfig.FMAdapterRetryAttempts); i++ {
 		err := fm.poll()
 		if err != nil {
@@ -390,13 +385,13 @@ func (fm *FluxMonitor) pollWithRetry() (decimal.Decimal, error) {
 			continue
 		}
 
-		return fm.latestResult, nil
+		return nil
 	}
 
-	return decimal.Decimal{}, fmt.Errorf("unable to get a poll result after %d attempts", fm.config.RuntimeConfig.FMAdapterRetryAttempts)
+	return fmt.Errorf("unable to get a poll result after %d attempts", fm.config.RuntimeConfig.FMAdapterRetryAttempts)
 }
 
-// poll() should only be called by PollAndGetAnswer(), as it holds the mutex lock
+// poll() should only be called by pollWithRetry(), as it holds the mutex lock
 func (fm *FluxMonitor) poll() error {
 	numSources := len(fm.config.Adapters)
 	ch := make(chan *decimal.Decimal)
