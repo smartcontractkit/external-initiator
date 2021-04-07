@@ -67,8 +67,10 @@ func startService(
 			Delay:    config.ChainlinkRetryDelay,
 		},
 	}, store.RuntimeConfig{
-		KeeperBlockCooldown: config.KeeperBlockCooldown,
-		FMAdapterTimeout:    config.FMAdapterTimeout,
+		KeeperBlockCooldown:    config.KeeperBlockCooldown,
+		FMAdapterTimeout:       config.FMAdapterTimeout,
+		FMAdapterRetryAttempts: config.FMAdapterRetryAttempts,
+		FMAdapterRetryDelay:    config.FMAdapterRetryDelay,
 	})
 
 	var names []string
@@ -211,12 +213,11 @@ func (srv *Service) subscribe(sub *store.Subscription) error {
 
 	logger.Info("Starting FluxMonitor for Job: ", js.Job)
 
-	fmConfig, err := services.ParseFMSpec(js.Spec)
+	fmConfig, err := services.ParseFMSpec(js.Spec, srv.runtimeConfig)
 	if err != nil {
 		return err
 	}
 
-	fmConfig.AdapterTimeout = srv.runtimeConfig.FMAdapterTimeout
 	triggerJobRun := make(chan subscriber.Event)
 	blockchainManager, err := blockchain.CreateManager(*sub)
 	if err != nil {

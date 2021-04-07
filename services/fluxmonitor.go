@@ -16,6 +16,7 @@ import (
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/chainlink/core/utils"
 	"github.com/smartcontractkit/external-initiator/blockchain"
+	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/tidwall/gjson"
 )
@@ -28,10 +29,11 @@ type FluxMonitorConfig struct {
 	AbsoluteThreshold float64
 	Heartbeat         time.Duration
 	PollInterval      time.Duration
-	AdapterTimeout    time.Duration
+
+	RuntimeConfig store.RuntimeConfig
 }
 
-func ParseFMSpec(jsonSpec json.RawMessage) (FluxMonitorConfig, error) {
+func ParseFMSpec(jsonSpec json.RawMessage, runtimeConfig store.RuntimeConfig) (FluxMonitorConfig, error) {
 	var fmConfig FluxMonitorConfig
 
 	res := gjson.GetBytes(jsonSpec, "feeds.#.url")
@@ -46,6 +48,7 @@ func ParseFMSpec(jsonSpec json.RawMessage) (FluxMonitorConfig, error) {
 	fmConfig.Multiply = int32(gjson.GetBytes(jsonSpec, "precision").Int())
 	fmConfig.Threshold = gjson.GetBytes(jsonSpec, "threshold").Float()
 	fmConfig.AbsoluteThreshold = gjson.GetBytes(jsonSpec, "absoluteThreshold").Float()
+	fmConfig.RuntimeConfig = runtimeConfig
 
 	var err error
 	if !gjson.GetBytes(jsonSpec, "idleTimer.disabled").Bool() {
@@ -109,7 +112,7 @@ func NewFluxMonitor(config FluxMonitorConfig, triggerJobRun chan subscriber.Even
 		config:  config,
 		chClose: make(chan struct{}),
 		httpClient: http.Client{
-			Timeout: config.AdapterTimeout,
+			Timeout: config.RuntimeConfig.FMAdapterTimeout,
 		},
 		blockchain:   blockchainManager,
 		chJobTrigger: triggerJobRun,
@@ -359,7 +362,7 @@ func (fm *FluxMonitor) PollAndGetAnswer() (decimal.Decimal, error) {
 	fm.pollMutex.Lock()
 	defer fm.pollMutex.Unlock()
 
-	if time.Since(fm.latestResultTimestamp)+fm.config.AdapterTimeout <= fm.config.PollInterval {
+	if time.Since(fm.latestResultTimestamp) <= fm.config.PollInterval+fm.config.RuntimeConfig.FMAdapterTimeout {
 		// The result we have is from within our polling interval, so we can use it
 		return fm.latestResult, nil
 	}
@@ -376,19 +379,21 @@ func (fm *FluxMonitor) ForceNewPoll() error {
 }
 
 func (fm *FluxMonitor) pollWithRetry() (decimal.Decimal, error) {
-	attempts := 3
-	for i := 0; i < attempts; i++ {
+	for i := 0; i < int(fm.config.RuntimeConfig.FMAdapterRetryAttempts); i++ {
 		err := fm.poll()
 		if err != nil {
 			logger.Error("Failed polling adapters: ", err)
-			time.Sleep(3 * time.Second)
+			if i < int(fm.config.RuntimeConfig.FMAdapterRetryAttempts) {
+				logger.Debugf("Waiting %s before trying again...", fm.config.RuntimeConfig.FMAdapterRetryDelay.String())
+				time.Sleep(fm.config.RuntimeConfig.FMAdapterRetryDelay)
+			}
 			continue
 		}
 
 		return fm.latestResult, nil
 	}
 
-	return decimal.Decimal{}, fmt.Errorf("unable to get a poll result after %d attempts", attempts)
+	return decimal.Decimal{}, fmt.Errorf("unable to get a poll result after %d attempts", fm.config.RuntimeConfig.FMAdapterRetryAttempts)
 }
 
 // poll() should only be called by PollAndGetAnswer(), as it holds the mutex lock
