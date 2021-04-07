@@ -243,7 +243,7 @@ func (srv *Service) subscribe(sub *store.Subscription) error {
 		}
 	}()
 
-	fm, err := services.NewFluxMonitor(fmConfig, triggerJobRun, blockchainManager)
+	fm, err := services.NewFluxMonitor(js.Job, fmConfig, triggerJobRun, blockchainManager)
 	if err != nil {
 		return err
 	}
