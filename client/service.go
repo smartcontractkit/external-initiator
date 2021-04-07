@@ -164,7 +164,7 @@ func (srv *Service) Run() error {
 	}
 
 	for _, sub := range subs {
-		err = srv.subscribe(&sub)
+		err = srv.subscribe(sub)
 		if err != nil {
 			logger.Error(err)
 		}
@@ -201,7 +201,7 @@ type activeSubscription struct {
 	onStop sync.Once
 }
 
-func (srv *Service) subscribe(sub *store.Subscription) error {
+func (srv *Service) subscribe(sub store.Subscription) error {
 	if _, ok := srv.subscriptions[sub.Job]; ok {
 		return errors.New("already subscribed to this jobid")
 	}
@@ -219,7 +219,7 @@ func (srv *Service) subscribe(sub *store.Subscription) error {
 	}
 
 	triggerJobRun := make(chan subscriber.Event)
-	blockchainManager, err := blockchain.CreateManager(*sub)
+	blockchainManager, err := blockchain.CreateManager(sub)
 	if err != nil {
 		return err
 	}
@@ -249,7 +249,7 @@ func (srv *Service) subscribe(sub *store.Subscription) error {
 	}
 
 	subscription := activeSubscription{
-		Subscription: sub,
+		Subscription: &sub,
 		Service:      fm,
 	}
 
@@ -277,7 +277,7 @@ func (srv *Service) SaveSubscription(arg *store.Subscription) error {
 		return err
 	}
 
-	return srv.subscribe(arg)
+	return srv.subscribe(*arg)
 }
 
 // DeleteJob unsubscribes (if applicable) and deletes
