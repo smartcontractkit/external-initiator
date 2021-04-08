@@ -16,8 +16,11 @@ import (
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/chainlink/core/utils"
 	"github.com/smartcontractkit/external-initiator/blockchain"
+	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/tidwall/gjson"
+
+	"go.uber.org/zap"
 )
 
 type FluxMonitorConfig struct {
@@ -28,10 +31,11 @@ type FluxMonitorConfig struct {
 	AbsoluteThreshold float64
 	Heartbeat         time.Duration
 	PollInterval      time.Duration
-	AdapterTimeout    time.Duration
+
+	RuntimeConfig store.RuntimeConfig
 }
 
-func ParseFMSpec(jsonSpec json.RawMessage) (FluxMonitorConfig, error) {
+func ParseFMSpec(jsonSpec json.RawMessage, runtimeConfig store.RuntimeConfig) (FluxMonitorConfig, error) {
 	var fmConfig FluxMonitorConfig
 
 	res := gjson.GetBytes(jsonSpec, "feeds.#.url")
@@ -46,6 +50,7 @@ func ParseFMSpec(jsonSpec json.RawMessage) (FluxMonitorConfig, error) {
 	fmConfig.Multiply = int32(gjson.GetBytes(jsonSpec, "precision").Int())
 	fmConfig.Threshold = gjson.GetBytes(jsonSpec, "threshold").Float()
 	fmConfig.AbsoluteThreshold = gjson.GetBytes(jsonSpec, "absoluteThreshold").Float()
+	fmConfig.RuntimeConfig = runtimeConfig
 
 	var err error
 	if !gjson.GetBytes(jsonSpec, "idleTimer.disabled").Bool() {
@@ -86,8 +91,9 @@ type FluxMonitor struct {
 	latestSubmittedRoundID uint32
 	latestInitiatedRoundID uint32
 
-	pollTicker utils.PausableTicker
-	idleTimer  utils.ResettableTimer
+	pollTicker     utils.PausableTicker
+	idleTimer      utils.ResettableTimer
+	idleTimerReset chan struct{}
 
 	quitOnce   sync.Once
 	tStart     sync.Once
@@ -100,22 +106,26 @@ type FluxMonitor struct {
 	chJobTrigger  chan subscriber.Event
 	chClose       chan struct{}
 	chTickerClose chan struct{}
+
+	logger *zap.SugaredLogger
 }
 
-func NewFluxMonitor(config FluxMonitorConfig, triggerJobRun chan subscriber.Event, blockchainManager blockchain.Manager) (*FluxMonitor, error) {
-	logger.Infof("New FluxMonitor with config: %+v", config)
-
+func NewFluxMonitor(job string, config FluxMonitorConfig, triggerJobRun chan subscriber.Event, blockchainManager blockchain.Manager) (*FluxMonitor, error) {
 	fm := FluxMonitor{
 		config:  config,
 		chClose: make(chan struct{}),
 		httpClient: http.Client{
-			Timeout: config.AdapterTimeout,
+			Timeout: config.RuntimeConfig.FMAdapterTimeout,
 		},
-		blockchain:   blockchainManager,
-		chJobTrigger: triggerJobRun,
-		pollTicker:   utils.NewPausableTicker(config.PollInterval),
-		idleTimer:    utils.NewResettableTimer(),
+		blockchain:     blockchainManager,
+		chJobTrigger:   triggerJobRun,
+		pollTicker:     utils.NewPausableTicker(config.PollInterval),
+		idleTimer:      utils.NewResettableTimer(),
+		idleTimerReset: make(chan struct{}, 1),
+		logger:         logger.Default.With("job", job),
 	}
+	fm.logger.Infof("New FluxMonitor with config: %+v", config)
+
 	FAEvents := make(chan interface{})
 
 	state, err := fm.blockchain.Request(blockchain.FMRequestState)
@@ -182,20 +192,23 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 		case rawEvent := <-ch:
 			switch event := rawEvent.(type) {
 			case blockchain.FMEventNewRound:
-				logger.Debug("Got new round event: ", event)
+				fm.logger.Debug("Got new round event: ", event)
+				fm.resetHeartbeatTimer()
 				fm.state.RoundID = event.RoundID
 				if event.OracleInitiated {
 					fm.latestInitiatedRoundID = event.RoundID
 					continue
 				}
-				logger.ErrorIf(fm.checkAndSendJob(false))
-				fm.idleTimer.Reset(fm.config.Heartbeat)
+				err := fm.checkAndSendJob(false)
+				if err != nil {
+					fm.logger.Error(err)
+				}
 			case blockchain.FMEventAnswerUpdated:
-				logger.Debug("Got answer updated event: ", event)
+				fm.logger.Debug("Got answer updated event: ", event)
 				fm.state.LatestAnswer = event.LatestAnswer
 				fm.checkDeviation()
 			case blockchain.FMEventPermissionsUpdated:
-				logger.Debug("Got permissions updated event: ", event)
+				fm.logger.Debug("Got permissions updated event: ", event)
 				fm.state.CanSubmit = event.CanSubmit
 				fm.canSubmitUpdated()
 			}
@@ -207,23 +220,23 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 
 func (fm *FluxMonitor) canSubmitToRound(initiate bool) bool {
 	if !fm.state.CanSubmit {
-		logger.Info("Oracle can't submit to this feed")
+		fm.logger.Info("Oracle can't submit to this feed")
 		return false
 	}
 
 	if initiate {
 		if int32(fm.state.RoundID+1-fm.latestInitiatedRoundID) <= fm.state.RestartDelay {
-			logger.Info("Oracle needs to wait until restart delay passes until it can initiate a new round")
+			fm.logger.Info("Oracle needs to wait until restart delay passes until it can initiate a new round")
 			return false
 		}
 
 		if fm.latestSubmittedRoundID >= fm.state.RoundID+1 {
-			logger.Info("Oracle already submitted to this round")
+			fm.logger.Info("Oracle already initiated this round")
 			return false
 		}
 	} else {
 		if fm.latestSubmittedRoundID != 0 && fm.latestSubmittedRoundID >= fm.state.RoundID {
-			logger.Info("Oracle already submitted to this round")
+			fm.logger.Info("Oracle already submitted to this round")
 			return false
 		}
 	}
@@ -250,49 +263,54 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 		return errors.Wrap(err, "failed to create job request from blockchain manager")
 	}
 
-	if time.Since(fm.latestResultTimestamp) > fm.config.PollInterval+fm.config.AdapterTimeout {
-		logger.Warn("Polling again because result is old or have not been set yet")
-		err := fm.poll()
+	if !fm.ValidLatestResult() {
+		err := fm.pollWithRetry()
 		if err != nil {
-			return errors.Wrap(err, "unable to get result from polling")
+			return err
 		}
 	}
 
 	// Add common keys that should always be included
-	jobRequest["result"] = fm.latestResult.String()
+	jobRequest["result"] = fm.latestResult
 	jobRequest["payment"] = fm.state.Payment.String()
-	logger.Info("Triggering Job Run: ", jobRequest)
+	fm.logger.Info("Triggering Job Run: ", jobRequest)
 	fm.chJobTrigger <- jobRequest
 
-	fm.latestSubmittedRoundID = fm.state.RoundID
+	fm.latestSubmittedRoundID = roundId
 	return nil
+}
+
+func (fm *FluxMonitor) resetHeartbeatTimer() {
+	fm.idleTimerReset <- struct{}{}
 }
 
 func (fm *FluxMonitor) heartbeatTimer() {
 	if fm.config.Heartbeat == 0 {
-		logger.Info("Not starting heartbeat ticker, because config.Heartbeat is not set")
+		fm.logger.Info("Not starting heartbeat timer, because config.Heartbeat is not set")
 		return
 	}
+	fm.logger.Info("Started heartbeat timer")
+
 	fm.idleTimer.Reset(fm.config.Heartbeat)
 	defer fm.idleTimer.Stop()
 
 	for {
 		select {
+		case <-fm.idleTimerReset:
+			fm.logger.Info("Resetting the heartbeat timer")
+			fm.idleTimer.Reset(fm.config.Heartbeat)
+			continue
 		case <-fm.idleTimer.Ticks():
-			logger.Info("Heartbeat")
-			err := fm.poll()
+			fm.logger.Info("Heartbeat trigger")
+			err := fm.checkAndSendJob(true)
 			if err != nil {
-				logger.Error("Failed to poll at heartbeat: ", err)
-			}
-			err = fm.checkAndSendJob(true)
-			if err != nil {
-				logger.Error("Failed to initiate new round at heartbeat: ", err)
+				fm.logger.Error("Failed to initiate new round at heartbeat: ", err)
 			}
 		case <-fm.chClose:
-			logger.Info("FluxMonitor stopped")
+			fm.logger.Info("FluxMonitor stopped")
 			return
 		case <-fm.chTickerClose:
-			logger.Info("Stopping heartbeat timer")
+			fm.logger.Info("Stopping heartbeat timer")
 			return
 		}
 	}
@@ -300,10 +318,10 @@ func (fm *FluxMonitor) heartbeatTimer() {
 
 func (fm *FluxMonitor) pollingTicker() {
 	if fm.config.PollInterval == 0 {
-		logger.Info("Not starting polling adapters, because config.PollInterval is not set")
+		fm.logger.Info("Not starting polling adapters, because config.PollInterval is not set")
 		return
 	}
-	logger.ErrorIf(fm.poll())
+
 	fm.pollTicker.Resume()
 	defer fm.pollTicker.Destroy()
 
@@ -311,15 +329,20 @@ func (fm *FluxMonitor) pollingTicker() {
 		select {
 		case <-fm.pollTicker.Ticks():
 			fm.pollTicker.Pause()
-			logger.Info("polling adapters")
-			logger.ErrorIf(fm.poll())
-			fm.checkDeviation()
+			fm.logger.Info("polling adapters")
+			err := fm.pollWithRetry()
+			if err != nil {
+				fm.logger.Error(err)
+			} else {
+				// We don't want to check deviation against an outdated value
+				fm.checkDeviation()
+			}
 			fm.pollTicker.Resume()
 		case <-fm.chClose:
-			fmt.Println("stopping polling adapter")
+			fm.logger.Info("stopping polling adapter")
 			return
 		case <-fm.chTickerClose:
-			logger.Info("stopping poller")
+			fm.logger.Info("stopping poller")
 			return
 		}
 	}
@@ -328,7 +351,7 @@ func (fm *FluxMonitor) pollingTicker() {
 // could use the fm service values but also can use arguments for standalone functionality and potential reuseability
 // httpClient passing and initial setup could be handled in standalone service if we don't want to interfere with fm service state
 func (fm *FluxMonitor) getAdapterResponse(endpoint url.URL, requestData string) (*decimal.Decimal, error) {
-	logger.Info("Requesting data from adapter: ", endpoint.String())
+	fm.logger.Info("Requesting data from adapter: ", endpoint.String())
 	resp, err := fm.httpClient.Post(endpoint.String(), "application/json", bytes.NewBuffer([]byte(requestData)))
 	if err != nil {
 		return nil, err
@@ -348,22 +371,54 @@ func (fm *FluxMonitor) getAdapterResponse(endpoint url.URL, requestData string) 
 		return nil, err
 	}
 
-	logger.Infof("%s returned: %s ", endpoint.String(), body)
+	fm.logger.Infof("%s returned: %s ", endpoint.String(), body)
 
 	var response AdapterResponse
 	return response.Price, json.Unmarshal(body, &response)
 }
 
-func (fm *FluxMonitor) poll() error {
+func (fm *FluxMonitor) ValidLatestResult() bool {
 	fm.pollMutex.Lock()
 	defer fm.pollMutex.Unlock()
+
+	if time.Since(fm.latestResultTimestamp) <= fm.config.PollInterval+fm.config.RuntimeConfig.FMAdapterTimeout {
+		// The result we have is from within our polling interval, so we can use it
+		fmt.Println("poll result is valid for use")
+		return true
+	}
+	fmt.Println("poll result is outdated and not valid for use")
+	return false
+}
+
+func (fm *FluxMonitor) pollWithRetry() error {
+	fm.pollMutex.Lock()
+	defer fm.pollMutex.Unlock()
+	for i := 0; i < int(fm.config.RuntimeConfig.FMAdapterRetryAttempts); i++ {
+		err := fm.poll()
+		if err != nil {
+			fm.logger.Error("Failed polling adapters: ", err)
+			if i < int(fm.config.RuntimeConfig.FMAdapterRetryAttempts) {
+				fm.logger.Debugf("Waiting %s before trying again...", fm.config.RuntimeConfig.FMAdapterRetryDelay.String())
+				time.Sleep(fm.config.RuntimeConfig.FMAdapterRetryDelay)
+			}
+			continue
+		}
+
+		return nil
+	}
+
+	return fmt.Errorf("unable to get a poll result after %d attempts", fm.config.RuntimeConfig.FMAdapterRetryAttempts)
+}
+
+// poll() should only be called by pollWithRetry(), as it holds the mutex lock
+func (fm *FluxMonitor) poll() error {
 	numSources := len(fm.config.Adapters)
 	ch := make(chan *decimal.Decimal)
 	for _, adapter := range fm.config.Adapters {
 		go func(adapter url.URL) {
 			price, err := fm.getAdapterResponse(adapter, fm.config.RequestData)
 			if err != nil {
-				logger.Error(fmt.Sprintf("Adapter response error. URL: %s requestData: %s error: ", adapter.Host, fm.config.RequestData), err)
+				fm.logger.Error(fmt.Sprintf("Adapter response error. URL: %s requestData: %s error: ", adapter.Host, fm.config.RequestData), err)
 			}
 			ch <- price
 		}(adapter)
@@ -385,7 +440,7 @@ func (fm *FluxMonitor) poll() error {
 	median := calculateMedian(values)
 	fm.latestResult = median
 	fm.latestResultTimestamp = time.Now()
-	logger.Info("Latest result from adapter polling: ", median)
+	fm.logger.Info("Latest result from adapter polling: ", median)
 	return nil
 }
 

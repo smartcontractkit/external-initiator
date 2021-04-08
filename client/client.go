@@ -70,6 +70,12 @@ func generateCmd() *cobra.Command {
 	newcmd.Flags().Int64("keeper_block_cooldown", 3, "Number of blocks to cool down before triggering a new run for a Keeper job")
 	must(v.BindPFlag("keeper_block_cooldown", newcmd.Flags().Lookup("keeper_block_cooldown")))
 
+	newcmd.Flags().Uint("fm_adapter_retry_attempts", 3, "The maximum number of attempts that will be made for FM adapter polls")
+	must(v.BindPFlag("fm_adapter_retry_attempts", newcmd.Flags().Lookup("fm_adapter_retry_attempts")))
+
+	newcmd.Flags().Duration("fm_adapter_retry_delay", 1*time.Second, "The delay between FM adapter poll attempts")
+	must(v.BindPFlag("fm_adapter_retry_delay", newcmd.Flags().Lookup("fm_adapter_retry_delay")))
+
 	v.SetEnvPrefix("EI")
 	v.AutomaticEnv()
 

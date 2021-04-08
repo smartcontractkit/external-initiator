@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/external-initiator/blockchain"
-
+	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/stretchr/testify/require"
 )
@@ -180,9 +180,11 @@ func TestNewFluxMonitor(t *testing.T) {
 			fmConfig.AbsoluteThreshold = tt.absoluteThreshold
 			fmConfig.Heartbeat = tt.heartbeat
 			fmConfig.PollInterval = tt.heartbeat
+			fmConfig.RuntimeConfig = store.RuntimeConfig{FMAdapterTimeout: 1 * time.Second, FMAdapterRetryAttempts: 1, FMAdapterRetryDelay: 1 * time.Second}
 
-			fm, err := NewFluxMonitor(fmConfig, triggerJobRun, &mockBlockchainManager{})
+			fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
 			require.NoError(t, err)
+			defer fm.Stop()
 			wg := sync.WaitGroup{}
 			wg.Add(1)
 			fmt.Println(prettyPrint(fm.state))
@@ -203,7 +205,7 @@ func TestNewFluxMonitor(t *testing.T) {
 					if tt.want == "no_job" {
 						t.Errorf("Job received. Want %s", tt.want)
 					}
-					if got := job["result"]; !reflect.DeepEqual(got, tt.want) {
+					if got := job["result"]; !reflect.DeepEqual(fmt.Sprintf("%s", got), fmt.Sprintf("%s", tt.want)) {
 						t.Errorf("GetTriggerJson() = %s, want %s", got, tt.want)
 					}
 

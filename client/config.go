@@ -35,6 +35,10 @@ type Config struct {
 	KeeperBlockCooldown int64
 	// FluxMonitor adapters polling timeout
 	FMAdapterTimeout time.Duration
+	// FMAdapterRetryAttempts sets the maximum number of attempts that will be made for FM adapter polls
+	FMAdapterRetryAttempts uint
+	// FMAdapterRetryDelay sets the delay between attempts for FM adapter polls
+	FMAdapterRetryDelay time.Duration
 }
 
 // newConfigFromViper returns a Config based on the values supplied by viper.
@@ -53,5 +57,7 @@ func newConfigFromViper(v *viper.Viper) Config {
 		ChainlinkRetryDelay:           v.GetDuration("cl_retry_delay"),
 		KeeperBlockCooldown:           v.GetInt64("keeper_block_cooldown"),
 		FMAdapterTimeout:              v.GetDuration("fm_adapter_timeout"),
+		FMAdapterRetryAttempts:        v.GetUint("fm_adapter_retry_attempts"),
+		FMAdapterRetryDelay:           v.GetDuration("fm_adapter_retry_delay"),
 	}
 }

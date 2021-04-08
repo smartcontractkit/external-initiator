@@ -67,8 +67,10 @@ func startService(
 			Delay:    config.ChainlinkRetryDelay,
 		},
 	}, store.RuntimeConfig{
-		KeeperBlockCooldown: config.KeeperBlockCooldown,
-		FMAdapterTimeout:    config.FMAdapterTimeout,
+		KeeperBlockCooldown:    config.KeeperBlockCooldown,
+		FMAdapterTimeout:       config.FMAdapterTimeout,
+		FMAdapterRetryAttempts: config.FMAdapterRetryAttempts,
+		FMAdapterRetryDelay:    config.FMAdapterRetryDelay,
 	})
 
 	var names []string
@@ -162,7 +164,7 @@ func (srv *Service) Run() error {
 	}
 
 	for _, sub := range subs {
-		err = srv.subscribe(&sub)
+		err = srv.subscribe(sub)
 		if err != nil {
 			logger.Error(err)
 		}
@@ -199,7 +201,7 @@ type activeSubscription struct {
 	onStop sync.Once
 }
 
-func (srv *Service) subscribe(sub *store.Subscription) error {
+func (srv *Service) subscribe(sub store.Subscription) error {
 	if _, ok := srv.subscriptions[sub.Job]; ok {
 		return errors.New("already subscribed to this jobid")
 	}
@@ -211,14 +213,13 @@ func (srv *Service) subscribe(sub *store.Subscription) error {
 
 	logger.Info("Starting FluxMonitor for Job: ", js.Job)
 
-	fmConfig, err := services.ParseFMSpec(js.Spec)
+	fmConfig, err := services.ParseFMSpec(js.Spec, srv.runtimeConfig)
 	if err != nil {
 		return err
 	}
 
-	fmConfig.AdapterTimeout = srv.runtimeConfig.FMAdapterTimeout
 	triggerJobRun := make(chan subscriber.Event)
-	blockchainManager, err := blockchain.CreateManager(*sub)
+	blockchainManager, err := blockchain.CreateManager(sub)
 	if err != nil {
 		return err
 	}
@@ -242,13 +243,13 @@ func (srv *Service) subscribe(sub *store.Subscription) error {
 		}
 	}()
 
-	fm, err := services.NewFluxMonitor(fmConfig, triggerJobRun, blockchainManager)
+	fm, err := services.NewFluxMonitor(js.Job, fmConfig, triggerJobRun, blockchainManager)
 	if err != nil {
 		return err
 	}
 
 	subscription := activeSubscription{
-		Subscription: sub,
+		Subscription: &sub,
 		Service:      fm,
 	}
 
@@ -276,7 +277,7 @@ func (srv *Service) SaveSubscription(arg *store.Subscription) error {
 		return err
 	}
 
-	return srv.subscribe(arg)
+	return srv.subscribe(*arg)
 }
 
 // DeleteJob unsubscribes (if applicable) and deletes
