@@ -178,10 +178,12 @@ func (fm *FluxMonitor) startTickers() {
 }
 
 func (fm *FluxMonitor) stopTickers() {
-	fm.tStop.Do(func() {
-		close(fm.chTickerClose)
-		fm.tStart = sync.Once{}
-	})
+	if fm.chTickerClose != nil {
+		fm.tStop.Do(func() {
+			close(fm.chTickerClose)
+			fm.tStart = sync.Once{}
+		})
+	}
 }
 
 func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
