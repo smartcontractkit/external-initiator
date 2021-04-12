@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"io"
 	"io/ioutil"
 	"net/http"

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"io"
 	"io/ioutil"
 	"net/http"

@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"encoding/json"
+	common2 "github.com/smartcontractkit/external-initiator/blockchain/common"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
