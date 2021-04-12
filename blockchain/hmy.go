@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"encoding/json"
+	common2 "github.com/smartcontractkit/external-initiator/blockchain/common"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -57,7 +58,7 @@ func (h hmyManager) GetTriggerJson() []byte {
 		return nil
 	}
 
-	msg := JsonrpcMessage{
+	msg := common2.JsonrpcMessage{
 		Version: "2.0",
 		ID:      json.RawMessage(`1`),
 	}
@@ -70,7 +71,7 @@ func (h hmyManager) GetTriggerJson() []byte {
 		msg.Method = "hmy_getLogs"
 		msg.Params = json.RawMessage(`[` + string(filterBytes) + `]`)
 	default:
-		logger.Errorw(ErrSubscriberType.Error(), "type", h.p)
+		logger.Errorw(common2.ErrSubscriberType.Error(), "type", h.p)
 		return nil
 	}
 
@@ -92,7 +93,7 @@ func (h hmyManager) GetTriggerJson() []byte {
 // Sends a request to get the latest block number.
 func (h hmyManager) GetTestJson() []byte {
 	if h.p == subscriber.RPC {
-		msg := JsonrpcMessage{
+		msg := common2.JsonrpcMessage{
 			Version: "2.0",
 			ID:      json.RawMessage(`1`),
 			Method:  "hmy_blockNumber",
@@ -121,7 +122,7 @@ func (h hmyManager) GetTestJson() []byte {
 // If successful, stores the block number in hmyManager.
 func (h hmyManager) ParseTestResponse(data []byte) error {
 	if h.p == subscriber.RPC {
-		var msg JsonrpcMessage
+		var msg common2.JsonrpcMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
 			return err
 		}
@@ -144,9 +145,9 @@ func (h hmyManager) ParseTestResponse(data []byte) error {
 // the latest block number it sees.
 func (h hmyManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	promLastSourcePing.With(prometheus.Labels{"endpoint": h.endpointName, "jobid": h.jobid}).SetToCurrentTime()
-	logger.Debugw("Parsing response", "ExpectsMock", ExpectsMock)
+	logger.Debugw("Parsing response", "ExpectsMock", common2.ExpectsMock)
 
-	var msg JsonrpcMessage
+	var msg common2.JsonrpcMessage
 	if err := json.Unmarshal(data, &msg); err != nil {
 		logger.Error("failed parsing msg: ", msg)
 		return nil, false
@@ -231,7 +232,7 @@ func (h hmyManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 		}
 
 	default:
-		logger.Errorw(ErrSubscriberType.Error(), "type", h.p)
+		logger.Errorw(common2.ErrSubscriberType.Error(), "type", h.p)
 		return nil, false
 	}
 

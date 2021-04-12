@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -129,9 +130,9 @@ func authenticate(accessKey, secret string) gin.HandlerFunc {
 // CreateSubscriptionReq holds the payload expected for job POSTs
 // from the Chainlink node.
 type CreateSubscriptionReq struct {
-	JobID  string            `json:"jobId"`
-	Type   string            `json:"type"`
-	Params blockchain.Params `json:"params"`
+	JobID  string        `json:"jobId"`
+	Type   string        `json:"type"`
+	Params common.Params `json:"params"`
 }
 
 func validateRequest(t *CreateSubscriptionReq, endpointType string) error {

@@ -2,13 +2,13 @@ package blockchain
 
 import (
 	"fmt"
+	"github.com/smartcontractkit/external-initiator/blockchain/common"
 
 	"github.com/gin-gonic/gin"
-	"github.com/smartcontractkit/external-initiator/blockchain"
 )
 
 // JsonrpcMessage declares JSON-RPC message type
-type JsonrpcMessage = blockchain.JsonrpcMessage
+type JsonrpcMessage = common.JsonrpcMessage
 
 func HandleRequest(conn, platform string, msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 	cannedResponse, ok := GetCannedResponse(platform, msg)

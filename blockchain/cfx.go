@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	common2 "github.com/smartcontractkit/external-initiator/blockchain/common"
 	"math/big"
 	"strings"
 
@@ -76,7 +77,7 @@ func (e cfxManager) GetTriggerJson() []byte {
 		return nil
 	}
 
-	msg := JsonrpcMessage{
+	msg := common2.JsonrpcMessage{
 		Version: "2.0",
 		ID:      json.RawMessage(`1`),
 	}
@@ -89,7 +90,7 @@ func (e cfxManager) GetTriggerJson() []byte {
 		msg.Method = "cfx_getLogs"
 		msg.Params = json.RawMessage(fmt.Sprintf("[%s]", filterBytes))
 	default:
-		logger.Errorw(ErrSubscriberType.Error(), "type", e.p)
+		logger.Errorw(common2.ErrSubscriberType.Error(), "type", e.p)
 		return nil
 	}
 
@@ -108,7 +109,7 @@ func (e cfxManager) GetTriggerJson() []byte {
 // Sends a request to get the latest epoch number.
 func (e cfxManager) GetTestJson() []byte {
 	if e.p == subscriber.RPC {
-		msg := JsonrpcMessage{
+		msg := common2.JsonrpcMessage{
 			Version: "2.0",
 			ID:      json.RawMessage(`1`),
 			Method:  "cfx_epochNumber",
@@ -134,7 +135,7 @@ func (e cfxManager) GetTestJson() []byte {
 // If successful, stores the block number in cfxManager.
 func (e cfxManager) ParseTestResponse(data []byte) error {
 	if e.p == subscriber.RPC {
-		var msg JsonrpcMessage
+		var msg common2.JsonrpcMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
 			return err
 		}
@@ -198,9 +199,9 @@ func Cfx2EthResponse(cfx cfxLogResponse) (models.Log, error) {
 // the latest block number it sees.
 func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	promLastSourcePing.With(prometheus.Labels{"endpoint": e.endpointName, "jobid": e.jobid}).SetToCurrentTime()
-	logger.Debugw("Parsing response", "ExpectsMock", ExpectsMock)
+	logger.Debugw("Parsing response", "ExpectsMock", common2.ExpectsMock)
 
-	var msg JsonrpcMessage
+	var msg common2.JsonrpcMessage
 	if err := json.Unmarshal(data, &msg); err != nil {
 		logger.Error("failed parsing msg: ", msg)
 		return nil, false
@@ -298,7 +299,7 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 		}
 
 	default:
-		logger.Errorw(ErrSubscriberType.Error(), "type", e.p)
+		logger.Errorw(common2.ErrSubscriberType.Error(), "type", e.p)
 		return nil, false
 	}
 

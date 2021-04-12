@@ -2,6 +2,7 @@ package client
 
 import (
 	"encoding/json"
+	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"net/url"
 	"os"
 	"os/signal"
@@ -50,7 +51,7 @@ func startService(
 	logger.Info("Starting External Initiator")
 
 	// Set the mocking status before we start anything else
-	blockchain.ExpectsMock = config.ExpectsMock
+	common.ExpectsMock = config.ExpectsMock
 
 	clUrl, err := url.Parse(normalizeLocalhost(config.ChainlinkURL))
 	if err != nil {
@@ -201,61 +202,79 @@ type activeSubscription struct {
 	onStop sync.Once
 }
 
+func (srv Service) jobTriggerListener(job string, ch <-chan subscriber.Event) {
+	// Add a second of delay to let services (Chainlink core)
+	// sync up before sending the first job run trigger.
+	time.Sleep(1 * time.Second)
+	// TODO: There's a race condition here where a job run could be triggered
+	// before the CL request to the EI has finished, hence there's no job yet
+	// on the Chainlink node.
+
+	for {
+		trigger := <-ch
+		go func() {
+			err := srv.clNode.TriggerJob(job, trigger)
+			if err != nil {
+				logger.Errorw("Failed sending job run trigger: ", err, "job", job)
+			}
+		}()
+	}
+}
+
 func (srv *Service) subscribe(sub store.Subscription) error {
 	if _, ok := srv.subscriptions[sub.Job]; ok {
 		return errors.New("already subscribed to this jobid")
 	}
 
+	var startService func(sub store.Subscription, ch chan subscriber.Event, js *store.JobSpec) (services.Service, error)
+
+	// TODO: Should load entire job spec
 	js, err := srv.store.LoadJobSpec(sub.Job)
-	if err != nil {
-		return nil
+	if err != nil || js == nil {
+		startService = srv.subscribeRunlog
+	} else {
+		startService = srv.subscribeFluxmonitor
 	}
 
+	triggerJobRun := make(chan subscriber.Event, 100)
+	service, err := startService(sub, triggerJobRun, js)
+	if err != nil {
+		return err
+	}
+
+	srv.subscriptions[sub.Job] = &activeSubscription{
+		Subscription: &sub,
+		Service:      service,
+	}
+
+	go srv.jobTriggerListener(sub.Job, triggerJobRun)
+
+	return nil
+}
+
+func (srv Service) subscribeRunlog(sub store.Subscription, ch chan subscriber.Event, _ *store.JobSpec) (services.Service, error) {
+	blockchainManager, err := blockchain.CreateManager(sub)
+	if err != nil {
+		return nil, err
+	}
+
+	return services.NewRunlog(sub.Job, ch, blockchainManager)
+}
+
+func (srv *Service) subscribeFluxmonitor(sub store.Subscription, ch chan subscriber.Event, js *store.JobSpec) (services.Service, error) {
 	logger.Info("Starting FluxMonitor for Job: ", js.Job)
 
 	fmConfig, err := services.ParseFMSpec(js.Spec, srv.runtimeConfig)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	triggerJobRun := make(chan subscriber.Event)
 	blockchainManager, err := blockchain.CreateManager(sub)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	go func() {
-		// Add a second of delay to let services (Chainlink core)
-		// sync up before sending the first job run trigger.
-		time.Sleep(1 * time.Second)
-		// TODO: There's a race condition here where a job run could be triggered
-		// before the CL request to the EI has finished, hence there's no job yet
-		// on the Chainlink node.
-
-		for {
-			trigger := <-triggerJobRun
-			go func() {
-				err = srv.clNode.TriggerJob(sub.Job, trigger)
-				if err != nil {
-					logger.Error("Failed sending job run trigger: ", err)
-				}
-			}()
-		}
-	}()
-
-	fm, err := services.NewFluxMonitor(js.Job, fmConfig, triggerJobRun, blockchainManager)
-	if err != nil {
-		return err
-	}
-
-	subscription := activeSubscription{
-		Subscription: &sub,
-		Service:      fm,
-	}
-
-	srv.subscriptions[sub.Job] = &subscription
-
-	return nil
+	return services.NewFluxMonitor(js.Job, fmConfig, ch, blockchainManager)
 }
 
 func (srv *Service) SaveJobSpec(arg *store.JobSpec) error {

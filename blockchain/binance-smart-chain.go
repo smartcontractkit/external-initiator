@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"encoding/json"
+	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -80,9 +81,9 @@ func (e bscManager) ParseTestResponse(data []byte) error {
 // the latest block number it sees.
 func (e bscManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	promLastSourcePing.With(prometheus.Labels{"endpoint": e.endpointName, "jobid": e.jobid}).SetToCurrentTime()
-	logger.Debugw("Parsing Binance Smart Chain response", "ExpectsMock", ExpectsMock)
+	logger.Debugw("Parsing Binance Smart Chain response", "ExpectsMock", common.ExpectsMock)
 
-	var msg JsonrpcMessage
+	var msg common.JsonrpcMessage
 	if err := json.Unmarshal(data, &msg); err != nil {
 		logger.Error("failed parsing JSON-RPC message:", msg)
 		return nil, false
@@ -167,7 +168,7 @@ func (e bscManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 		}
 
 	default:
-		logger.Errorw(ErrSubscriberType.Error(), "type", e.p)
+		logger.Errorw(common.ErrSubscriberType.Error(), "type", e.p)
 		return nil, false
 	}
 

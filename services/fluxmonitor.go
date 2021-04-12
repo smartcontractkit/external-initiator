@@ -2,8 +2,10 @@ package services
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -15,7 +17,6 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/chainlink/core/utils"
-	"github.com/smartcontractkit/external-initiator/blockchain"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/tidwall/gjson"
@@ -81,10 +82,10 @@ type AdapterResponse struct {
 }
 
 type FluxMonitor struct {
-	state  blockchain.FluxAggregatorState
+	state  common.FluxAggregatorState
 	config FluxMonitorConfig
 
-	blockchain blockchain.Manager
+	blockchain common.Manager
 
 	latestResult           decimal.Decimal
 	latestResultTimestamp  time.Time
@@ -110,7 +111,7 @@ type FluxMonitor struct {
 	logger *zap.SugaredLogger
 }
 
-func NewFluxMonitor(job string, config FluxMonitorConfig, triggerJobRun chan subscriber.Event, blockchainManager blockchain.Manager) (*FluxMonitor, error) {
+func NewFluxMonitor(job string, config FluxMonitorConfig, triggerJobRun chan subscriber.Event, blockchainManager common.Manager) (*FluxMonitor, error) {
 	fm := FluxMonitor{
 		config:  config,
 		chClose: make(chan struct{}),
@@ -128,12 +129,12 @@ func NewFluxMonitor(job string, config FluxMonitorConfig, triggerJobRun chan sub
 
 	FAEvents := make(chan interface{})
 
-	state, err := fm.blockchain.Request(blockchain.FMRequestState)
+	state, err := fm.blockchain.Request(common.FMRequestState)
 	if err != nil {
 		return nil, err
 	}
 
-	faState, ok := state.(*blockchain.FluxAggregatorState)
+	faState, ok := state.(*common.FluxAggregatorState)
 	if !ok {
 		return nil, errors.New("didn't receive valid FluxAggregatorState")
 	}
@@ -143,7 +144,7 @@ func NewFluxMonitor(job string, config FluxMonitorConfig, triggerJobRun chan sub
 
 	fm.state = *faState
 
-	err = fm.blockchain.Subscribe(blockchain.FMSubscribeEvents, FAEvents)
+	err = fm.blockchain.Subscribe(context.TODO(), common.FMSubscribeEvents, FAEvents)
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +194,7 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 		select {
 		case rawEvent := <-ch:
 			switch event := rawEvent.(type) {
-			case blockchain.FMEventNewRound:
+			case common.FMEventNewRound:
 				fm.logger.Debug("Got new round event: ", event)
 				fm.resetHeartbeatTimer()
 				fm.state.RoundID = event.RoundID
@@ -205,11 +206,11 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 				if err != nil {
 					fm.logger.Error(err)
 				}
-			case blockchain.FMEventAnswerUpdated:
+			case common.FMEventAnswerUpdated:
 				fm.logger.Debug("Got answer updated event: ", event)
 				fm.state.LatestAnswer = event.LatestAnswer
 				fm.checkDeviation()
-			case blockchain.FMEventPermissionsUpdated:
+			case common.FMEventPermissionsUpdated:
 				fm.logger.Debug("Got permissions updated event: ", event)
 				fm.state.CanSubmit = event.CanSubmit
 				fm.canSubmitUpdated()
@@ -260,7 +261,7 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 		roundId++
 	}
 
-	jobRequest, err := fm.blockchain.CreateJobRun(blockchain.FMJobRun, roundId)
+	jobRequest, err := fm.blockchain.CreateJobRun(common.FMJobRun, roundId)
 	if err != nil {
 		return errors.Wrap(err, "failed to create job request from blockchain manager")
 	}
@@ -273,7 +274,7 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 	}
 
 	// Add common keys that should always be included
-	jobRequest["result"] = fm.latestResult
+	jobRequest["result"] = fm.latestResult.String()
 	jobRequest["payment"] = fm.state.Payment.String()
 	fm.logger.Info("Triggering Job Run: ", jobRequest)
 	fm.chJobTrigger <- jobRequest

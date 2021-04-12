@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"encoding/json"
+	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"io/ioutil"
 	"os"
 	"path"
@@ -157,13 +158,13 @@ func readTestGetAllRequestsResult() ([]byte, error) {
 	return resultJSON, nil
 }
 
-func readTestJSONRPCMessage() (*JsonrpcMessage, error) {
+func readTestJSONRPCMessage() (*common.JsonrpcMessage, error) {
 	resultRaw, err := readTestGetAllRequestsResult()
 	if err != nil {
 		return nil, err
 	}
 
-	var msg JsonrpcMessage
+	var msg common.JsonrpcMessage
 	err = json.Unmarshal(resultRaw, &msg)
 	if err != nil {
 		return nil, err
