@@ -28,7 +28,7 @@ const (
 
 // Event is the individual event that occurs during
 // the subscription.
-type Event map[string]interface{}
+type Event map[string]string
 
 // JsonrpcMessage declares JSON-RPC message type
 type JsonrpcMessage struct {

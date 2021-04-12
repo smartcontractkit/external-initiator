@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	common2 "github.com/smartcontractkit/external-initiator/blockchain/common"
 	"math/big"
 
 	"github.com/smartcontractkit/external-initiator/blockchain/evm"
