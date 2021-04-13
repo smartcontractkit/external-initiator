@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -88,7 +89,8 @@ func TestNewFluxMonitor(t *testing.T) {
 		absoluteThreshold float64
 		heartbeat         time.Duration
 		pollInterval      time.Duration
-		want              string
+		// multiply          int32
+		want string
 	}{
 		{
 			"1 adapter",
@@ -192,14 +194,14 @@ func TestNewFluxMonitor(t *testing.T) {
 
 		fmConfig.Adapters = mockAdapters
 		fmConfig.RequestData = `{"from":"BTC","to":"USD"}`
-		fmConfig.Multiply = 18
+		// fmConfig.Multiply = tt.multiply
 		fmConfig.Threshold = tt.threshold
 		fmConfig.AbsoluteThreshold = tt.absoluteThreshold
 		fmConfig.Heartbeat = tt.heartbeat
 		fmConfig.PollInterval = tt.heartbeat
 		fmConfig.RuntimeConfig = store.RuntimeConfig{FMAdapterTimeout: 1 * time.Second, FMAdapterRetryAttempts: 1, FMAdapterRetryDelay: 1 * time.Second}
 
-		t.Run("New round event tests: "+tt.name, func(t *testing.T) {
+		t.Run("1 new round event tests: "+tt.name, func(t *testing.T) {
 			fmt.Printf("Testing %s", t.Name())
 			fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
 			require.NoError(t, err)
@@ -214,12 +216,12 @@ func TestNewFluxMonitor(t *testing.T) {
 			}
 			go func() {
 				defer wg.Done()
-				waitForTrigger(t, triggerJobRun, tt.want)
+				waitForTrigger(t, triggerJobRun, tt.want, 2*time.Second)
 			}()
 			wg.Wait()
 		})
 
-		t.Run("Two new rounds event tests: "+tt.name, func(t *testing.T) {
+		t.Run("2 rounds tests: "+tt.name, func(t *testing.T) {
 			fmt.Printf("Testing %s", t.Name())
 			fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
 			require.NoError(t, err)
@@ -234,7 +236,7 @@ func TestNewFluxMonitor(t *testing.T) {
 			}
 			go func() {
 				defer wg.Done()
-				waitForTrigger(t, triggerJobRun, tt.want)
+				waitForTrigger(t, triggerJobRun, tt.want, 2*time.Second)
 			}()
 			wg.Wait()
 			wg.Add(1)
@@ -246,15 +248,103 @@ func TestNewFluxMonitor(t *testing.T) {
 			}
 			go func() {
 				defer wg.Done()
-				waitForTrigger(t, triggerJobRun, tt.want)
+				waitForTrigger(t, triggerJobRun, tt.want, 2*time.Second)
 			}()
 			wg.Wait()
 		})
+
+		// TODO: could be handled better?
+		// we want to check if job is triggered after only certain event, therefore makes sense to test only cases that do not have ticker triggers
+		if strings.Contains(tt.name, "no heartbeat, no polling") {
+			t.Run("Initiated round: "+tt.name, func(t *testing.T) {
+				fmt.Printf("Testing %s", t.Name())
+				fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
+				require.NoError(t, err)
+				defer fm.Stop()
+				wg := sync.WaitGroup{}
+				wg.Add(1)
+				fmt.Println("FluxMonitor state: ", prettyPrint(fm.state))
+				fmt.Println("Initiated round event: ", fm.state.RoundID+1)
+				FAEvents <- blockchain.FMEventNewRound{
+					RoundID:         fm.state.RoundID + 1,
+					OracleInitiated: true,
+				}
+				go func() {
+					defer wg.Done()
+					waitForTrigger(t, triggerJobRun, "no_job", 2*time.Second)
+				}()
+				wg.Wait()
+			})
+
+			t.Run("Answer updated: "+tt.name, func(t *testing.T) {
+				fmt.Printf("Testing %s", t.Name())
+				fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
+				require.NoError(t, err)
+				defer fm.Stop()
+				wg := sync.WaitGroup{}
+				wg.Add(1)
+				fmt.Println("FluxMonitor state: ", prettyPrint(fm.state))
+				fmt.Println("Answer updated: ", fm.state.RoundID+1)
+				FAEvents <- blockchain.FMEventAnswerUpdated{
+					LatestAnswer: *fm.state.LatestAnswer.Add(&fm.state.LatestAnswer, big.NewInt(int64(fm.config.AbsoluteThreshold+1))),
+				}
+				go func() {
+					defer wg.Done()
+					waitForTrigger(t, triggerJobRun, tt.want, 2*time.Second)
+				}()
+				wg.Wait()
+			})
+
+			t.Run("Answer updated, but inside deviation threshold: "+tt.name, func(t *testing.T) {
+				fmt.Printf("Testing %s", t.Name())
+				fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
+				require.NoError(t, err)
+				defer fm.Stop()
+				wg := sync.WaitGroup{}
+				wg.Add(1)
+				fmt.Println("FluxMonitor state: ", prettyPrint(fm.state))
+				fmt.Println("1st round event, non initiated: ", fm.state.RoundID+1)
+				FAEvents <- blockchain.FMEventNewRound{
+					RoundID:         fm.state.RoundID + 1,
+					OracleInitiated: false,
+				}
+				go func() {
+					defer wg.Done()
+					waitForTrigger(t, triggerJobRun, tt.want, 2*time.Second)
+				}()
+				wg.Wait()
+				wg.Add(1)
+
+				fmt.Println("FluxMonitor state: ", prettyPrint(fm.state))
+				fmt.Println("Answer updated first time: ", fm.state.RoundID+1)
+				FAEvents <- blockchain.FMEventAnswerUpdated{
+					LatestAnswer: *big.NewInt(fm.latestResult.IntPart()),
+				}
+				go func() {
+					defer wg.Done()
+					waitForTrigger(t, triggerJobRun, "no_job", 2*time.Second)
+				}()
+				wg.Wait()
+				wg.Add(1)
+
+				fmt.Println("FluxMonitor state: ", prettyPrint(fm.state))
+				fmt.Println("Answer updated without deviation: ", fm.state.RoundID+1)
+				FAEvents <- blockchain.FMEventAnswerUpdated{
+					LatestAnswer: fm.state.LatestAnswer,
+				}
+				go func() {
+					defer wg.Done()
+					waitForTrigger(t, triggerJobRun, "no_job", 2*time.Second)
+				}()
+				wg.Wait()
+			})
+
+		}
 	}
 }
 
-func waitForTrigger(t *testing.T, triggerJobRun chan subscriber.Event, want string) {
-	timeout := time.NewTimer(2 * time.Second)
+func waitForTrigger(t *testing.T, triggerJobRun chan subscriber.Event, want string, timeoutInterval time.Duration) {
+	timeout := time.NewTimer(timeoutInterval)
 	defer timeout.Stop()
 
 	select {
