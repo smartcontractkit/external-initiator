@@ -162,8 +162,10 @@ func (fm *FluxMonitor) Stop() {
 
 func (fm *FluxMonitor) canSubmitUpdated() {
 	if fm.state.CanSubmit {
+		logger.Info("Starting tickers because node is eligible to submit")
 		fm.startTickers()
 	} else {
+		logger.Info("Stoping tickers because node is not eligible to submit")
 		fm.stopTickers()
 	}
 }
@@ -188,7 +190,7 @@ func (fm *FluxMonitor) stopTickers() {
 
 func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 	defer fm.Stop()
-
+	logger.Info("FM listening for events")
 	for {
 		select {
 		case rawEvent := <-ch:
@@ -283,7 +285,9 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 }
 
 func (fm *FluxMonitor) resetHeartbeatTimer() {
-	fm.idleTimerReset <- struct{}{}
+	if fm.config.Heartbeat != 0 {
+		fm.idleTimerReset <- struct{}{}
+	}
 }
 
 func (fm *FluxMonitor) heartbeatTimer() {
@@ -388,7 +392,7 @@ func (fm *FluxMonitor) ValidLatestResult() bool {
 		fmt.Println("poll result is valid for use")
 		return true
 	}
-	fmt.Println("poll result is outdated and not valid for use")
+	fmt.Println("poll result is outdated(or empty) and is not valid for use")
 	return false
 }
 
@@ -421,6 +425,7 @@ func (fm *FluxMonitor) poll() error {
 			price, err := fm.getAdapterResponse(adapter, fm.config.RequestData)
 			if err != nil {
 				fm.logger.Error(fmt.Sprintf("Adapter response error. URL: %s requestData: %s error: ", adapter.Host, fm.config.RequestData), err)
+				price = nil
 			}
 			ch <- price
 		}(adapter)
