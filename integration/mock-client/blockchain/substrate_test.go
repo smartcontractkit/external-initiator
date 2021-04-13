@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/smartcontractkit/external-initiator/blockchain/substrate"
 	"testing"
+
+	"github.com/smartcontractkit/external-initiator/blockchain/substrate"
 
 	"github.com/centrifuge/go-substrate-rpc-client/types"
 	"github.com/stretchr/testify/assert"

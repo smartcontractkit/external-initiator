@@ -2,7 +2,6 @@ package client
 
 import (
 	"encoding/json"
-	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"net/url"
 	"os"
 	"os/signal"
@@ -10,15 +9,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/blockchain"
+	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"github.com/smartcontractkit/external-initiator/chainlink"
 	"github.com/smartcontractkit/external-initiator/services"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
+
+	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/smartcontractkit/chainlink/core/logger"
 )
 
 var (

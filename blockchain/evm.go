@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	common2 "github.com/smartcontractkit/external-initiator/blockchain/common"
 	"math/big"
 	"net/http"
 	"net/url"
@@ -15,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/chainlink/core/utils"
+	common2 "github.com/smartcontractkit/external-initiator/blockchain/common"
 )
 
 const (

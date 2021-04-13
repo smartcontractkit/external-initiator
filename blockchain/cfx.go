@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	common2 "github.com/smartcontractkit/external-initiator/blockchain/common"
 	"math/big"
 	"strings"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/chainlink/core/store/models"
+	common2 "github.com/smartcontractkit/external-initiator/blockchain/common"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 )

@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -13,12 +12,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/smartcontractkit/external-initiator/blockchain/common"
+	"github.com/smartcontractkit/external-initiator/store"
+	"github.com/smartcontractkit/external-initiator/subscriber"
+
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/chainlink/core/utils"
-	"github.com/smartcontractkit/external-initiator/store"
-	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/tidwall/gjson"
 
 	"go.uber.org/zap"

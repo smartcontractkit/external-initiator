@@ -2,13 +2,13 @@ package blockchain
 
 import (
 	"encoding/json"
-	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"io/ioutil"
 	"os"
 	"path"
 	"reflect"
 	"testing"
 
+	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"github.com/smartcontractkit/external-initiator/eitest"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/stretchr/testify/assert"

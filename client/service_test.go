@@ -2,10 +2,10 @@ package client
 
 import (
 	"errors"
-	"github.com/smartcontractkit/external-initiator/blockchain/substrate"
 	"reflect"
 	"testing"
 
+	"github.com/smartcontractkit/external-initiator/blockchain/substrate"
 	"github.com/smartcontractkit/external-initiator/chainlink"
 	"github.com/smartcontractkit/external-initiator/store"
 )

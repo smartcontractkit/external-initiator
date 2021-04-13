@@ -4,19 +4,20 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	"github.com/smartcontractkit/external-initiator/blockchain"
+	"github.com/smartcontractkit/external-initiator/blockchain/common"
+	"github.com/smartcontractkit/external-initiator/store"
 
 	"github.com/Depado/ginprom"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink/core/logger"
-	"github.com/smartcontractkit/external-initiator/blockchain"
-	"github.com/smartcontractkit/external-initiator/store"
 )
 
 var ginPrometheus *ginprom.Prometheus

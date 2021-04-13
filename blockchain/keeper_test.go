@@ -3,7 +3,6 @@ package blockchain
 import (
 	"bytes"
 	"fmt"
-	common2 "github.com/smartcontractkit/external-initiator/blockchain/common"
 	"math/big"
 	"reflect"
 	"testing"
@@ -11,6 +10,7 @@ import (
 	"github.com/bmizerany/assert"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+	common2 "github.com/smartcontractkit/external-initiator/blockchain/common"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/stretchr/testify/require"
 )

@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"sort"
 	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/smartcontractkit/chainlink/core/logger"
+	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 )

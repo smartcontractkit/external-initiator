@@ -5,8 +5,9 @@ package common
 import (
 	"context"
 	"encoding/json"
-	"github.com/pkg/errors"
 	"math/big"
+
+	"github.com/pkg/errors"
 )
 
 var (

@@ -2,13 +2,13 @@ package blockchain
 
 import (
 	"encoding/json"
-	common2 "github.com/smartcontractkit/external-initiator/blockchain/common"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/chainlink/core/store/models"
+	common2 "github.com/smartcontractkit/external-initiator/blockchain/common"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 )
