@@ -77,10 +77,10 @@ func (sm *substrateManager) Subscribe(ctx context.Context, t string, ch chan<- i
 	return errors.New("subscribe type is not implemented")
 }
 
-func (sm substrateManager) CreateJobRun(t string, v interface{}) (map[string]string, error) {
+func (sm substrateManager) CreateJobRun(t string, v interface{}) (map[string]interface{}, error) {
 	switch t {
 	case common.FMJobRun:
-		return map[string]string{
+		return map[string]interface{}{
 			"request_type": "fluxmonitor",
 			"feed_id":      fmt.Sprintf("%d", sm.feedId),
 			"round_id":     fmt.Sprintf("%d", v),
@@ -91,7 +91,7 @@ func (sm substrateManager) CreateJobRun(t string, v interface{}) (map[string]str
 			return nil, errors.New("expected param of type common.RunlogRequest")
 		}
 
-		return map[string]string{
+		return map[string]interface{}{
 			"request_type": "runlog",
 			"function":     req.CallbackFunction,
 			"request_id":   req.RequestId,

@@ -58,7 +58,7 @@ type RunlogRequest struct {
 type Manager interface {
 	Request(t string) (response interface{}, err error)
 	Subscribe(ctx context.Context, t string, ch chan<- interface{}) (err error)
-	CreateJobRun(t string, v interface{}) (map[string]string, error)
+	CreateJobRun(t string, v interface{}) (map[string]interface{}, error)
 }
 
 type Params struct {
