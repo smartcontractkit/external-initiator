@@ -2,7 +2,6 @@ package blockchain
 
 import (
 	"encoding/json"
-	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"io/ioutil"
 	"os"
 	"path"

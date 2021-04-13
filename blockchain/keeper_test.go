@@ -3,7 +3,6 @@ package blockchain
 import (
 	"bytes"
 	"fmt"
-	common2 "github.com/smartcontractkit/external-initiator/blockchain/common"
 	"math/big"
 	"reflect"
 	"testing"

@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"fmt"
+
 	"github.com/smartcontractkit/external-initiator/blockchain/common"
 
 	"github.com/smartcontractkit/external-initiator/blockchain/common"
