@@ -206,9 +206,6 @@ func (srv Service) jobTriggerListener(job string, ch <-chan subscriber.Event) {
 	// Add a second of delay to let services (Chainlink core)
 	// sync up before sending the first job run trigger.
 	time.Sleep(1 * time.Second)
-	// TODO: There's a race condition here where a job run could be triggered
-	// before the CL request to the EI has finished, hence there's no job yet
-	// on the Chainlink node.
 
 	for {
 		trigger := <-ch
