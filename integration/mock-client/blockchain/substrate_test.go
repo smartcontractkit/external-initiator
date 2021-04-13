@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/smartcontractkit/external-initiator/blockchain/substrate"
 	"testing"
 
 	"github.com/smartcontractkit/external-initiator/blockchain/substrate"
