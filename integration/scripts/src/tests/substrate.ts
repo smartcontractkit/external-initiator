@@ -3,8 +3,8 @@ export const name = 'Substrate'
 export const getTests = () => {
   return [
     {
-      name: 'WS mock with account #1',
-      expectedRuns: 1,
+      name: 'FM on WS mock with account #1',
+      expectedRuns: 2,
       params: {
         endpoint: 'substrate-mock-ws',
         feed_id: 0,
