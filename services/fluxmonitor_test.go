@@ -28,6 +28,8 @@ func prettyPrint(i interface{}) string {
 	return fmt.Sprintf("%+v", i)
 }
 
+const COMMON_JOB_TRIGGER_TIMEOUT = 50 * time.Millisecond
+
 type mockBlockchainManager struct{}
 
 var FAEvents = make(chan<- interface{})
@@ -99,8 +101,8 @@ func TestNewFluxMonitor(t *testing.T) {
 			[]string{"50000"},
 			0.01,
 			600,
-			3 * time.Second,
-			1 * time.Second,
+			15 * time.Millisecond,
+			3 * time.Millisecond,
 			"50000",
 		},
 		{
@@ -218,7 +220,7 @@ func TestNewFluxMonitor(t *testing.T) {
 			}
 			go func() {
 				defer wg.Done()
-				waitForTrigger(t, triggerJobRun, tt.want, 2*time.Second)
+				waitForTrigger(t, triggerJobRun, tt.want, COMMON_JOB_TRIGGER_TIMEOUT)
 			}()
 			wg.Wait()
 		})
@@ -238,7 +240,7 @@ func TestNewFluxMonitor(t *testing.T) {
 			}
 			go func() {
 				defer wg.Done()
-				waitForTrigger(t, triggerJobRun, tt.want, 2*time.Second)
+				waitForTrigger(t, triggerJobRun, tt.want, COMMON_JOB_TRIGGER_TIMEOUT)
 			}()
 			wg.Wait()
 			wg.Add(1)
@@ -250,11 +252,42 @@ func TestNewFluxMonitor(t *testing.T) {
 			}
 			go func() {
 				defer wg.Done()
-				waitForTrigger(t, triggerJobRun, tt.want, 2*time.Second)
+				waitForTrigger(t, triggerJobRun, tt.want, COMMON_JOB_TRIGGER_TIMEOUT)
 			}()
 			wg.Wait()
 		})
 
+		if !strings.Contains(tt.name, "no heartbeat") {
+			t.Run("Permissions not allowing to submit : "+tt.name, func(t *testing.T) {
+				fmt.Printf("Testing %s", t.Name())
+				fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
+				require.NoError(t, err)
+				defer fm.Stop()
+				wg := sync.WaitGroup{}
+				wg.Add(1)
+				fmt.Println(prettyPrint(fm.state))
+				fmt.Println("New permissions updated event: CanSubmit: false")
+				FAEvents <- common.FMEventPermissionsUpdated{
+					CanSubmit: false,
+				}
+				go func() {
+					defer wg.Done()
+					waitForTrigger(t, triggerJobRun, "no_job", COMMON_JOB_TRIGGER_TIMEOUT)
+				}()
+				wg.Wait()
+				wg.Add(1)
+				fmt.Println(prettyPrint(fm.state))
+				fmt.Println("New permissions updated event: CanSubmit: true")
+				FAEvents <- common.FMEventPermissionsUpdated{
+					CanSubmit: true,
+				}
+				go func() {
+					defer wg.Done()
+					waitForTrigger(t, triggerJobRun, tt.want, COMMON_JOB_TRIGGER_TIMEOUT)
+				}()
+				wg.Wait()
+			})
+		}
 		// TODO: could be handled better?
 		// we want to check if job is triggered after only certain event, therefore makes sense to test only cases that do not have ticker triggers
 		if strings.Contains(tt.name, "no heartbeat, no polling") {
@@ -273,7 +306,7 @@ func TestNewFluxMonitor(t *testing.T) {
 				}
 				go func() {
 					defer wg.Done()
-					waitForTrigger(t, triggerJobRun, "no_job", 2*time.Second)
+					waitForTrigger(t, triggerJobRun, "no_job", COMMON_JOB_TRIGGER_TIMEOUT)
 				}()
 				wg.Wait()
 			})
@@ -292,7 +325,7 @@ func TestNewFluxMonitor(t *testing.T) {
 				}
 				go func() {
 					defer wg.Done()
-					waitForTrigger(t, triggerJobRun, tt.want, 2*time.Second)
+					waitForTrigger(t, triggerJobRun, tt.want, COMMON_JOB_TRIGGER_TIMEOUT)
 				}()
 				wg.Wait()
 			})
@@ -312,7 +345,7 @@ func TestNewFluxMonitor(t *testing.T) {
 				}
 				go func() {
 					defer wg.Done()
-					waitForTrigger(t, triggerJobRun, tt.want, 2*time.Second)
+					waitForTrigger(t, triggerJobRun, tt.want, COMMON_JOB_TRIGGER_TIMEOUT)
 				}()
 				wg.Wait()
 				wg.Add(1)
@@ -324,7 +357,7 @@ func TestNewFluxMonitor(t *testing.T) {
 				}
 				go func() {
 					defer wg.Done()
-					waitForTrigger(t, triggerJobRun, "no_job", 2*time.Second)
+					waitForTrigger(t, triggerJobRun, "no_job", COMMON_JOB_TRIGGER_TIMEOUT)
 				}()
 				wg.Wait()
 				wg.Add(1)
@@ -336,7 +369,7 @@ func TestNewFluxMonitor(t *testing.T) {
 				}
 				go func() {
 					defer wg.Done()
-					waitForTrigger(t, triggerJobRun, "no_job", 2*time.Second)
+					waitForTrigger(t, triggerJobRun, "no_job", COMMON_JOB_TRIGGER_TIMEOUT)
 				}()
 				wg.Wait()
 			})
