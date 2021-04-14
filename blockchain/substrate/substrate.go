@@ -1,25 +1,26 @@
-package blockchain
+package substrate
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"math/big"
 	"reflect"
 	"time"
 
-	"github.com/centrifuge/go-substrate-rpc-client/v2/scale"
-	"github.com/centrifuge/go-substrate-rpc-client/v2/types"
-	"github.com/smartcontractkit/chainlink/core/logger"
+	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
+
+	"github.com/centrifuge/go-substrate-rpc-client/v2/scale"
+	"github.com/centrifuge/go-substrate-rpc-client/v2/types"
+	"github.com/pkg/errors"
+	"github.com/smartcontractkit/chainlink/core/logger"
 )
 
-// Substrate is the identifier of this
+// Name is the identifier of this
 // blockchain integration.
-const Substrate = "substrate"
+const Name = "substrate"
 
 var (
 	ErrorResultIsNull = errors.New("result is null")
@@ -31,11 +32,12 @@ type substrateManager struct {
 	meta      *types.Metadata
 	feedId    FeedId
 	accountId types.AccountID
+	jobId     types.Text
 
 	subscriber subscriber.ISubscriber
 }
 
-func createSubstrateManager(sub store.Subscription) (*substrateManager, error) {
+func CreateSubstrateManager(sub store.Subscription) (*substrateManager, error) {
 	feedId := types.NewU32(sub.Substrate.FeedId)
 	accountId, err := types.NewAddressFromHexAccountID(sub.Substrate.AccountId)
 	if err != nil {
@@ -57,27 +59,42 @@ func createSubstrateManager(sub store.Subscription) (*substrateManager, error) {
 
 func (sm *substrateManager) Request(t string) (interface{}, error) {
 	switch t {
-	case FMRequestState:
+	case common.FMRequestState:
 		return sm.getFluxState()
+	case common.RunlogBackfill:
+		return sm.Backfill()
 	}
 	return nil, errors.New("request type is not implemented")
 }
 
-func (sm *substrateManager) Subscribe(t string, ch chan<- interface{}) error {
+func (sm *substrateManager) Subscribe(ctx context.Context, t string, ch chan<- interface{}) error {
 	switch t {
-	case FMSubscribeEvents:
-		return sm.SubscribeToFluxMonitor(ch)
+	case common.FMSubscribeEvents:
+		return sm.SubscribeToFluxMonitor(ctx, ch)
+	case common.RunlogSubscribe:
+		return sm.SubscribeToRunlog(ctx, ch)
 	}
 	return errors.New("subscribe type is not implemented")
 }
 
-func (sm substrateManager) CreateJobRun(t string, roundId uint32) (map[string]interface{}, error) {
+func (sm substrateManager) CreateJobRun(t string, v interface{}) (map[string]interface{}, error) {
 	switch t {
-	case FMJobRun:
+	case common.FMJobRun:
 		return map[string]interface{}{
 			"request_type": "fluxmonitor",
 			"feed_id":      fmt.Sprintf("%d", sm.feedId),
-			"round_id":     fmt.Sprintf("%d", roundId),
+			"round_id":     fmt.Sprintf("%d", v),
+		}, nil
+	case common.RunlogJobRun:
+		req, ok := v.(common.RunlogRequest)
+		if !ok {
+			return nil, errors.New("expected param of type common.RunlogRequest")
+		}
+
+		return map[string]interface{}{
+			"request_type": "runlog",
+			"function":     req.CallbackFunction,
+			"request_id":   req.RequestId,
 		}, nil
 	}
 
@@ -283,103 +300,7 @@ func (sm *substrateManager) queryState(prefix, method string, t interface{}, arg
 	}
 }
 
-func (sm *substrateManager) getFluxState() (*FluxAggregatorState, error) {
-	// Call chainlinkFeed.feeds(FeedId) to get the latest round
-	// Return back `latest_round`
-	// - payment
-	// - timeout
-	// - restart_delay
-	// - submission bounds
-
-	// "method": "state_subscribeStorage"
-	var feedConfig FeedConfig
-	err := sm.queryState("ChainlinkFeed", "Feeds", &feedConfig, sm.feedId)
-	if err != nil {
-		return nil, err
-	}
-
-	var round Round
-	err = sm.queryState("ChainlinkFeed", "Rounds", &round, sm.feedId, feedConfig.Latest_Round)
-	if err != nil && err != ErrorResultIsNull {
-		return nil, err
-	}
-
-	var latestAnswer big.Int
-	if round.Answer.IsSome() {
-		latestAnswer = *round.Answer.value.Int
-	} else {
-		latestAnswer = *big.NewInt(0)
-	}
-
-	return &FluxAggregatorState{
-		RoundID:       uint32(feedConfig.Latest_Round),
-		LatestAnswer:  latestAnswer,
-		MinSubmission: *feedConfig.Submission_Value_Bounds.From.Int,
-		MaxSubmission: *feedConfig.Submission_Value_Bounds.To.Int,
-		Payment:       *feedConfig.Payment_Amount.Int,
-		Timeout:       uint32(feedConfig.Timeout),
-		RestartDelay:  int32(feedConfig.Restart_Delay),
-		CanSubmit:     sm.oracleIsEligibleToSubmit(),
-	}, nil
-}
-
-func (sm *substrateManager) oracleIsEligibleToSubmit() bool {
-	var oracleStatus OracleStatus
-	err := sm.queryState("ChainlinkFeed", "OracleStatuses", &oracleStatus, sm.feedId, sm.accountId)
-	if err == ErrorResultIsNull {
-		return false
-	}
-	if err != nil {
-		logger.Error(err)
-		return false
-	}
-
-	return oracleStatus.Ending_Round.IsNone()
-}
-
-func (sm *substrateManager) SubscribeToFluxMonitor(ch chan<- interface{}) error {
-	// Subscribe to events and watch for NewRound
-	// This should increment the round ID on FM – but it should also return if this account was the initiator of the round
-	// Also watch for OraclePermissionsUpdated - this tells if the oracle loses permission to submit new answers
-	// Also needs to watch for RoundDetailsUpdated – this tells if timeout/restart delay/payment changes
-
-	return sm.subscribe("System", "Events", func(event EventRecords) {
-		for _, round := range event.ChainlinkFeed_NewRound {
-			if round.FeedId != sm.feedId {
-				continue
-			}
-			ch <- FMEventNewRound{
-				RoundID:         uint32(round.RoundId),
-				OracleInitiated: round.AccountId == sm.accountId && !ExpectsMock,
-			}
-		}
-		for _, update := range event.ChainlinkFeed_AnswerUpdated {
-			if update.FeedId != sm.feedId {
-				continue
-			}
-			ch <- FMEventAnswerUpdated{
-				LatestAnswer: *update.Value.Int,
-			}
-		}
-		for _, update := range event.ChainlinkFeed_OraclePermissionsUpdated {
-			if update.FeedId != sm.feedId || update.AccountId != sm.accountId {
-				continue
-			}
-			// TODO: Verify is correct
-			ch <- FMEventPermissionsUpdated{
-				CanSubmit: bool(update.Bool),
-			}
-		}
-		for _, update := range event.ChainlinkFeed_RoundDetailsUpdated {
-			if update.FeedId != sm.feedId {
-				continue
-			}
-			// TODO: Anything to do here?
-		}
-	})
-}
-
-func (sm *substrateManager) subscribe(prefix, method string, handler func(event EventRecords)) error {
+func (sm *substrateManager) subscribe(ctx context.Context, prefix, method string, handler func(event EventRecords)) error {
 	meta, err := sm.getMetadata()
 	if err != nil {
 		return err
@@ -390,16 +311,12 @@ func (sm *substrateManager) subscribe(prefix, method string, handler func(event 
 	}
 
 	responses := make(chan json.RawMessage)
-	ctx, cancel := context.WithCancel(context.Background())
 	err = sm.subscriber.Subscribe(ctx, rpcMethod, unsubscribeMethod, params, responses)
 	if err != nil {
-		cancel()
 		return err
 	}
 
 	go func() {
-		defer cancel()
-
 		for {
 			response, ok := <-responses
 			if !ok {

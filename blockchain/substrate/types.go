@@ -1,4 +1,4 @@
-package blockchain
+package substrate
 
 import (
 	"bytes"
@@ -154,6 +154,87 @@ type RoundData struct {
 	Answered_In_Round RoundID
 }
 
+// SubstrateRequestParams allows for decoding a scale hex string into
+// a byte array, which is then encoded back to a scale encoded byte array,
+// to be decoded into a string array. This solves issues where decoding
+// directly into a string array would read past the end of the array.
+type SubstrateRequestParams []string
+
+func (a *SubstrateRequestParams) Decode(decoder scale.Decoder) error {
+	// Decode hex string into a byte array.
+	// This allows us to stop reading where the
+	// intended byte array stops.
+	var bz types.Bytes
+	err := decoder.Decode(&bz)
+	if err != nil {
+		return err
+	}
+
+	// Encode byte array into a scale encoded byte array
+	encoded, err := types.EncodeToBytes(bz)
+	if err != nil {
+		return err
+	}
+
+	// Decode byte array into a string array
+	var strings []string
+	err = types.DecodeFromBytes(encoded, &strings)
+	if err != nil {
+		return err
+	}
+
+	*a = strings
+
+	return nil
+}
+
+func (a SubstrateRequestParams) Encode(_ scale.Encoder) error {
+	return nil
+}
+
+// EventChainlinkOracleRequest is the event structure we expect
+// to be emitted from the Chainlink pallet
+type EventChainlinkOracleRequest struct {
+	Phase              types.Phase
+	OracleAccountID    types.AccountID
+	SpecIndex          types.Text
+	RequestIdentifier  types.U64
+	RequesterAccountID types.AccountID
+	DataVersion        types.U64
+	Bytes              SubstrateRequestParams
+	Callback           types.Text
+	Payment            types.U32
+	Topics             []types.Hash
+}
+
+type EventChainlinkOracleAnswer struct {
+	Phase              types.Phase
+	OracleAccountID    types.AccountID
+	RequestIdentifier  types.U64
+	RequesterAccountID types.AccountID
+	Bytes              types.Text
+	Payment            types.U32
+	Topics             []types.Hash
+}
+
+type EventChainlinkOperatorRegistered struct {
+	Phase     types.Phase
+	AccountID types.AccountID
+	Topics    []types.Hash
+}
+
+type EventChainlinkOperatorUnregistered struct {
+	Phase     types.Phase
+	AccountID types.AccountID
+	Topics    []types.Hash
+}
+
+type EventChainlinkKillRequest struct {
+	Phase             types.Phase
+	RequestIdentifier types.U64
+	Topics            []types.Hash
+}
+
 type EventNewRound struct {
 	Phase       types.Phase
 	FeedId      FeedId
@@ -201,12 +282,20 @@ type EventSubmissionReceived struct {
 
 type EventRecords struct {
 	types.EventRecords
+
 	// FluxMonitor requests
 	ChainlinkFeed_NewRound                 []EventNewRound                 //nolint:stylecheck,golint
 	ChainlinkFeed_RoundDetailsUpdated      []EventRoundDetailsUpdated      //nolint:stylecheck,golint
 	ChainlinkFeed_OraclePermissionsUpdated []EventOraclePermissionsUpdated //nolint:stylecheck,golint
 	ChainlinkFeed_AnswerUpdated            []EventAnswerUpdated            //nolint:stylecheck,golint
 	ChainlinkFeed_SubmissionReceived       []EventSubmissionReceived       //nolint:stylecheck,golint
+
+	// Runlog requests
+	Chainlink_OracleRequest        []EventChainlinkOracleRequest        //nolint:stylecheck,golint
+	Chainlink_OracleAnswer         []EventChainlinkOracleAnswer         //nolint:stylecheck,golint
+	Chainlink_OperatorRegistered   []EventChainlinkOperatorRegistered   //nolint:stylecheck,golint
+	Chainlink_OperatorUnregistered []EventChainlinkOperatorUnregistered //nolint:stylecheck,golint
+	Chainlink_KillRequest          []EventChainlinkKillRequest          //nolint:stylecheck,golint
 }
 
 // Copied from https://github.com/centrifuge/go-substrate-rpc-client/blob/904cb0b931a9949b08e731fa14c24ed62226a748/types/event_record.go#L221

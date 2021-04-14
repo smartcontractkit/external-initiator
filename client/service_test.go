@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/smartcontractkit/external-initiator/blockchain"
+	"github.com/smartcontractkit/external-initiator/blockchain/substrate"
 	"github.com/smartcontractkit/external-initiator/chainlink"
 	"github.com/smartcontractkit/external-initiator/store"
 )
@@ -246,7 +246,7 @@ func Test_Service_SaveEndpoint(t *testing.T) {
 			fields{
 				store: storeClientFailer{},
 			},
-			args{e: &store.Endpoint{Name: "testEndpoint", Type: blockchain.Substrate}},
+			args{e: &store.Endpoint{Name: "testEndpoint", Type: substrate.Name}},
 			false,
 		},
 		{
@@ -262,7 +262,7 @@ func Test_Service_SaveEndpoint(t *testing.T) {
 			fields{
 				store: storeClientFailer{error: errors.New("could not save")},
 			},
-			args{e: &store.Endpoint{Name: "testEndpoint", Type: blockchain.Substrate}},
+			args{e: &store.Endpoint{Name: "testEndpoint", Type: substrate.Name}},
 			true,
 		},
 	}
@@ -292,7 +292,7 @@ func Test_validateEndpoint(t *testing.T) {
 		{
 			"successfully validates bare-minimum endpoint",
 			args{store.Endpoint{
-				Type: blockchain.Substrate,
+				Type: substrate.Name,
 				Name: "testEndpoint",
 			}},
 			false,
@@ -300,7 +300,7 @@ func Test_validateEndpoint(t *testing.T) {
 		{
 			"fails with invalid URL",
 			args{store.Endpoint{
-				Type: blockchain.Substrate,
+				Type: substrate.Name,
 				Name: "testEndpoint",
 				Url:  "http://a b.com/",
 			}},
@@ -317,7 +317,7 @@ func Test_validateEndpoint(t *testing.T) {
 		{
 			"fails with missing name",
 			args{store.Endpoint{
-				Type: blockchain.Substrate,
+				Type: substrate.Name,
 				Name: "",
 			}},
 			true,

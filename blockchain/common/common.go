@@ -1,23 +1,13 @@
 // Package blockchain provides functionality to interact with
 // different blockchain interfaces.
-package blockchain
+package common
 
 import (
+	"context"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"math/big"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/smartcontractkit/external-initiator/store"
-)
-
-var (
-	promLastSourcePing = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "ei_last_source_ping",
-		Help: "The timestamp of the last source of life from the source",
-	}, []string{"endpoint", "jobid"})
+	"github.com/pkg/errors"
 )
 
 var (
@@ -29,6 +19,10 @@ const (
 	FMRequestState    = "fm_requestState"
 	FMSubscribeEvents = "fm_subscribeEvents"
 	FMJobRun          = "fm_jobRun"
+
+	RunlogBackfill  = "runlog_backfill"
+	RunlogSubscribe = "runlog_subscribe"
+	RunlogJobRun    = "runlog_jobRun"
 )
 
 type FMEventNewRound struct {
@@ -55,25 +49,17 @@ type FluxAggregatorState struct {
 	CanSubmit     bool
 }
 
+type RunlogRequest struct {
+	Params           map[string]string
+	Payment          string
+	RequestId        string
+	CallbackFunction string
+}
+
 type Manager interface {
 	Request(t string) (response interface{}, err error)
-	Subscribe(t string, ch chan<- interface{}) (err error)
-	CreateJobRun(t string, roundId uint32) (map[string]interface{}, error)
-}
-
-func CreateManager(sub store.Subscription) (Manager, error) {
-	switch sub.Endpoint.Type {
-	case Substrate:
-		return createSubstrateManager(sub)
-	}
-	return nil, fmt.Errorf("unknown endpoint type: %s", sub.Endpoint.Type)
-}
-
-// ExpectsMock variable is set when we run in a mock context
-var ExpectsMock = false
-
-var blockchains = []string{
-	Substrate,
+	Subscribe(ctx context.Context, t string, ch chan<- interface{}) (err error)
+	CreateJobRun(t string, v interface{}) (map[string]interface{}, error)
 }
 
 type Params struct {
@@ -87,43 +73,9 @@ type Params struct {
 	From        string          `json:"from"`
 	FluxMonitor json.RawMessage `json:"fluxmonitor"`
 
-	// Substrate FM:
+	// Name FM:
 	FeedId    uint32 `json:"feed_id"`
 	AccountId string `json:"account_id"`
-}
-
-func ValidBlockchain(name string) bool {
-	for _, blockchain := range blockchains {
-		if name == blockchain {
-			return true
-		}
-	}
-	return false
-}
-
-func GetValidations(t string, params Params) []int {
-	switch t {
-	case Substrate:
-		return []int{
-			len(params.FluxMonitor),
-			len(params.AccountId),
-		}
-	}
-
-	return nil
-}
-
-func CreateSubscription(sub store.Subscription, params Params) store.Subscription {
-	switch sub.Endpoint.Type {
-	case Substrate:
-		sub.Substrate = store.SubstrateSubscription{
-			AccountIds: params.AccountIds,
-			FeedId:     params.FeedId,
-			AccountId:  params.AccountId,
-		}
-	}
-
-	return sub
 }
 
 // JsonrpcMessage declares JSON-RPC message type
@@ -136,7 +88,7 @@ type JsonrpcMessage struct {
 	Result  json.RawMessage `json:"result,omitempty"`
 }
 
-func convertStringArrayToKV(data []string) map[string]string {
+func ConvertStringArrayToKV(data []string) map[string]string {
 	result := make(map[string]string)
 	var key string
 
@@ -156,8 +108,11 @@ func convertStringArrayToKV(data []string) map[string]string {
 	return result
 }
 
-// matchesJobID checks if expected jobID matches the actual one, or are we in a mock context.
-func matchesJobID(expected string, actual string) bool {
+// ExpectsMock variable is set when we run in a mock context
+var ExpectsMock = false
+
+// MatchesJobID checks if expected jobID matches the actual one, or are we in a mock context.
+func MatchesJobID(expected string, actual string) bool {
 	if actual == expected {
 		return true
 	} else if ExpectsMock && actual == "mock" {

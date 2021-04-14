@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/smartcontractkit/external-initiator/blockchain/substrate"
+
 	"github.com/centrifuge/go-substrate-rpc-client/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/smartcontractkit/external-initiator/blockchain"
 )
 
 const expectedStorageKey = "0x26aa394eea5630e07c48ae0c9558cef780d41e5e16056765bc8461851072c9d7"
@@ -113,7 +113,7 @@ func testEventRecordsDecoding(t *testing.T, metadata *types.Metadata, changes []
 	for _, change := range changes {
 		testName := fmt.Sprintf("Test decoding storage change %x", change.StorageKey)
 		t.Run(testName, func(t *testing.T) {
-			events := blockchain.EventRecords{}
+			events := substrate.EventRecords{}
 			err := types.EventRecordsRaw(change.StorageData).DecodeEventRecords(metadata, &events)
 			require.NoError(t, err)
 			assert.NotNil(t, events)

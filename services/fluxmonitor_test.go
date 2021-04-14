@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,9 +14,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smartcontractkit/external-initiator/blockchain"
+	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,8 +33,8 @@ var FAEvents = make(chan<- interface{})
 
 func (sm *mockBlockchainManager) Request(t string) (interface{}, error) {
 	switch t {
-	case blockchain.FMRequestState:
-		return &blockchain.FluxAggregatorState{
+	case common.FMRequestState:
+		return &common.FluxAggregatorState{
 			CanSubmit:    true,
 			LatestAnswer: *big.NewInt(40000),
 			RoundID:      1,
@@ -44,18 +46,18 @@ func (sm *mockBlockchainManager) Request(t string) (interface{}, error) {
 	return nil, errors.New("request type is not implemented")
 }
 
-func (sm *mockBlockchainManager) Subscribe(t string, ch chan<- interface{}) error {
+func (sm *mockBlockchainManager) Subscribe(_ context.Context, t string, ch chan<- interface{}) error {
 	switch t {
-	case blockchain.FMSubscribeEvents:
+	case common.FMSubscribeEvents:
 		FAEvents = ch
 		return nil
 	}
 	return errors.New("subscribe type is not implemented")
 }
 
-func (sm *mockBlockchainManager) CreateJobRun(t string, roundId uint32) (map[string]interface{}, error) {
+func (sm *mockBlockchainManager) CreateJobRun(t string, _ interface{}) (map[string]interface{}, error) {
 	switch t {
-	case blockchain.FMJobRun:
+	case common.FMJobRun:
 		return map[string]interface{}{}, nil
 	}
 
@@ -189,7 +191,7 @@ func TestNewFluxMonitor(t *testing.T) {
 			wg.Add(1)
 			fmt.Println(prettyPrint(fm.state))
 			fmt.Println("New round event, initiated: ", fm.state.RoundID+1)
-			FAEvents <- blockchain.FMEventNewRound{
+			FAEvents <- common.FMEventNewRound{
 				RoundID:         fm.state.RoundID + 1,
 				OracleInitiated: false,
 			}
