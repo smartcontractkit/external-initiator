@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/smartcontractkit/chainlink/core/logger"
+	common2 "github.com/smartcontractkit/external-initiator/blockchain/common"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 )
@@ -75,7 +76,7 @@ func (e ethManager) GetTriggerJson() []byte {
 		return nil
 	}
 
-	msg := JsonrpcMessage{
+	msg := common2.JsonrpcMessage{
 		Version: "2.0",
 		ID:      json.RawMessage(`1`),
 	}
@@ -88,7 +89,7 @@ func (e ethManager) GetTriggerJson() []byte {
 		msg.Method = "eth_getLogs"
 		msg.Params = json.RawMessage(`[` + string(filterBytes) + `]`)
 	default:
-		logger.Errorw(ErrSubscriberType.Error(), "type", e.p)
+		logger.Errorw(common2.ErrSubscriberType.Error(), "type", e.p)
 		return nil
 	}
 
@@ -110,7 +111,7 @@ func (e ethManager) GetTriggerJson() []byte {
 // Sends a request to get the latest block number.
 func (e ethManager) GetTestJson() []byte {
 	if e.p == subscriber.RPC {
-		msg := JsonrpcMessage{
+		msg := common2.JsonrpcMessage{
 			Version: "2.0",
 			ID:      json.RawMessage(`1`),
 			Method:  "eth_blockNumber",
@@ -139,7 +140,7 @@ func (e ethManager) GetTestJson() []byte {
 // If successful, stores the block number in ethManager.
 func (e ethManager) ParseTestResponse(data []byte) error {
 	if e.p == subscriber.RPC {
-		var msg JsonrpcMessage
+		var msg common2.JsonrpcMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
 			return err
 		}
@@ -178,9 +179,9 @@ type ethLogResponse struct {
 // the latest block number it sees.
 func (e ethManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	promLastSourcePing.With(prometheus.Labels{"endpoint": e.endpointName, "jobid": e.jobid}).SetToCurrentTime()
-	logger.Debugw("Parsing response", "ExpectsMock", ExpectsMock)
+	logger.Debugw("Parsing response", "ExpectsMock", common2.ExpectsMock)
 
-	var msg JsonrpcMessage
+	var msg common2.JsonrpcMessage
 	if err := json.Unmarshal(data, &msg); err != nil {
 		logger.Error("failed parsing msg: ", msg)
 		return nil, false
@@ -245,7 +246,7 @@ func (e ethManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 		}
 
 	default:
-		logger.Errorw(ErrSubscriberType.Error(), "type", e.p)
+		logger.Errorw(common2.ErrSubscriberType.Error(), "type", e.p)
 		return nil, false
 	}
 

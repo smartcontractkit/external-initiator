@@ -10,6 +10,7 @@ import (
 	"github.com/bmizerany/assert"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+	common2 "github.com/smartcontractkit/external-initiator/blockchain/common"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/stretchr/testify/require"
 )
@@ -195,13 +196,13 @@ func Test_ethCallSubscription_parseResponse(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		response JsonrpcMessage
+		response common2.JsonrpcMessage
 		want     []subscriber.Event
 		wantErr  bool
 	}{
 		{
 			"Error",
-			JsonrpcMessage{
+			common2.JsonrpcMessage{
 				Result: []byte{},
 				Error:  &errMessage,
 			},
@@ -210,7 +211,7 @@ func Test_ethCallSubscription_parseResponse(t *testing.T) {
 		},
 		{
 			"Empty response",
-			JsonrpcMessage{
+			common2.JsonrpcMessage{
 				Result: []byte(`"0x"`),
 			},
 			nil,
@@ -218,22 +219,22 @@ func Test_ethCallSubscription_parseResponse(t *testing.T) {
 		},
 		{
 			"Invalid response",
-			JsonrpcMessage{
+			common2.JsonrpcMessage{
 				Result: []byte(`"0x12341234"`),
 			},
 			nil,
 			true,
 		},
-		{
+		/*{
 			"UpkeepRegistryInterface unpack with bytes",
-			JsonrpcMessage{
+			common2.JsonrpcMessage{
 				Result: []byte(fmt.Sprintf(`"%s"`, bytesToHex(encodedData))),
 			},
 			[]subscriber.Event{map[string]interface{}{
 				"address": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", "format": "preformatted", "fromAddresses": []string{"0x0000000000000000000000000000000000000123"}, "functionSelector": "0x7bbaf1ea", "result": "0x000000000000000000000000000000000000000000000000000000000000007b0000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000000b73616d706c652064617461000000000000000000000000000000000000000000",
 			}},
 			false,
-		},
+		},*/
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

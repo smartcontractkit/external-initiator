@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"github.com/smartcontractkit/external-initiator/eitest"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/stretchr/testify/assert"
@@ -157,13 +158,13 @@ func readTestGetAllRequestsResult() ([]byte, error) {
 	return resultJSON, nil
 }
 
-func readTestJSONRPCMessage() (*JsonrpcMessage, error) {
+func readTestJSONRPCMessage() (*common.JsonrpcMessage, error) {
 	resultRaw, err := readTestGetAllRequestsResult()
 	if err != nil {
 		return nil, err
 	}
 
-	var msg JsonrpcMessage
+	var msg common.JsonrpcMessage
 	err = json.Unmarshal(resultRaw, &msg)
 	if err != nil {
 		return nil, err

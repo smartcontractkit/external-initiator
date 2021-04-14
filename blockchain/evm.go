@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/chainlink/core/utils"
+	common2 "github.com/smartcontractkit/external-initiator/blockchain/common"
 )
 
 const (
@@ -164,7 +165,7 @@ type newHeadsResponseParams struct {
 	Result       map[string]interface{} `json:"result"`
 }
 
-func ParseBlocknumberFromNewHeads(msg JsonrpcMessage) (*big.Int, error) {
+func ParseBlocknumberFromNewHeads(msg common2.JsonrpcMessage) (*big.Int, error) {
 	var params newHeadsResponseParams
 	err := json.Unmarshal(msg.Params, &params)
 	if err != nil {
@@ -178,7 +179,7 @@ func ParseBlocknumberFromNewHeads(msg JsonrpcMessage) (*big.Int, error) {
 }
 
 func GetBlockNumberPayload() ([]byte, error) {
-	msg := JsonrpcMessage{
+	msg := common2.JsonrpcMessage{
 		Version: "2.0",
 		ID:      json.RawMessage(`2`),
 		Method:  "eth_blockNumber",

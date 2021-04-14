@@ -18,6 +18,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/smartcontractkit/chainlink/core/logger"
+	common2 "github.com/smartcontractkit/external-initiator/blockchain/common"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 )
@@ -194,7 +195,7 @@ func (keeper keeperSubscriber) Test() error {
 	case subscriber.WS:
 		return keeper.TestWS()
 	default:
-		return ErrConnectionType
+		return common2.ErrConnectionType
 	}
 }
 
@@ -245,7 +246,7 @@ func (keeper keeperSubscriber) TestWS() error {
 }
 
 func (keeper keeperSubscriber) GetTestJson() []byte {
-	msg := JsonrpcMessage{
+	msg := common2.JsonrpcMessage{
 		Version: "2.0",
 		ID:      json.RawMessage(`1`),
 		Method:  "eth_blockNumber",
@@ -290,7 +291,7 @@ func (keeper keeperSubscription) getCallPayload() ([]byte, error) {
 		return nil, err
 	}
 
-	msg := JsonrpcMessage{
+	msg := common2.JsonrpcMessage{
 		Version: "2.0",
 		ID:      json.RawMessage(`1`),
 		Method:  "eth_call",
@@ -300,7 +301,7 @@ func (keeper keeperSubscription) getCallPayload() ([]byte, error) {
 }
 
 func (keeper keeperSubscription) getSubscribePayload() ([]byte, error) {
-	msg := JsonrpcMessage{
+	msg := common2.JsonrpcMessage{
 		Version: "2.0",
 		ID:      json.RawMessage(`2`),
 		Method:  "eth_subscribe",
@@ -336,7 +337,7 @@ func (keeper keeperSubscription) getBlockHeightPost() (*big.Int, error) {
 		return nil, err
 	}
 
-	var response JsonrpcMessage
+	var response common2.JsonrpcMessage
 	err = json.Unmarshal(body, &response)
 	if err != nil {
 		return nil, err
@@ -394,7 +395,7 @@ func (keeper *keeperSubscription) query() {
 		return
 	}
 
-	var response JsonrpcMessage
+	var response common2.JsonrpcMessage
 	err = json.Unmarshal(body, &response)
 	if err != nil {
 		logger.Error(err)
@@ -428,7 +429,7 @@ func (keeper keeperSubscription) isCooldownDone() bool {
 	return true
 }
 
-func (keeper *keeperSubscription) handleWsSubscriptionMessage(msg JsonrpcMessage) (bool, error) {
+func (keeper *keeperSubscription) handleWsSubscriptionMessage(msg common2.JsonrpcMessage) (bool, error) {
 	blockNum, err := ParseBlocknumberFromNewHeads(msg)
 	if err != nil {
 		return false, err
@@ -443,7 +444,7 @@ func (keeper *keeperSubscription) handleWsSubscriptionMessage(msg JsonrpcMessage
 	return true, nil
 }
 
-func (keeper *keeperSubscription) handleWsMessage(msg JsonrpcMessage) error {
+func (keeper *keeperSubscription) handleWsMessage(msg common2.JsonrpcMessage) error {
 	events, err := keeper.parseResponse(msg)
 	if err != nil {
 		return err
@@ -505,7 +506,7 @@ func (keeper keeperSubscription) subscribeToNewHeads() {
 		}
 		promLastSourcePing.With(prometheus.Labels{"endpoint": keeper.endpointName, "jobid": keeper.jobID}).SetToCurrentTime()
 
-		var msg JsonrpcMessage
+		var msg common2.JsonrpcMessage
 		err = json.Unmarshal(rawMsg, &msg)
 		if err != nil {
 			logger.Error("error unmarshalling Keeper WS message:", err)
@@ -561,7 +562,7 @@ func (keeper *keeperSubscription) Unsubscribe() {
 	keeper.isDone = true
 }
 
-func (keeper keeperSubscription) parseResponse(response JsonrpcMessage) ([]subscriber.Event, error) {
+func (keeper keeperSubscription) parseResponse(response common2.JsonrpcMessage) ([]subscriber.Event, error) {
 	if response.Error != nil {
 		respErr, ok1 := (*response.Error).(map[string]interface{})
 		message := "unknown EVM error"

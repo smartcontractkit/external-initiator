@@ -13,6 +13,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/smartcontractkit/chainlink/core/logger"
+	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/tidwall/gjson"
@@ -283,7 +284,7 @@ func matchesXtzJobid(values []string, expected string) bool {
 	}
 
 	jobID := values[3]
-	return matchesJobID(expected, jobID)
+	return common.MatchesJobID(expected, jobID)
 }
 
 func getSuccessfulRequestCall(content xtzTransactionContent, oracleAddresses []string) (xtzInternalOperationResult, bool) {
@@ -445,7 +446,7 @@ func getXtzKeyValues(vals []string) (map[string]string, error) {
 	// The last two values are target and timeout.
 	// We ignore these when converting to key-value arrays,
 	// then we add the necessary values with correct keys.
-	kv := convertStringArrayToKV(vals[4 : len(vals)-2])
+	kv := common.ConvertStringArrayToKV(vals[4 : len(vals)-2])
 	kv["payment"] = vals[1]
 	kv["request_id"] = vals[2]
 	return kv, nil
