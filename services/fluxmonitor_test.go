@@ -28,7 +28,7 @@ func prettyPrint(i interface{}) string {
 	return fmt.Sprintf("%+v", i)
 }
 
-const COMMON_JOB_TRIGGER_TIMEOUT = 50 * time.Millisecond
+const COMMON_JOB_TRIGGER_TIMEOUT = 200 * time.Millisecond
 
 type mockBlockchainManager struct{}
 
@@ -203,7 +203,7 @@ func TestNewFluxMonitor(t *testing.T) {
 		fmConfig.AbsoluteThreshold = tt.absoluteThreshold
 		fmConfig.Heartbeat = tt.heartbeat
 		fmConfig.PollInterval = tt.heartbeat
-		fmConfig.RuntimeConfig = store.RuntimeConfig{FMAdapterTimeout: 1 * time.Second, FMAdapterRetryAttempts: 1, FMAdapterRetryDelay: 1 * time.Second}
+		fmConfig.RuntimeConfig = store.RuntimeConfig{FMAdapterTimeout: 100 * time.Millisecond, FMAdapterRetryAttempts: 1, FMAdapterRetryDelay: 10 * time.Millisecond}
 
 		t.Run("1 new round event tests: "+tt.name, func(t *testing.T) {
 			fmt.Printf("Testing %s", t.Name())
@@ -247,7 +247,7 @@ func TestNewFluxMonitor(t *testing.T) {
 			fmt.Println("FluxMonitor state: ", prettyPrint(fm.state))
 			fmt.Println("2nd round event, non initiated: ", fm.state.RoundID+1)
 			FAEvents <- common.FMEventNewRound{
-				RoundID:         fm.state.RoundID + 1,
+				RoundID:         fm.state.RoundID + 2,
 				OracleInitiated: false,
 			}
 			go func() {
@@ -257,37 +257,6 @@ func TestNewFluxMonitor(t *testing.T) {
 			wg.Wait()
 		})
 
-		if !strings.Contains(tt.name, "no heartbeat") {
-			t.Run("Permissions not allowing to submit : "+tt.name, func(t *testing.T) {
-				fmt.Printf("Testing %s", t.Name())
-				fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
-				require.NoError(t, err)
-				defer fm.Stop()
-				wg := sync.WaitGroup{}
-				wg.Add(1)
-				fmt.Println(prettyPrint(fm.state))
-				fmt.Println("New permissions updated event: CanSubmit: false")
-				FAEvents <- common.FMEventPermissionsUpdated{
-					CanSubmit: false,
-				}
-				go func() {
-					defer wg.Done()
-					waitForTrigger(t, triggerJobRun, "no_job", COMMON_JOB_TRIGGER_TIMEOUT)
-				}()
-				wg.Wait()
-				wg.Add(1)
-				fmt.Println(prettyPrint(fm.state))
-				fmt.Println("New permissions updated event: CanSubmit: true")
-				FAEvents <- common.FMEventPermissionsUpdated{
-					CanSubmit: true,
-				}
-				go func() {
-					defer wg.Done()
-					waitForTrigger(t, triggerJobRun, tt.want, COMMON_JOB_TRIGGER_TIMEOUT)
-				}()
-				wg.Wait()
-			})
-		}
 		// TODO: could be handled better?
 		// we want to check if job is triggered after only certain event, therefore makes sense to test only cases that do not have ticker triggers
 		if strings.Contains(tt.name, "no heartbeat, no polling") {
@@ -353,11 +322,11 @@ func TestNewFluxMonitor(t *testing.T) {
 				fmt.Println("FluxMonitor state: ", prettyPrint(fm.state))
 				fmt.Println("Answer updated first time: ", fm.state.RoundID+1)
 				FAEvents <- common.FMEventAnswerUpdated{
-					LatestAnswer: *big.NewInt(fm.latestResult.IntPart()),
+					LatestAnswer: *big.NewInt(fm.latestResult.IntPart() + int64(fm.config.AbsoluteThreshold) + 1),
 				}
 				go func() {
 					defer wg.Done()
-					waitForTrigger(t, triggerJobRun, "no_job", COMMON_JOB_TRIGGER_TIMEOUT)
+					waitForTrigger(t, triggerJobRun, tt.want, COMMON_JOB_TRIGGER_TIMEOUT)
 				}()
 				wg.Wait()
 				wg.Add(1)
@@ -366,6 +335,36 @@ func TestNewFluxMonitor(t *testing.T) {
 				fmt.Println("Answer updated without deviation: ", fm.state.RoundID+1)
 				FAEvents <- common.FMEventAnswerUpdated{
 					LatestAnswer: fm.state.LatestAnswer,
+				}
+				go func() {
+					defer wg.Done()
+					waitForTrigger(t, triggerJobRun, "no_job", COMMON_JOB_TRIGGER_TIMEOUT)
+				}()
+				wg.Wait()
+			})
+
+			t.Run("Permissions not allowing to submit : "+tt.name, func(t *testing.T) {
+				fmt.Printf("Testing %s", t.Name())
+				fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
+				require.NoError(t, err)
+				defer fm.Stop()
+				wg := sync.WaitGroup{}
+				wg.Add(1)
+				fmt.Println(prettyPrint(fm.state))
+				fmt.Println("New permissions updated event: CanSubmit: true")
+				FAEvents <- common.FMEventPermissionsUpdated{
+					CanSubmit: false,
+				}
+				FAEvents <- common.FMEventPermissionsUpdated{
+					CanSubmit: true,
+				}
+				FAEvents <- common.FMEventPermissionsUpdated{
+					CanSubmit: false,
+				}
+				fmt.Println("Round event, non initiated: ", fm.state.RoundID+1)
+				FAEvents <- common.FMEventNewRound{
+					RoundID:         fm.state.RoundID + 1,
+					OracleInitiated: false,
 				}
 				go func() {
 					defer wg.Done()
