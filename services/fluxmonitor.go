@@ -164,15 +164,14 @@ func (fm *FluxMonitor) Stop() {
 
 func (fm *FluxMonitor) canSubmitUpdated() {
 	if fm.state.CanSubmit {
-		logger.Info("Starting tickers because node is eligible to submit")
 		fm.startTickers()
 	} else {
-		logger.Info("Stoping tickers because node is not eligible to submit")
 		fm.stopTickers()
 	}
 }
 
 func (fm *FluxMonitor) startTickers() {
+	fm.logger.Info("Starting tickers because node is eligible to submit")
 	fm.tStart.Do(func() {
 		fm.chTickerClose = make(chan struct{})
 		go fm.pollingTicker()
@@ -182,6 +181,7 @@ func (fm *FluxMonitor) startTickers() {
 }
 
 func (fm *FluxMonitor) stopTickers() {
+	fm.logger.Info("Stoping tickers because node is not eligible to submit")
 	if fm.chTickerClose != nil {
 		fm.tStop.Do(func() {
 			close(fm.chTickerClose)
@@ -192,7 +192,7 @@ func (fm *FluxMonitor) stopTickers() {
 
 func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 	defer fm.Stop()
-	logger.Info("FM listening for events")
+	fm.logger.Info("FM listening for events")
 	for {
 		select {
 		case rawEvent := <-ch:
@@ -391,10 +391,10 @@ func (fm *FluxMonitor) ValidLatestResult() bool {
 
 	if time.Since(fm.latestResultTimestamp) <= fm.config.PollInterval+fm.config.RuntimeConfig.FMAdapterTimeout {
 		// The result we have is from within our polling interval, so we can use it
-		fmt.Println("poll result is valid for use")
+		fm.logger.Info("poll result is valid for use")
 		return true
 	}
-	fmt.Println("poll result is outdated(or empty) and is not valid for use")
+	fm.logger.Info("poll result is outdated(or empty) and is not valid for use")
 	return false
 }
 
