@@ -9,7 +9,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"reflect"
-	"sync"
 	"testing"
 	"time"
 
@@ -200,18 +199,13 @@ func TestNewFluxMonitor(t *testing.T) {
 			fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
 			require.NoError(t, err)
 			defer fm.Stop()
-			wg := sync.WaitGroup{}
-			wg.Add(1)
+
 			fmt.Println("New round event, not initiated: ", fm.state.RoundID+1)
 			FAEvents <- common.FMEventNewRound{
 				RoundID:         fm.state.RoundID + 1,
 				OracleInitiated: false,
 			}
-			go func() {
-				defer wg.Done()
-				waitForTrigger(t, triggerJobRun, tt.want, COMMON_JOB_TRIGGER_TIMEOUT)
-			}()
-			wg.Wait()
+			waitForTrigger(t, triggerJobRun, tt.want, COMMON_JOB_TRIGGER_TIMEOUT)
 		})
 
 		t.Run("2 rounds tests: "+tt.name, func(t *testing.T) {
@@ -219,29 +213,19 @@ func TestNewFluxMonitor(t *testing.T) {
 			fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
 			require.NoError(t, err)
 			defer fm.Stop()
-			wg := sync.WaitGroup{}
-			wg.Add(1)
 			fmt.Println("1st round event, non initiated: ", fm.state.RoundID+1)
 			FAEvents <- common.FMEventNewRound{
 				RoundID:         fm.state.RoundID + 1,
 				OracleInitiated: false,
 			}
-			go func() {
-				defer wg.Done()
-				waitForTrigger(t, triggerJobRun, tt.want, COMMON_JOB_TRIGGER_TIMEOUT)
-			}()
-			wg.Wait()
-			wg.Add(1)
+			waitForTrigger(t, triggerJobRun, tt.want, COMMON_JOB_TRIGGER_TIMEOUT)
+
 			fmt.Println("2nd round event, non initiated: ", fm.state.RoundID+1)
 			FAEvents <- common.FMEventNewRound{
 				RoundID:         fm.state.RoundID + 2,
 				OracleInitiated: false,
 			}
-			go func() {
-				defer wg.Done()
-				waitForTrigger(t, triggerJobRun, tt.want, COMMON_JOB_TRIGGER_TIMEOUT)
-			}()
-			wg.Wait()
+			waitForTrigger(t, triggerJobRun, tt.want, COMMON_JOB_TRIGGER_TIMEOUT)
 		})
 
 		// On test below we want to check if job is triggered only after certain events, therefore makes sense to test only cases that do not have ticker triggers
@@ -254,18 +238,13 @@ func TestNewFluxMonitor(t *testing.T) {
 			fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
 			require.NoError(t, err)
 			defer fm.Stop()
-			wg := sync.WaitGroup{}
-			wg.Add(1)
+
 			fmt.Println("Initiated round event: ", fm.state.RoundID+1)
 			FAEvents <- common.FMEventNewRound{
 				RoundID:         fm.state.RoundID + 1,
 				OracleInitiated: true,
 			}
-			go func() {
-				defer wg.Done()
-				waitForTrigger(t, triggerJobRun, "no_job", COMMON_JOB_TRIGGER_TIMEOUT)
-			}()
-			wg.Wait()
+			waitForTrigger(t, triggerJobRun, "no_job", COMMON_JOB_TRIGGER_TIMEOUT)
 		})
 
 		t.Run("Answer updated: "+tt.name, func(t *testing.T) {
@@ -273,17 +252,12 @@ func TestNewFluxMonitor(t *testing.T) {
 			fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
 			require.NoError(t, err)
 			defer fm.Stop()
-			wg := sync.WaitGroup{}
-			wg.Add(1)
+
 			fmt.Println("Answer updated: ", fm.state.RoundID+1)
 			FAEvents <- common.FMEventAnswerUpdated{
 				LatestAnswer: *fm.state.LatestAnswer.Add(&fm.state.LatestAnswer, big.NewInt(int64(fm.config.AbsoluteThreshold+1))),
 			}
-			go func() {
-				defer wg.Done()
-				waitForTrigger(t, triggerJobRun, tt.want, COMMON_JOB_TRIGGER_TIMEOUT)
-			}()
-			wg.Wait()
+			waitForTrigger(t, triggerJobRun, tt.want, COMMON_JOB_TRIGGER_TIMEOUT)
 		})
 
 		t.Run("Answer updated, but inside deviation threshold: "+tt.name, func(t *testing.T) {
@@ -291,40 +265,25 @@ func TestNewFluxMonitor(t *testing.T) {
 			fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
 			require.NoError(t, err)
 			defer fm.Stop()
-			wg := sync.WaitGroup{}
-			wg.Add(1)
+
 			fmt.Println("1st round event, non initiated: ", fm.state.RoundID+1)
 			FAEvents <- common.FMEventNewRound{
 				RoundID:         fm.state.RoundID + 1,
 				OracleInitiated: false,
 			}
-			go func() {
-				defer wg.Done()
-				waitForTrigger(t, triggerJobRun, tt.want, COMMON_JOB_TRIGGER_TIMEOUT)
-			}()
-			wg.Wait()
-			wg.Add(1)
+			waitForTrigger(t, triggerJobRun, tt.want, COMMON_JOB_TRIGGER_TIMEOUT)
 
 			fmt.Println("Answer updated first time: ", fm.state.RoundID+1)
 			FAEvents <- common.FMEventAnswerUpdated{
 				LatestAnswer: *big.NewInt(fm.latestResult.IntPart() + int64(fm.config.AbsoluteThreshold) + 1),
 			}
-			go func() {
-				defer wg.Done()
-				waitForTrigger(t, triggerJobRun, tt.want, COMMON_JOB_TRIGGER_TIMEOUT)
-			}()
-			wg.Wait()
-			wg.Add(1)
+			waitForTrigger(t, triggerJobRun, tt.want, COMMON_JOB_TRIGGER_TIMEOUT)
 
 			fmt.Println("Answer updated without deviation: ", fm.state.RoundID+1)
 			FAEvents <- common.FMEventAnswerUpdated{
 				LatestAnswer: fm.state.LatestAnswer,
 			}
-			go func() {
-				defer wg.Done()
-				waitForTrigger(t, triggerJobRun, "no_job", COMMON_JOB_TRIGGER_TIMEOUT)
-			}()
-			wg.Wait()
+			waitForTrigger(t, triggerJobRun, "no_job", COMMON_JOB_TRIGGER_TIMEOUT)
 		})
 
 		t.Run("Permissions not allowing to submit : "+tt.name, func(t *testing.T) {
@@ -332,8 +291,7 @@ func TestNewFluxMonitor(t *testing.T) {
 			fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
 			require.NoError(t, err)
 			defer fm.Stop()
-			wg := sync.WaitGroup{}
-			wg.Add(1)
+
 			fmt.Println("New permissions updated event: CanSubmit: true")
 			FAEvents <- common.FMEventPermissionsUpdated{
 				CanSubmit: false,
@@ -349,11 +307,8 @@ func TestNewFluxMonitor(t *testing.T) {
 				RoundID:         fm.state.RoundID + 1,
 				OracleInitiated: false,
 			}
-			go func() {
-				defer wg.Done()
-				waitForTrigger(t, triggerJobRun, "no_job", COMMON_JOB_TRIGGER_TIMEOUT)
-			}()
-			wg.Wait()
+			waitForTrigger(t, triggerJobRun, "no_job", COMMON_JOB_TRIGGER_TIMEOUT)
+
 		})
 
 	}
@@ -369,7 +324,7 @@ func waitForTrigger(t *testing.T, triggerJobRun chan subscriber.Event, want stri
 		if want == "no_job" {
 			t.Errorf("Job received. Want %s", want)
 		}
-		if got := job["result"]; !reflect.DeepEqual(fmt.Sprintf("%s", got), fmt.Sprintf("%s", want)) {
+		if got := job["result"]; !reflect.DeepEqual(fmt.Sprintf("%s", got), want) {
 			t.Errorf("GetTriggerJson() = %s, want %s", got, want)
 		}
 
