@@ -164,15 +164,17 @@ func (fm *FluxMonitor) Stop() {
 
 func (fm *FluxMonitor) canSubmitUpdated() {
 	if fm.state.CanSubmit {
+		fm.logger.Info("Oracle is eligible to submit")
 		fm.startTickers()
 	} else {
+		fm.logger.Info("Oracle is not eligible to submit")
 		fm.stopTickers()
 	}
 }
 
 func (fm *FluxMonitor) startTickers() {
-	fm.logger.Info("Starting tickers because node is eligible to submit")
 	fm.tStart.Do(func() {
+		fm.logger.Info("Starting tickers")
 		fm.chTickerClose = make(chan struct{})
 		go fm.pollingTicker()
 		go fm.heartbeatTimer()
@@ -181,8 +183,8 @@ func (fm *FluxMonitor) startTickers() {
 }
 
 func (fm *FluxMonitor) stopTickers() {
-	fm.logger.Info("Stoping tickers because node is not eligible to submit")
 	if fm.chTickerClose != nil {
+		fm.logger.Info("Stoping tickers")
 		fm.tStop.Do(func() {
 			close(fm.chTickerClose)
 			fm.tStart = sync.Once{}
@@ -394,7 +396,7 @@ func (fm *FluxMonitor) ValidLatestResult() bool {
 		fm.logger.Info("poll result is valid for use")
 		return true
 	}
-	fm.logger.Info("poll result is outdated(or empty) and is not valid for use")
+	fm.logger.Info("poll result is outdated (or empty) and is not valid for use")
 	return false
 }
 

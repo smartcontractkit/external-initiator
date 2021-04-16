@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const COMMON_JOB_TRIGGER_TIMEOUT = 200 * time.Millisecond
+const CommonJobTriggerTimeout = 200 * time.Millisecond
 
 type mockBlockchainManager struct{}
 
@@ -28,14 +28,13 @@ var FAEvents = make(chan<- interface{})
 func (sm *mockBlockchainManager) Request(t string) (interface{}, error) {
 	switch t {
 	case common.FMRequestState:
+		// initialize with reasonable defaults
 		return &common.FluxAggregatorState{
 			CanSubmit:    true,
 			LatestAnswer: *big.NewInt(40000),
 			RoundID:      1,
-			// RestartDelay: 2,
 		}, nil
-		// return &FluxAggregatorState{}, nil
-		// maybe initialize with reasonable defaults
+
 	}
 	return nil, errors.New("request type is not implemented")
 }
@@ -199,31 +198,29 @@ func TestNewFluxMonitor(t *testing.T) {
 			require.NoError(t, err)
 			defer fm.Stop()
 
-			fmt.Println("New round event, not initiated: ", fm.state.RoundID+1)
 			FAEvents <- common.FMEventNewRound{
 				RoundID:         fm.state.RoundID + 1,
 				OracleInitiated: false,
 			}
-			waitForTrigger(t, triggerJobRun, tt.want, COMMON_JOB_TRIGGER_TIMEOUT)
+			waitForTrigger(t, triggerJobRun, tt.want, CommonJobTriggerTimeout)
 		})
 
 		t.Run("2 rounds tests: "+tt.name, func(t *testing.T) {
 			fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
 			require.NoError(t, err)
 			defer fm.Stop()
-			fmt.Println("1st round event, non initiated: ", fm.state.RoundID+1)
+
 			FAEvents <- common.FMEventNewRound{
 				RoundID:         fm.state.RoundID + 1,
 				OracleInitiated: false,
 			}
-			waitForTrigger(t, triggerJobRun, tt.want, COMMON_JOB_TRIGGER_TIMEOUT)
+			waitForTrigger(t, triggerJobRun, tt.want, CommonJobTriggerTimeout)
 
-			fmt.Println("2nd round event, non initiated: ", fm.state.RoundID+1)
 			FAEvents <- common.FMEventNewRound{
 				RoundID:         fm.state.RoundID + 2,
 				OracleInitiated: false,
 			}
-			waitForTrigger(t, triggerJobRun, tt.want, COMMON_JOB_TRIGGER_TIMEOUT)
+			waitForTrigger(t, triggerJobRun, tt.want, CommonJobTriggerTimeout)
 		})
 
 		// On test below we want to check if job is triggered only after certain events, therefore makes sense to test only cases that do not have ticker triggers
@@ -236,12 +233,11 @@ func TestNewFluxMonitor(t *testing.T) {
 			require.NoError(t, err)
 			defer fm.Stop()
 
-			fmt.Println("Initiated round event: ", fm.state.RoundID+1)
 			FAEvents <- common.FMEventNewRound{
 				RoundID:         fm.state.RoundID + 1,
 				OracleInitiated: true,
 			}
-			waitForTrigger(t, triggerJobRun, "no_job", COMMON_JOB_TRIGGER_TIMEOUT)
+			waitForTrigger(t, triggerJobRun, "no_job", CommonJobTriggerTimeout)
 		})
 
 		t.Run("Answer updated: "+tt.name, func(t *testing.T) {
@@ -249,11 +245,10 @@ func TestNewFluxMonitor(t *testing.T) {
 			require.NoError(t, err)
 			defer fm.Stop()
 
-			fmt.Println("Answer updated: ", fm.state.RoundID+1)
 			FAEvents <- common.FMEventAnswerUpdated{
 				LatestAnswer: *fm.state.LatestAnswer.Add(&fm.state.LatestAnswer, big.NewInt(int64(fm.config.AbsoluteThreshold+1))),
 			}
-			waitForTrigger(t, triggerJobRun, tt.want, COMMON_JOB_TRIGGER_TIMEOUT)
+			waitForTrigger(t, triggerJobRun, tt.want, CommonJobTriggerTimeout)
 		})
 
 		t.Run("Answer updated, but inside deviation threshold: "+tt.name, func(t *testing.T) {
@@ -261,24 +256,23 @@ func TestNewFluxMonitor(t *testing.T) {
 			require.NoError(t, err)
 			defer fm.Stop()
 
-			fmt.Println("1st round event, non initiated: ", fm.state.RoundID+1)
 			FAEvents <- common.FMEventNewRound{
 				RoundID:         fm.state.RoundID + 1,
 				OracleInitiated: false,
 			}
-			waitForTrigger(t, triggerJobRun, tt.want, COMMON_JOB_TRIGGER_TIMEOUT)
+			waitForTrigger(t, triggerJobRun, tt.want, CommonJobTriggerTimeout)
 
 			fmt.Println("Answer updated first time: ", fm.state.RoundID+1)
 			FAEvents <- common.FMEventAnswerUpdated{
 				LatestAnswer: *big.NewInt(fm.latestResult.IntPart() + int64(fm.config.AbsoluteThreshold) + 1),
 			}
-			waitForTrigger(t, triggerJobRun, tt.want, COMMON_JOB_TRIGGER_TIMEOUT)
+			waitForTrigger(t, triggerJobRun, tt.want, CommonJobTriggerTimeout)
 
 			fmt.Println("Answer updated without deviation: ", fm.state.RoundID+1)
 			FAEvents <- common.FMEventAnswerUpdated{
 				LatestAnswer: fm.state.LatestAnswer,
 			}
-			waitForTrigger(t, triggerJobRun, "no_job", COMMON_JOB_TRIGGER_TIMEOUT)
+			waitForTrigger(t, triggerJobRun, "no_job", CommonJobTriggerTimeout)
 		})
 
 		t.Run("Permissions not allowing to submit : "+tt.name, func(t *testing.T) {
@@ -301,7 +295,7 @@ func TestNewFluxMonitor(t *testing.T) {
 				RoundID:         fm.state.RoundID + 1,
 				OracleInitiated: false,
 			}
-			waitForTrigger(t, triggerJobRun, "no_job", COMMON_JOB_TRIGGER_TIMEOUT)
+			waitForTrigger(t, triggerJobRun, "no_job", CommonJobTriggerTimeout)
 
 		})
 
