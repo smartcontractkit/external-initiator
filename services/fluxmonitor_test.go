@@ -195,7 +195,6 @@ func TestNewFluxMonitor(t *testing.T) {
 		fmConfig.RuntimeConfig = store.RuntimeConfig{FMAdapterTimeout: 100 * time.Millisecond, FMAdapterRetryAttempts: 1, FMAdapterRetryDelay: 10 * time.Millisecond}
 
 		t.Run("1 new round event tests: "+tt.name, func(t *testing.T) {
-			fmt.Printf("Testing %s", t.Name())
 			fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
 			require.NoError(t, err)
 			defer fm.Stop()
@@ -209,7 +208,6 @@ func TestNewFluxMonitor(t *testing.T) {
 		})
 
 		t.Run("2 rounds tests: "+tt.name, func(t *testing.T) {
-			fmt.Printf("Testing %s", t.Name())
 			fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
 			require.NoError(t, err)
 			defer fm.Stop()
@@ -234,7 +232,6 @@ func TestNewFluxMonitor(t *testing.T) {
 		}
 
 		t.Run("Initiated round: "+tt.name, func(t *testing.T) {
-			fmt.Printf("Testing %s", t.Name())
 			fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
 			require.NoError(t, err)
 			defer fm.Stop()
@@ -248,7 +245,6 @@ func TestNewFluxMonitor(t *testing.T) {
 		})
 
 		t.Run("Answer updated: "+tt.name, func(t *testing.T) {
-			fmt.Printf("Testing %s", t.Name())
 			fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
 			require.NoError(t, err)
 			defer fm.Stop()
@@ -261,7 +257,6 @@ func TestNewFluxMonitor(t *testing.T) {
 		})
 
 		t.Run("Answer updated, but inside deviation threshold: "+tt.name, func(t *testing.T) {
-			fmt.Printf("Testing %s", t.Name())
 			fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
 			require.NoError(t, err)
 			defer fm.Stop()
@@ -287,7 +282,6 @@ func TestNewFluxMonitor(t *testing.T) {
 		})
 
 		t.Run("Permissions not allowing to submit : "+tt.name, func(t *testing.T) {
-			fmt.Printf("Testing %s", t.Name())
 			fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
 			require.NoError(t, err)
 			defer fm.Stop()
