@@ -164,14 +164,17 @@ func (fm *FluxMonitor) Stop() {
 
 func (fm *FluxMonitor) canSubmitUpdated() {
 	if fm.state.CanSubmit {
+		fm.logger.Info("Oracle is eligible to submit")
 		fm.startTickers()
 	} else {
+		fm.logger.Info("Oracle is not eligible to submit")
 		fm.stopTickers()
 	}
 }
 
 func (fm *FluxMonitor) startTickers() {
 	fm.tStart.Do(func() {
+		fm.logger.Info("Starting tickers")
 		fm.chTickerClose = make(chan struct{})
 		go fm.pollingTicker()
 		go fm.heartbeatTimer()
@@ -181,6 +184,7 @@ func (fm *FluxMonitor) startTickers() {
 
 func (fm *FluxMonitor) stopTickers() {
 	if fm.chTickerClose != nil {
+		fm.logger.Info("Stoping tickers")
 		fm.tStop.Do(func() {
 			close(fm.chTickerClose)
 			fm.tStart = sync.Once{}
@@ -190,7 +194,7 @@ func (fm *FluxMonitor) stopTickers() {
 
 func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 	defer fm.Stop()
-
+	fm.logger.Info("FM listening for events")
 	for {
 		select {
 		case rawEvent := <-ch:
@@ -285,7 +289,9 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 }
 
 func (fm *FluxMonitor) resetHeartbeatTimer() {
-	fm.idleTimerReset <- struct{}{}
+	if fm.config.Heartbeat != 0 {
+		fm.idleTimerReset <- struct{}{}
+	}
 }
 
 func (fm *FluxMonitor) heartbeatTimer() {
@@ -387,10 +393,10 @@ func (fm *FluxMonitor) ValidLatestResult() bool {
 
 	if time.Since(fm.latestResultTimestamp) <= fm.config.PollInterval+fm.config.RuntimeConfig.FMAdapterTimeout {
 		// The result we have is from within our polling interval, so we can use it
-		fmt.Println("poll result is valid for use")
+		fm.logger.Info("poll result is valid for use")
 		return true
 	}
-	fmt.Println("poll result is outdated and not valid for use")
+	fm.logger.Info("poll result is outdated (or empty) and is not valid for use")
 	return false
 }
 
@@ -423,6 +429,7 @@ func (fm *FluxMonitor) poll() error {
 			price, err := fm.getAdapterResponse(adapter, fm.config.RequestData)
 			if err != nil {
 				fm.logger.Error(fmt.Sprintf("Adapter response error. URL: %s requestData: %s error: ", adapter.Host, fm.config.RequestData), err)
+				price = nil
 			}
 			ch <- price
 		}(adapter)

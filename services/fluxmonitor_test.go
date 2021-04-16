@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -10,7 +9,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"reflect"
-	"sync"
 	"testing"
 	"time"
 
@@ -21,11 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// does not print big.int pointers
-func prettyPrint(i interface{}) string {
-	s, _ := json.MarshalIndent(i, "", "\t")
-	return string(s)
-}
+const CommonJobTriggerTimeout = 200 * time.Millisecond
 
 type mockBlockchainManager struct{}
 
@@ -34,14 +28,13 @@ var FAEvents = make(chan<- interface{})
 func (sm *mockBlockchainManager) Request(t string) (interface{}, error) {
 	switch t {
 	case common.FMRequestState:
+		// initialize with reasonable defaults
 		return &common.FluxAggregatorState{
 			CanSubmit:    true,
 			LatestAnswer: *big.NewInt(40000),
 			RoundID:      1,
-			// RestartDelay: 2,
 		}, nil
-		// return &FluxAggregatorState{}, nil
-		// maybe initialize with reasonable defaults
+
 	}
 	return nil, errors.New("request type is not implemented")
 }
@@ -97,8 +90,8 @@ func TestNewFluxMonitor(t *testing.T) {
 			[]string{"50000"},
 			0.01,
 			600,
-			3 * time.Second,
-			1 * time.Second,
+			15 * time.Millisecond,
+			3 * time.Millisecond,
 			"50000",
 		},
 		{
@@ -164,62 +157,169 @@ func TestNewFluxMonitor(t *testing.T) {
 			0,
 			"50500",
 		},
+		{
+			"3 adapters, no threshold",
+			[]string{"50500", "51000", "50000"},
+			0,
+			0,
+			15 * time.Millisecond,
+			3 * time.Millisecond,
+			"50500",
+		},
+		{
+			"3 adapters, 1 non-expected response",
+			[]string{"50000", "51000", "wrong"},
+			0.01,
+			600,
+			15 * time.Millisecond,
+			3 * time.Millisecond,
+			"50500",
+		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var mockAdapters []url.URL
-			for _, v := range tt.adapterResults {
-				mockAdapters = append(mockAdapters, *createMockAdapter(v))
-			}
+		var mockAdapters []url.URL
+		for _, v := range tt.adapterResults {
+			mockAdapters = append(mockAdapters, *createMockAdapter(v))
+		}
 
-			triggerJobRun := make(chan subscriber.Event, 10)
-			var fmConfig FluxMonitorConfig
+		triggerJobRun := make(chan subscriber.Event, 10)
+		var fmConfig FluxMonitorConfig
 
-			fmConfig.Adapters = mockAdapters
-			fmConfig.RequestData = `{"from":"BTC","to":"USD"}`
-			fmConfig.Multiply = 18
-			fmConfig.Threshold = tt.threshold
-			fmConfig.AbsoluteThreshold = tt.absoluteThreshold
-			fmConfig.Heartbeat = tt.heartbeat
-			fmConfig.PollInterval = tt.heartbeat
-			fmConfig.RuntimeConfig = store.RuntimeConfig{FMAdapterTimeout: 1 * time.Second, FMAdapterRetryAttempts: 1, FMAdapterRetryDelay: 1 * time.Second}
+		fmConfig.Adapters = mockAdapters
+		fmConfig.RequestData = `{"from":"BTC","to":"USD"}`
+		fmConfig.Threshold = tt.threshold
+		fmConfig.AbsoluteThreshold = tt.absoluteThreshold
+		fmConfig.Heartbeat = tt.heartbeat
+		fmConfig.PollInterval = tt.heartbeat
+		fmConfig.RuntimeConfig = store.RuntimeConfig{FMAdapterTimeout: 100 * time.Millisecond, FMAdapterRetryAttempts: 1, FMAdapterRetryDelay: 10 * time.Millisecond}
 
+		t.Run("1 new round event tests: "+tt.name, func(t *testing.T) {
 			fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
 			require.NoError(t, err)
 			defer fm.Stop()
-			wg := sync.WaitGroup{}
-			wg.Add(1)
-			fmt.Println(prettyPrint(fm.state))
-			fmt.Println("New round event, initiated: ", fm.state.RoundID+1)
+
 			FAEvents <- common.FMEventNewRound{
 				RoundID:         fm.state.RoundID + 1,
 				OracleInitiated: false,
 			}
-
-			go func() {
-				defer wg.Done()
-				timeout := time.NewTimer(2 * time.Second)
-				defer timeout.Stop()
-
-				select {
-				case job := <-triggerJobRun:
-					fmt.Println("Job triggered", job["result"])
-					if tt.want == "no_job" {
-						t.Errorf("Job received. Want %s", tt.want)
-					}
-					if got := job["result"]; !reflect.DeepEqual(fmt.Sprintf("%s", got), fmt.Sprintf("%s", tt.want)) {
-						t.Errorf("GetTriggerJson() = %s, want %s", got, tt.want)
-					}
-
-				case <-timeout.C:
-					fmt.Println("Job timeout")
-					if tt.want != "no_job" {
-						t.Errorf("No Job received, timeout. Want %s", tt.want)
-					}
-				}
-
-			}()
-			wg.Wait()
+			waitForTrigger(t, triggerJobRun, tt.want, CommonJobTriggerTimeout)
 		})
+
+		t.Run("2 rounds tests: "+tt.name, func(t *testing.T) {
+			fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
+			require.NoError(t, err)
+			defer fm.Stop()
+
+			FAEvents <- common.FMEventNewRound{
+				RoundID:         fm.state.RoundID + 1,
+				OracleInitiated: false,
+			}
+			waitForTrigger(t, triggerJobRun, tt.want, CommonJobTriggerTimeout)
+
+			FAEvents <- common.FMEventNewRound{
+				RoundID:         fm.state.RoundID + 2,
+				OracleInitiated: false,
+			}
+			waitForTrigger(t, triggerJobRun, tt.want, CommonJobTriggerTimeout)
+		})
+
+		// On test below we want to check if job is triggered only after certain events, therefore makes sense to test only cases that do not have ticker triggers
+		if tt.heartbeat != 0 || tt.pollInterval != 0 {
+			continue
+		}
+
+		t.Run("Initiated round: "+tt.name, func(t *testing.T) {
+			fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
+			require.NoError(t, err)
+			defer fm.Stop()
+
+			FAEvents <- common.FMEventNewRound{
+				RoundID:         fm.state.RoundID + 1,
+				OracleInitiated: true,
+			}
+			waitForTrigger(t, triggerJobRun, "no_job", CommonJobTriggerTimeout)
+		})
+
+		t.Run("Answer updated: "+tt.name, func(t *testing.T) {
+			fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
+			require.NoError(t, err)
+			defer fm.Stop()
+
+			FAEvents <- common.FMEventAnswerUpdated{
+				LatestAnswer: *fm.state.LatestAnswer.Add(&fm.state.LatestAnswer, big.NewInt(int64(fm.config.AbsoluteThreshold+1))),
+			}
+			waitForTrigger(t, triggerJobRun, tt.want, CommonJobTriggerTimeout)
+		})
+
+		t.Run("Answer updated, but inside deviation threshold: "+tt.name, func(t *testing.T) {
+			fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
+			require.NoError(t, err)
+			defer fm.Stop()
+
+			FAEvents <- common.FMEventNewRound{
+				RoundID:         fm.state.RoundID + 1,
+				OracleInitiated: false,
+			}
+			waitForTrigger(t, triggerJobRun, tt.want, CommonJobTriggerTimeout)
+
+			fmt.Println("Answer updated first time: ", fm.state.RoundID+1)
+			FAEvents <- common.FMEventAnswerUpdated{
+				LatestAnswer: *big.NewInt(fm.latestResult.IntPart() + int64(fm.config.AbsoluteThreshold) + 1),
+			}
+			waitForTrigger(t, triggerJobRun, tt.want, CommonJobTriggerTimeout)
+
+			fmt.Println("Answer updated without deviation: ", fm.state.RoundID+1)
+			FAEvents <- common.FMEventAnswerUpdated{
+				LatestAnswer: fm.state.LatestAnswer,
+			}
+			waitForTrigger(t, triggerJobRun, "no_job", CommonJobTriggerTimeout)
+		})
+
+		t.Run("Permissions not allowing to submit : "+tt.name, func(t *testing.T) {
+			fm, err := NewFluxMonitor("test", fmConfig, triggerJobRun, &mockBlockchainManager{})
+			require.NoError(t, err)
+			defer fm.Stop()
+
+			fmt.Println("New permissions updated event: CanSubmit: true")
+			FAEvents <- common.FMEventPermissionsUpdated{
+				CanSubmit: false,
+			}
+			FAEvents <- common.FMEventPermissionsUpdated{
+				CanSubmit: true,
+			}
+			FAEvents <- common.FMEventPermissionsUpdated{
+				CanSubmit: false,
+			}
+			fmt.Println("Round event, non initiated: ", fm.state.RoundID+1)
+			FAEvents <- common.FMEventNewRound{
+				RoundID:         fm.state.RoundID + 1,
+				OracleInitiated: false,
+			}
+			waitForTrigger(t, triggerJobRun, "no_job", CommonJobTriggerTimeout)
+
+		})
+
+	}
+}
+
+func waitForTrigger(t *testing.T, triggerJobRun chan subscriber.Event, want string, timeoutInterval time.Duration) {
+	timeout := time.NewTimer(timeoutInterval)
+	defer timeout.Stop()
+
+	select {
+	case job := <-triggerJobRun:
+		fmt.Println("Job triggered", job["result"])
+		if want == "no_job" {
+			t.Errorf("Job received. Want %s", want)
+		}
+		if got := job["result"]; !reflect.DeepEqual(fmt.Sprintf("%s", got), want) {
+			t.Errorf("GetTriggerJson() = %s, want %s", got, want)
+		}
+
+	case <-timeout.C:
+		fmt.Println("Job timeout")
+		if want != "no_job" {
+			t.Errorf("No Job received, timeout. Want %s", want)
+		}
 	}
 }
