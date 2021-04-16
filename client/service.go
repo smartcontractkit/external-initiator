@@ -251,7 +251,7 @@ func (srv *Service) subscribe(sub store.Subscription) error {
 }
 
 func (srv Service) subscribeRunlog(sub store.Subscription, ch chan subscriber.Event, _ *store.JobSpec) (services.Service, error) {
-	blockchainManager, err := blockchain.CreateManager(sub)
+	blockchainManager, err := blockchain.CreateRunlogManager(sub)
 	if err != nil {
 		return nil, err
 	}
@@ -267,7 +267,7 @@ func (srv *Service) subscribeFluxmonitor(sub store.Subscription, ch chan subscri
 		return nil, err
 	}
 
-	blockchainManager, err := blockchain.CreateManager(sub)
+	blockchainManager, err := blockchain.CreateFluxMonitorManager(sub)
 	if err != nil {
 		return nil, err
 	}

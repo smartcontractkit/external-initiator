@@ -64,6 +64,10 @@ func NewWebsocketConnection(endpoint string) (*websocketConnection, error) {
 	return wsc, nil
 }
 
+func (wsc *websocketConnection) Type() Type {
+	return WS
+}
+
 func (wsc *websocketConnection) Stop() {
 	wsc.quitOnce.Do(func() {
 		wsc.stopped = true
@@ -185,7 +189,8 @@ func (wsc *websocketConnection) processIncomingMessage(payload json.RawMessage) 
 	}
 
 	var params struct {
-		Subscription string `json:"subscription"`
+		Subscription string          `json:"subscription"`
+		Result       json.RawMessage `json:"result"`
 	}
 	err = json.Unmarshal(msg.Params, &params)
 	if err != nil {
@@ -202,7 +207,7 @@ func (wsc *websocketConnection) processIncomingMessage(payload json.RawMessage) 
 		}
 	}
 
-	ch <- msg.Params
+	ch <- params.Result
 }
 
 func (wsc *websocketConnection) subscribe(req *subscribeRequest) error {

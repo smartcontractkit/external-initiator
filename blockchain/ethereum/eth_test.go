@@ -1,6 +1,7 @@
-package blockchain
+package ethereum
 
 import (
+	"github.com/smartcontractkit/external-initiator/blockchain/evm"
 	"reflect"
 	"testing"
 
@@ -71,7 +72,7 @@ func TestCreateEthFilterMessage(t *testing.T) {
 
 	t.Run("has invalid filter query", func(t *testing.T) {
 		blockHash := common.HexToHash("0xabc")
-		got := ethManager{fq: &filterQuery{BlockHash: &blockHash, FromBlock: "0x1", ToBlock: "0x2"}}.GetTriggerJson()
+		got := manager{fq: &evm.FilterQuery{BlockHash: &blockHash, FromBlock: "0x1", ToBlock: "0x2"}}.GetTriggerJson()
 		if got != nil {
 			t.Errorf("GetTriggerJson() = %s, want nil", got)
 		}
@@ -80,7 +81,7 @@ func TestCreateEthFilterMessage(t *testing.T) {
 
 func TestEthManager_GetTestJson(t *testing.T) {
 	type fields struct {
-		fq *filterQuery
+		fq *evm.FilterQuery
 		p  subscriber.Type
 	}
 	tests := []struct {
@@ -105,7 +106,7 @@ func TestEthManager_GetTestJson(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := ethManager{
+			e := manager{
 				fq: tt.fields.fq,
 				p:  tt.fields.p,
 			}
@@ -118,7 +119,7 @@ func TestEthManager_GetTestJson(t *testing.T) {
 
 func TestEthManager_ParseTestResponse(t *testing.T) {
 	type fields struct {
-		fq *filterQuery
+		fq *evm.FilterQuery
 		p  subscriber.Type
 	}
 	type args struct {
@@ -133,28 +134,28 @@ func TestEthManager_ParseTestResponse(t *testing.T) {
 	}{
 		{
 			"does nothing for WS",
-			fields{fq: &filterQuery{}, p: subscriber.WS},
+			fields{fq: &evm.FilterQuery{}, p: subscriber.WS},
 			args{},
 			false,
 			"",
 		},
 		{
 			"parses RPC responses",
-			fields{fq: &filterQuery{}, p: subscriber.RPC},
+			fields{fq: &evm.FilterQuery{}, p: subscriber.RPC},
 			args{[]byte(`{"jsonrpc":"2.0","id":1,"result":"0x1"}`)},
 			false,
 			"0x1",
 		},
 		{
 			"fails unmarshal payload",
-			fields{fq: &filterQuery{}, p: subscriber.RPC},
+			fields{fq: &evm.FilterQuery{}, p: subscriber.RPC},
 			args{[]byte(`error`)},
 			true,
 			"",
 		},
 		{
 			"fails unmarshal result",
-			fields{fq: &filterQuery{}, p: subscriber.RPC},
+			fields{fq: &evm.FilterQuery{}, p: subscriber.RPC},
 			args{[]byte(`{"jsonrpc":"2.0","id":1,"result":["0x1"]}`)},
 			true,
 			"",
@@ -162,7 +163,7 @@ func TestEthManager_ParseTestResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := ethManager{
+			e := manager{
 				fq: tt.fields.fq,
 				p:  tt.fields.p,
 			}
@@ -178,7 +179,7 @@ func TestEthManager_ParseTestResponse(t *testing.T) {
 
 func TestEthManager_ParseResponse(t *testing.T) {
 	type fields struct {
-		fq *filterQuery
+		fq *evm.FilterQuery
 		p  subscriber.Type
 	}
 	type args struct {
@@ -194,7 +195,7 @@ func TestEthManager_ParseResponse(t *testing.T) {
 	}{
 		{
 			"fails parsing invalid payload",
-			fields{fq: &filterQuery{}, p: subscriber.WS},
+			fields{fq: &evm.FilterQuery{}, p: subscriber.WS},
 			args{data: []byte(`invalid`)},
 			nil,
 			false,
@@ -202,7 +203,7 @@ func TestEthManager_ParseResponse(t *testing.T) {
 		},
 		{
 			"fails parsing invalid WS subscribe payload",
-			fields{fq: &filterQuery{}, p: subscriber.WS},
+			fields{fq: &evm.FilterQuery{}, p: subscriber.WS},
 			args{data: []byte(`{"jsonrpc":"2.0","id":1,"params":[]}`)},
 			nil,
 			false,
@@ -210,64 +211,64 @@ func TestEthManager_ParseResponse(t *testing.T) {
 		},
 		{
 			"fails parsing invalid WS subscribe",
-			fields{fq: &filterQuery{}, p: subscriber.WS},
+			fields{fq: &evm.FilterQuery{}, p: subscriber.WS},
 			args{data: []byte(`{"jsonrpc":"2.0","id":1,"params":{"subscription":"test","result":[]}}`)},
 			nil,
 			false,
 			"",
 		},
-		/*{
+		{
 			"successfully parses WS response",
-			fields{fq: &filterQuery{}, p: subscriber.WS},
+			fields{fq: &evm.FilterQuery{}, p: subscriber.WS},
 			args{data: []byte(`{"jsonrpc":"2.0","id":1,"params":{"subscription":"test","result":{"data":"test"}}}`)},
 			[]subscriber.Event{map[string]interface{}{
 				"logIndex": "", "blockNumber": "", "blockHash": "", "transactionHash": "", "transactionIndex": "", "address": "", "data": "test", "topics": nil,
 			}},
 			true,
 			"",
-		},*/
+		},
 		{
 			"fails parsing invalid RPC payload",
-			fields{fq: &filterQuery{}, p: subscriber.RPC},
+			fields{fq: &evm.FilterQuery{}, p: subscriber.RPC},
 			args{data: []byte(`{"jsonrpc":"2.0","id":1,"result":{}}`)},
 			nil,
 			false,
 			"",
 		},
-		/*{
+		{
 			"fails parsing invalid block number in RPC event payload",
-			fields{fq: &filterQuery{}, p: subscriber.RPC},
+			fields{fq: &evm.FilterQuery{}, p: subscriber.RPC},
 			args{data: []byte(`{"jsonrpc":"2.0","id":1,"result":[{"data":"test"}]}`)},
 			[]subscriber.Event{map[string]interface{}{
 				"logIndex": "", "blockNumber": "", "blockHash": "", "transactionHash": "", "transactionIndex": "", "address": "", "data": "test", "topics": nil,
 			}},
 			true,
 			"",
-		},*/
-		/*{
+		},
+		{
 			"updates fromBlock from RPC payload",
-			fields{fq: &filterQuery{}, p: subscriber.RPC},
+			fields{fq: &evm.FilterQuery{}, p: subscriber.RPC},
 			args{data: []byte(`{"jsonrpc":"2.0","id":1,"result":[{"data":"test","blockNumber":"0x0"}]}`)},
 			[]subscriber.Event{map[string]interface{}{
 				"logIndex": "", "blockNumber": "0x0", "blockHash": "", "transactionHash": "", "transactionIndex": "", "address": "", "data": "test", "topics": nil,
 			}},
 			true,
 			"0x1",
-		},*/
-		/*{
+		},
+		{
 			"does not update fromBlock in the past from RPC payload",
-			fields{fq: &filterQuery{FromBlock: "0x1"}, p: subscriber.RPC},
+			fields{fq: &evm.FilterQuery{FromBlock: "0x1"}, p: subscriber.RPC},
 			args{data: []byte(`{"jsonrpc":"2.0","id":1,"result":[{"data":"test","blockNumber":"0x0"}]}`)},
 			[]subscriber.Event{map[string]interface{}{
 				"logIndex": "", "blockNumber": "0x0", "blockHash": "", "transactionHash": "", "transactionIndex": "", "address": "", "data": "test", "topics": nil,
 			}},
 			true,
 			"0x1",
-		},*/
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := ethManager{
+			e := manager{
 				fq: tt.fields.fq,
 				p:  tt.fields.p,
 			}
@@ -346,14 +347,14 @@ func Test_filterQuery_toMapInterface(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			q := filterQuery{
+			q := evm.FilterQuery{
 				BlockHash: tt.fields.BlockHash,
 				FromBlock: tt.fields.FromBlock,
 				ToBlock:   tt.fields.ToBlock,
 				Addresses: tt.fields.Addresses,
 				Topics:    tt.fields.Topics,
 			}
-			got, err := q.toMapInterface()
+			got, err := q.ToMapInterface()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("toMapInterface() error = %v, wantErr %v", err, tt.wantErr)
 				return

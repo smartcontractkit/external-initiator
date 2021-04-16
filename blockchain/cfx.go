@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/smartcontractkit/external-initiator/blockchain/ethereum"
+	"github.com/smartcontractkit/external-initiator/blockchain/evm"
 	"math/big"
 	"strings"
 
@@ -43,7 +45,7 @@ func createCfxManager(p subscriber.Type, config store.Subscription) cfxManager {
 	topics := [][]common.Hash{{
 		models.RunLogTopic20190207withoutIndexes,
 	}, {
-		StringToBytes32(config.Job),
+		evm.StringToBytes32(config.Job),
 	}}
 
 	return cfxManager{
@@ -211,7 +213,7 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 
 	switch e.p {
 	case subscriber.WS:
-		var res ethSubscribeResponse
+		var res ethereum.ethSubscribeResponse
 		if err := json.Unmarshal(msg.Params, &res); err != nil {
 			logger.Error("unmarshal:", err)
 			return nil, false
@@ -236,7 +238,7 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 			return nil, false
 		}
 
-		request, err := logEventToOracleRequest(evt_eth)
+		request, err := evm.logEventToOracleRequest(evt_eth)
 		if err != nil {
 			logger.Error("failed to get oracle request:", err)
 			return nil, false
@@ -265,7 +267,7 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 				return nil, false
 			}
 
-			request, err := logEventToOracleRequest(evt_eth)
+			request, err := evm.logEventToOracleRequest(evt_eth)
 			if err != nil {
 				logger.Error("failed to get oracle request:", err)
 				return nil, false

@@ -116,7 +116,7 @@ type FluxMonitor struct {
 	state  common.FluxAggregatorState
 	config FluxMonitorConfig
 
-	blockchain common.Manager
+	blockchain common.FluxMonitorManager
 
 	latestResult           decimal.Decimal
 	latestResultTimestamp  time.Time
@@ -142,7 +142,7 @@ type FluxMonitor struct {
 	logger *zap.SugaredLogger
 }
 
-func NewFluxMonitor(job string, config FluxMonitorConfig, triggerJobRun chan subscriber.Event, blockchainManager common.Manager) (*FluxMonitor, error) {
+func NewFluxMonitor(job string, config FluxMonitorConfig, triggerJobRun chan subscriber.Event, blockchainManager common.FluxMonitorManager) (*FluxMonitor, error) {
 	fm := FluxMonitor{
 		config:  config,
 		chClose: make(chan struct{}),
@@ -160,22 +160,16 @@ func NewFluxMonitor(job string, config FluxMonitorConfig, triggerJobRun chan sub
 
 	FAEvents := make(chan interface{})
 
-	state, err := fm.blockchain.Request(common.FMRequestState)
+	state, err := fm.blockchain.GetState(context.TODO())
 	if err != nil {
 		return nil, err
-	}
-
-	faState, ok := state.(*common.FluxAggregatorState)
-	if !ok {
-		return nil, errors.New("didn't receive valid FluxAggregatorState")
-	}
-	if faState == nil {
+	} else if state == nil {
 		return nil, errors.New("received nil FluxAggregatorState")
 	}
 
-	fm.state = *faState
+	fm.state = *state
 
-	err = fm.blockchain.Subscribe(context.TODO(), common.FMSubscribeEvents, FAEvents)
+	err = fm.blockchain.SubscribeEvents(context.TODO(), FAEvents)
 	if err != nil {
 		return nil, err
 	}
@@ -189,6 +183,7 @@ func NewFluxMonitor(job string, config FluxMonitorConfig, triggerJobRun chan sub
 func (fm *FluxMonitor) Stop() {
 	fm.quitOnce.Do(func() {
 		close(fm.chClose)
+		fm.blockchain.Stop()
 	})
 }
 
@@ -296,11 +291,6 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 		roundId++
 	}
 
-	jobRequest, err := fm.blockchain.CreateJobRun(common.FMJobRun, roundId)
-	if err != nil {
-		return errors.Wrap(err, "failed to create job request from blockchain manager")
-	}
-
 	if !fm.ValidLatestResult() {
 		err := fm.pollWithRetry()
 		if err != nil {
@@ -308,6 +298,7 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 		}
 	}
 
+	jobRequest := fm.blockchain.CreateJobRun(roundId)
 	// Add common keys that should always be included
 	jobRequest["result"] = fm.latestResult.String()
 	jobRequest["payment"] = fm.state.Payment.String()

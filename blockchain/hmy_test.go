@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"github.com/smartcontractkit/external-initiator/blockchain/evm"
 	"reflect"
 	"testing"
 
@@ -45,7 +46,7 @@ func TestCreateHmyFilterMessage(t *testing.T) {
 
 	t.Run("has invalid filter query", func(t *testing.T) {
 		blockHash := common.HexToHash("0xabc")
-		got := hmyManager{fq: &filterQuery{BlockHash: &blockHash, FromBlock: "0x1", ToBlock: "0x2"}}.GetTriggerJson()
+		got := hmyManager{fq: &evm.filterQuery{BlockHash: &blockHash, FromBlock: "0x1", ToBlock: "0x2"}}.GetTriggerJson()
 		if got != nil {
 			t.Errorf("GetTriggerJson() = %s, want nil", got)
 		}
@@ -54,7 +55,7 @@ func TestCreateHmyFilterMessage(t *testing.T) {
 
 func TestHmyManager_GetTestJson(t *testing.T) {
 	type fields struct {
-		fq *filterQuery
+		fq *evm.filterQuery
 		p  subscriber.Type
 	}
 	tests := []struct {
@@ -92,7 +93,7 @@ func TestHmyManager_GetTestJson(t *testing.T) {
 
 func TestHmyManager_ParseTestResponse(t *testing.T) {
 	type fields struct {
-		fq *filterQuery
+		fq *evm.filterQuery
 		p  subscriber.Type
 	}
 	type args struct {
@@ -107,28 +108,28 @@ func TestHmyManager_ParseTestResponse(t *testing.T) {
 	}{
 		{
 			"does nothing for WS",
-			fields{fq: &filterQuery{}, p: subscriber.WS},
+			fields{fq: &evm.filterQuery{}, p: subscriber.WS},
 			args{},
 			false,
 			"",
 		},
 		{
 			"parses RPC responses",
-			fields{fq: &filterQuery{}, p: subscriber.RPC},
+			fields{fq: &evm.filterQuery{}, p: subscriber.RPC},
 			args{[]byte(`{"jsonrpc":"2.0","id":1,"result":"0x1"}`)},
 			false,
 			"0x1",
 		},
 		{
 			"fails unmarshal payload",
-			fields{fq: &filterQuery{}, p: subscriber.RPC},
+			fields{fq: &evm.filterQuery{}, p: subscriber.RPC},
 			args{[]byte(`error`)},
 			true,
 			"",
 		},
 		{
 			"fails unmarshal result",
-			fields{fq: &filterQuery{}, p: subscriber.RPC},
+			fields{fq: &evm.filterQuery{}, p: subscriber.RPC},
 			args{[]byte(`{"jsonrpc":"2.0","id":1,"result":["0x1"]}`)},
 			true,
 			"",
@@ -152,7 +153,7 @@ func TestHmyManager_ParseTestResponse(t *testing.T) {
 
 func TestHmyManager_ParseResponse(t *testing.T) {
 	type manager struct {
-		fq *filterQuery
+		fq *evm.filterQuery
 		p  subscriber.Type
 	}
 	type fields struct {
@@ -171,7 +172,7 @@ func TestHmyManager_ParseResponse(t *testing.T) {
 	}{
 		{
 			"fails parsing invalid payload",
-			fields{manager{fq: &filterQuery{}, p: subscriber.WS}},
+			fields{manager{fq: &evm.filterQuery{}, p: subscriber.WS}},
 			args{data: []byte(`invalid`)},
 			nil,
 			false,
@@ -179,7 +180,7 @@ func TestHmyManager_ParseResponse(t *testing.T) {
 		},
 		{
 			"fails parsing invalid WS subscribe payload",
-			fields{manager{fq: &filterQuery{}, p: subscriber.WS}},
+			fields{manager{fq: &evm.filterQuery{}, p: subscriber.WS}},
 			args{data: []byte(`{"jsonrpc":"2.0","id":1,"params":[]}`)},
 			nil,
 			false,
@@ -187,7 +188,7 @@ func TestHmyManager_ParseResponse(t *testing.T) {
 		},
 		{
 			"fails parsing invalid WS subscribe",
-			fields{manager{fq: &filterQuery{}, p: subscriber.WS}},
+			fields{manager{fq: &evm.filterQuery{}, p: subscriber.WS}},
 			args{data: []byte(`{"jsonrpc":"2.0","id":1,"params":{"subscription":"test","result":[]}}`)},
 			nil,
 			false,
@@ -205,7 +206,7 @@ func TestHmyManager_ParseResponse(t *testing.T) {
 		},*/
 		{
 			"fails parsing invalid RPC payload",
-			fields{manager{fq: &filterQuery{}, p: subscriber.RPC}},
+			fields{manager{fq: &evm.filterQuery{}, p: subscriber.RPC}},
 			args{data: []byte(`{"jsonrpc":"2.0","id":1,"result":{}}`)},
 			nil,
 			false,
@@ -213,7 +214,7 @@ func TestHmyManager_ParseResponse(t *testing.T) {
 		},
 		{
 			"fails parsing invalid block number in RPC event payload",
-			fields{manager{fq: &filterQuery{}, p: subscriber.RPC}},
+			fields{manager{fq: &evm.filterQuery{}, p: subscriber.RPC}},
 			args{data: []byte(`{"jsonrpc":"2.0","id":1,"result":[{"data":"0x0000000000000000000000007d0965224facd7156df0c9a1adf3a94118026eeb354f99e2ac319d0d1ff8975c41c72bf347fb69a4874e2641bd19c32e09eb88b80000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000007d0965224facd7156df0c9a1adf3a94118026eeb92cdaaf300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005ef1cd6b00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000005663676574783f68747470733a2f2f6d696e2d6170692e63727970746f636f6d706172652e636f6d2f646174612f70726963653f6673796d3d455448267473796d733d5553446470617468635553446574696d65731864","address":"0xFadfF79bA04F169386646a43869B66B39c7E0858","logIndex":"0x0","blockNumber":"abc","blockHash":"0xabc0000000000000000000000000000000000000000000000000000000000000","transactionHash":"0xabc0000000000000000000000000000000000000000000000000000000000000","transactionIndex":"0x0","topics":["0xd8d7ecc4800d25fa53ce0372f13a416d98907a7ef3d8d3bdd79cf4fe75529c65","0x0000000000000000000000000000000000000000000000000000000000000000"]}]}`)},
 			nil,
 			false,

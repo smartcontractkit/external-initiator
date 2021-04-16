@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/smartcontractkit/external-initiator/blockchain/evm"
 	"io/ioutil"
 	"math/big"
 	"net/url"
@@ -200,7 +201,7 @@ func (keeper keeperSubscriber) Test() error {
 }
 
 func (keeper keeperSubscriber) TestRPC() error {
-	resp, err := sendEthNodePost(keeper.Endpoint, keeper.GetTestJson())
+	resp, err := evm.sendEthNodePost(keeper.Endpoint, keeper.GetTestJson())
 	if err != nil {
 		return err
 	}
@@ -280,7 +281,7 @@ func (keeper keeperSubscription) getCallPayload() ([]byte, error) {
 
 	call := ethCallMessage{
 		To:   keeper.address.Hex(),
-		Data: bytesToHex(data),
+		Data: evm.bytesToHex(data),
 	}
 
 	var params []interface{}
@@ -321,12 +322,12 @@ func (keeper keeperSubscription) queryUntilDone(interval time.Duration) {
 }
 
 func (keeper keeperSubscription) getBlockHeightPost() (*big.Int, error) {
-	payload, err := GetBlockNumberPayload()
+	payload, err := evm.GetBlockNumberPayload()
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := sendEthNodePost(keeper.endpoint, payload)
+	resp, err := evm.sendEthNodePost(keeper.endpoint, payload)
 	if err != nil {
 		return nil, err
 	}
@@ -382,7 +383,7 @@ func (keeper *keeperSubscription) query() {
 		return
 	}
 
-	resp, err := sendEthNodePost(keeper.endpoint, payload)
+	resp, err := evm.sendEthNodePost(keeper.endpoint, payload)
 	if err != nil {
 		logger.Error(err)
 		return
@@ -430,7 +431,7 @@ func (keeper keeperSubscription) isCooldownDone() bool {
 }
 
 func (keeper *keeperSubscription) handleWsSubscriptionMessage(msg common2.JsonrpcMessage) (bool, error) {
-	blockNum, err := ParseBlocknumberFromNewHeads(msg)
+	blockNum, err := evm.ParseBlocknumberFromNewHeads(msg)
 	if err != nil {
 		return false, err
 	}
@@ -607,8 +608,8 @@ func (keeper keeperSubscription) parseResponse(response common2.JsonrpcMessage) 
 	event := map[string]interface{}{
 		"format":           "preformatted",
 		"address":          keeper.address.String(),
-		"functionSelector": bytesToHex(executeData[:4]),
-		"result":           bytesToHex(executeData[4:]),
+		"functionSelector": evm.bytesToHex(executeData[:4]),
+		"result":           evm.bytesToHex(executeData[4:]),
 		"fromAddresses":    []string{keeper.from.Hex()},
 	}
 

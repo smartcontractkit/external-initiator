@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/smartcontractkit/external-initiator/blockchain/evm"
 	"net/url"
 	"sync"
 	"time"
@@ -195,7 +196,7 @@ func (io *iotexSubscription) poll(ctx context.Context) {
 }
 
 func createIoTeXLogFilter(jobid string, addresses []string) *iotexapi.LogsFilter {
-	topic := StringToBytes32(jobid)
+	topic := evm.StringToBytes32(jobid)
 	return &iotexapi.LogsFilter{
 		Address: addresses,
 		Topics: []*iotexapi.Topics{
@@ -212,7 +213,7 @@ func createIoTeXLogFilter(jobid string, addresses []string) *iotexapi.LogsFilter
 func iotexLogEventToSubscriberEvents(logs []*iotextypes.Log) ([]subscriber.Event, error) {
 	events := make([]subscriber.Event, 0, len(logs))
 	for _, log := range logs {
-		cborData, dataPrefixBytes, err := logDataParse(log.GetData())
+		cborData, dataPrefixBytes, err := evm.logDataParse(log.GetData())
 		if err != nil {
 			return nil, err
 		}
@@ -222,7 +223,7 @@ func iotexLogEventToSubscriberEvents(logs []*iotextypes.Log) ([]subscriber.Event
 		}
 		js, err = js.MultiAdd(models.KV{
 			"address":          log.GetContractAddress(),
-			"dataPrefix":       bytesToHex(dataPrefixBytes),
+			"dataPrefix":       evm.bytesToHex(dataPrefixBytes),
 			"functionSelector": models.OracleFulfillmentFunctionID20190128withoutCast,
 		})
 		if err != nil {

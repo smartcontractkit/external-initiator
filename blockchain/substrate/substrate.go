@@ -8,7 +8,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 
@@ -26,7 +25,7 @@ var (
 	ErrorResultIsNull = errors.New("result is null")
 )
 
-type substrateManager struct {
+type manager struct {
 	endpointName string
 
 	meta      *types.Metadata
@@ -37,7 +36,7 @@ type substrateManager struct {
 	subscriber subscriber.ISubscriber
 }
 
-func CreateSubstrateManager(sub store.Subscription) (*substrateManager, error) {
+func createManager(sub store.Subscription) (*manager, error) {
 	feedId := types.NewU32(sub.Substrate.FeedId)
 	accountId, err := types.NewAddressFromHexAccountID(sub.Substrate.AccountId)
 	if err != nil {
@@ -49,7 +48,7 @@ func CreateSubstrateManager(sub store.Subscription) (*substrateManager, error) {
 		return nil, err
 	}
 
-	return &substrateManager{
+	return &manager{
 		endpointName: sub.EndpointName,
 		feedId:       FeedId(feedId),
 		accountId:    accountId.AsAccountID,
@@ -57,53 +56,8 @@ func CreateSubstrateManager(sub store.Subscription) (*substrateManager, error) {
 	}, nil
 }
 
-func (sm *substrateManager) Request(t string) (interface{}, error) {
-	switch t {
-	case common.FMRequestState:
-		return sm.getFluxState()
-	case common.RunlogBackfill:
-		return sm.Backfill()
-	}
-	return nil, errors.New("request type is not implemented")
-}
-
-func (sm *substrateManager) Subscribe(ctx context.Context, t string, ch chan<- interface{}) error {
-	switch t {
-	case common.FMSubscribeEvents:
-		return sm.SubscribeToFluxMonitor(ctx, ch)
-	case common.RunlogSubscribe:
-		return sm.SubscribeToRunlog(ctx, ch)
-	}
-	return errors.New("subscribe type is not implemented")
-}
-
-func (sm substrateManager) CreateJobRun(t string, v interface{}) (map[string]interface{}, error) {
-	switch t {
-	case common.FMJobRun:
-		return map[string]interface{}{
-			"request_type": "fluxmonitor",
-			"feed_id":      fmt.Sprintf("%d", sm.feedId),
-			"round_id":     fmt.Sprintf("%d", v),
-		}, nil
-	case common.RunlogJobRun:
-		req, ok := v.(common.RunlogRequest)
-		if !ok {
-			return nil, errors.New("expected param of type common.RunlogRequest")
-		}
-
-		return map[string]interface{}{
-			"request_type": "runlog",
-			"function":     req.CallbackFunction,
-			"request_id":   req.RequestId,
-		}, nil
-	}
-
-	return nil, errors.New("job run type not implemented")
-}
-
-type substrateSubscribeResponse struct {
-	Subscription string          `json:"subscription"`
-	Result       json.RawMessage `json:"result"`
+func (sm *manager) Stop() {
+	// TODO: Implement me
 }
 
 func decodeStorageData(sd types.StorageDataRaw, t interface{}) error {
@@ -129,14 +83,8 @@ func decodeStorageData(sd types.StorageDataRaw, t interface{}) error {
 }
 
 func getChanges(key types.StorageKey, data []byte) ([]types.KeyValueOption, error) {
-	var subRes substrateSubscribeResponse
-	err := json.Unmarshal(data, &subRes)
-	if err != nil {
-		return nil, err
-	}
-
 	var changeSet types.StorageChangeSet
-	err = json.Unmarshal(subRes.Result, &changeSet)
+	err := json.Unmarshal(data, &changeSet)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +146,7 @@ func parseEvents(meta *types.Metadata, key types.StorageKey, data []byte) ([]Eve
 	return events, nil
 }
 
-func (sm *substrateManager) getMetadata() (*types.Metadata, error) {
+func (sm *manager) getMetadata() (*types.Metadata, error) {
 	if sm.meta != nil {
 		return sm.meta, nil
 	}
@@ -263,7 +211,7 @@ func subscribeToStorage(meta *types.Metadata, prefix, method string, args ...int
 	return
 }
 
-func (sm *substrateManager) queryState(prefix, method string, t interface{}, args ...interface{}) error {
+func (sm *manager) queryState(ctx context.Context, prefix, method string, t interface{}, args ...interface{}) error {
 	meta, err := sm.getMetadata()
 	if err != nil {
 		return err
@@ -274,8 +222,6 @@ func (sm *substrateManager) queryState(prefix, method string, t interface{}, arg
 	}
 
 	responses := make(chan json.RawMessage)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
 	err = sm.subscriber.Subscribe(ctx, rpcMethod, unsubscribeMethod, params, responses)
 	if err != nil {
 		return err
@@ -300,7 +246,7 @@ func (sm *substrateManager) queryState(prefix, method string, t interface{}, arg
 	}
 }
 
-func (sm *substrateManager) subscribe(ctx context.Context, prefix, method string, handler func(event EventRecords)) error {
+func (sm *manager) subscribe(ctx context.Context, prefix, method string, handler func(event EventRecords)) error {
 	meta, err := sm.getMetadata()
 	if err != nil {
 		return err

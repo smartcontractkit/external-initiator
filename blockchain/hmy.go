@@ -2,6 +2,8 @@ package blockchain
 
 import (
 	"encoding/json"
+	"github.com/smartcontractkit/external-initiator/blockchain/ethereum"
+	"github.com/smartcontractkit/external-initiator/blockchain/evm"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -18,7 +20,7 @@ const HMY = "harmony"
 // The hmyManager implements the subscriber.JsonManager interface and allows
 // for interacting with HMY nodes over RPC or WS.
 type hmyManager struct {
-	fq           *filterQuery
+	fq           *evm.filterQuery
 	p            subscriber.Type
 	endpointName string
 	jobid        string
@@ -28,7 +30,7 @@ type hmyManager struct {
 // connection type and store.EthSubscription config.
 func createHmyManager(p subscriber.Type, config store.Subscription) hmyManager {
 	return hmyManager{
-		fq:           createEvmFilterQuery(config.Job, config.Ethereum.Addresses),
+		fq:           evm.createEvmFilterQuery(config.Job, config.Ethereum.Addresses),
 		p:            p,
 		endpointName: config.EndpointName,
 		jobid:        config.Job,
@@ -157,7 +159,7 @@ func (h hmyManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 
 	switch h.p {
 	case subscriber.WS:
-		var res ethSubscribeResponse
+		var res ethereum.ethSubscribeResponse
 		if err := json.Unmarshal(msg.Params, &res); err != nil {
 			logger.Error("unmarshal:", err)
 			return nil, false
@@ -173,7 +175,7 @@ func (h hmyManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 			return nil, false
 		}
 
-		request, err := logEventToOracleRequest(evt)
+		request, err := evm.logEventToOracleRequest(evt)
 		if err != nil {
 			logger.Error("failed to get oracle request:", err)
 			return nil, false
@@ -199,7 +201,7 @@ func (h hmyManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 				continue
 			}
 
-			request, err := logEventToOracleRequest(evt)
+			request, err := evm.logEventToOracleRequest(evt)
 			if err != nil {
 				logger.Error("failed to get oracle request:", err)
 				return nil, false
