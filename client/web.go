@@ -157,8 +157,8 @@ func validateRequest(t *CreateSubscriptionReq, endpointType string) error {
 	if err != nil {
 		return err
 	}
-	return nil
 
+	return nil
 }
 
 type resp struct {

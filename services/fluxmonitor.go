@@ -38,10 +38,8 @@ type FluxMonitorConfig struct {
 	RuntimeConfig store.RuntimeConfig
 }
 
-func ParseFMSpec(jsonSpec json.RawMessage, runtimeConfig store.RuntimeConfig) (FluxMonitorConfig, error) {
-	var fmConfig FluxMonitorConfig
+func ParseFMSpec(jsonSpec json.RawMessage, runtimeConfig store.RuntimeConfig) (fmConfig FluxMonitorConfig, err error) {
 	var fmSpecErrors []string
-	var err error
 
 	res := gjson.GetBytes(jsonSpec, "feeds.#.url")
 	var adapters []url.URL
@@ -104,10 +102,11 @@ func ParseFMSpec(jsonSpec json.RawMessage, runtimeConfig store.RuntimeConfig) (F
 	}
 
 	if len(fmSpecErrors) != 0 || fmSpecErrors != nil {
-		return fmConfig, fmt.Errorf(strings.Join(fmSpecErrors, "\n"))
+		return fmConfig, fmt.Errorf(strings.Join(fmSpecErrors, ", "))
 
 	}
-	return fmConfig, nil
+
+	return
 }
 
 type AdapterResponse struct {
