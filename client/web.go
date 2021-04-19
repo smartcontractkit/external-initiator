@@ -148,13 +148,17 @@ func validateRequest(t *CreateSubscriptionReq, endpointType string) error {
 		}
 	}
 
+	if t.Params.FluxMonitor == nil {
+		return nil
+	}
+
 	// RuntimeConfig is not relevant here, just checking if job spec is valid. Passing empty
 	_, err := services.ParseFMSpec(t.Params.FluxMonitor, store.RuntimeConfig{})
 	if err != nil {
 		return err
 	}
-
 	return nil
+
 }
 
 type resp struct {
