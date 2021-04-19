@@ -11,6 +11,7 @@ import (
 
 	"github.com/smartcontractkit/external-initiator/blockchain"
 	"github.com/smartcontractkit/external-initiator/blockchain/common"
+	"github.com/smartcontractkit/external-initiator/services"
 	"github.com/smartcontractkit/external-initiator/store"
 
 	"github.com/Depado/ginprom"
@@ -145,6 +146,12 @@ func validateRequest(t *CreateSubscriptionReq, endpointType string) error {
 		if v < 1 {
 			return errors.New("missing required field(s)")
 		}
+	}
+
+	// RuntimeConfig is not relevant here, just checking if job spec is valid. Passing empty
+	_, err := services.ParseFMSpec(t.Params.FluxMonitor, store.RuntimeConfig{})
+	if err != nil {
+		return err
 	}
 
 	return nil
