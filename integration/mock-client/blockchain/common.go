@@ -5,8 +5,6 @@ import (
 
 	"github.com/smartcontractkit/external-initiator/blockchain/common"
 
-	"github.com/smartcontractkit/external-initiator/blockchain/common"
-
 	"github.com/gin-gonic/gin"
 )
 

@@ -3,12 +3,13 @@ package blockchain
 import (
 	"encoding/json"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/smartcontractkit/chainlink/core/logger"
 	common2 "github.com/smartcontractkit/external-initiator/blockchain/common"
 	"github.com/smartcontractkit/external-initiator/blockchain/evm"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/smartcontractkit/chainlink/core/logger"
 )
 
 const HMY = "harmony"

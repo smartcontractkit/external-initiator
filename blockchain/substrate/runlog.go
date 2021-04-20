@@ -3,9 +3,9 @@ package substrate
 import (
 	"context"
 	"fmt"
-	"github.com/smartcontractkit/external-initiator/store"
 
 	"github.com/smartcontractkit/external-initiator/blockchain/common"
+	"github.com/smartcontractkit/external-initiator/store"
 
 	"github.com/smartcontractkit/chainlink/core/logger"
 )

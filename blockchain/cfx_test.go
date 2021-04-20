@@ -4,12 +4,13 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/smartcontractkit/external-initiator/store"
+	"github.com/smartcontractkit/external-initiator/subscriber"
+
 	"github.com/Conflux-Chain/go-conflux-sdk/types/cfxaddress"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/magiconair/properties/assert"
-	"github.com/smartcontractkit/external-initiator/store"
-	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/stretchr/testify/require"
 )
 

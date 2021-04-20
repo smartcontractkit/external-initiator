@@ -1,13 +1,14 @@
 package blockchain
 
 import (
-	"github.com/smartcontractkit/external-initiator/blockchain/evm"
 	"reflect"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/smartcontractkit/external-initiator/blockchain/evm"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 func TestCreateHmyFilterMessage(t *testing.T) {

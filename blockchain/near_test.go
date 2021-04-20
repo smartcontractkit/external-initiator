@@ -11,6 +11,7 @@ import (
 	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"github.com/smartcontractkit/external-initiator/eitest"
 	"github.com/smartcontractkit/external-initiator/subscriber"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

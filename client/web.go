@@ -189,7 +189,7 @@ func (srv *HttpService) CreateSubscription(c *gin.Context) {
 		return
 	}
 
-	if err := validateRequest(&req, endpoint.Type); err != nil {
+	if err = validateRequest(&req, endpoint.Type); err != nil {
 		logger.Error(err)
 		c.JSON(http.StatusBadRequest, nil)
 		return
