@@ -106,7 +106,7 @@ func StringToBytes32(str string) common.Hash {
 }
 
 func LogEventToOracleRequest(log models.Log) (RunlogRequest, error) {
-	cborData, dataPrefixBytes, err := logDataParse(log.Data)
+	cborData, dataPrefixBytes, err := LogDataParse(log.Data)
 	if err != nil {
 		return RunlogRequest{}, err
 	}
@@ -122,12 +122,12 @@ func LogEventToOracleRequest(log models.Log) (RunlogRequest, error) {
 
 	return MergeMaps(request, map[string]interface{}{
 		"address":          log.Address.String(),
-		"dataPrefix":       bytesToHex(dataPrefixBytes),
+		"dataPrefix":       BytesToHex(dataPrefixBytes),
 		"functionSelector": models.OracleFulfillmentFunctionID20190128withoutCast,
 	}), nil
 }
 
-func logDataParse(data []byte) (cborData []byte, dataPrefixBytes []byte, rerr error) {
+func LogDataParse(data []byte) (cborData []byte, dataPrefixBytes []byte, rerr error) {
 	idStart := requesterSize
 	expirationEnd := idStart + idSize + paymentSize + callbackAddrSize + callbackFuncSize + expirationSize
 
@@ -160,7 +160,7 @@ func logDataParse(data []byte) (cborData []byte, dataPrefixBytes []byte, rerr er
 	return cborData, dataPrefixBytes, nil
 }
 
-func bytesToHex(data []byte) string {
+func BytesToHex(data []byte) string {
 	return utils.AddHexPrefix(hex.EncodeToString(data))
 }
 

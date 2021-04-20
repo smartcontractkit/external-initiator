@@ -213,7 +213,7 @@ func createIoTeXLogFilter(jobid string, addresses []string) *iotexapi.LogsFilter
 func iotexLogEventToSubscriberEvents(logs []*iotextypes.Log) ([]subscriber.Event, error) {
 	events := make([]subscriber.Event, 0, len(logs))
 	for _, log := range logs {
-		cborData, dataPrefixBytes, err := evm.logDataParse(log.GetData())
+		cborData, dataPrefixBytes, err := evm.LogDataParse(log.GetData())
 		if err != nil {
 			return nil, err
 		}
@@ -223,7 +223,7 @@ func iotexLogEventToSubscriberEvents(logs []*iotextypes.Log) ([]subscriber.Event
 		}
 		js, err = js.MultiAdd(models.KV{
 			"address":          log.GetContractAddress(),
-			"dataPrefix":       evm.bytesToHex(dataPrefixBytes),
+			"dataPrefix":       evm.BytesToHex(dataPrefixBytes),
 			"functionSelector": models.OracleFulfillmentFunctionID20190128withoutCast,
 		})
 		if err != nil {

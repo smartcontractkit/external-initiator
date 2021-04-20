@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/smartcontractkit/external-initiator/blockchain/evm"
-	"io/ioutil"
 	"math/big"
 	"net/url"
 	"strings"
@@ -14,7 +13,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -201,11 +199,12 @@ func (keeper keeperSubscriber) Test() error {
 }
 
 func (keeper keeperSubscriber) TestRPC() error {
-	resp, err := evm.sendEthNodePost(keeper.Endpoint, keeper.GetTestJson())
+	/*resp, err := evm.sendEthNodePost(keeper.Endpoint, keeper.GetTestJson())
 	if err != nil {
 		return err
 	}
-	return resp.Body.Close()
+	return resp.Body.Close()*/
+	return nil
 }
 
 func (keeper keeperSubscriber) TestWS() error {
@@ -281,7 +280,7 @@ func (keeper keeperSubscription) getCallPayload() ([]byte, error) {
 
 	call := ethCallMessage{
 		To:   keeper.address.Hex(),
-		Data: evm.bytesToHex(data),
+		Data: evm.BytesToHex(data),
 	}
 
 	var params []interface{}
@@ -322,7 +321,7 @@ func (keeper keeperSubscription) queryUntilDone(interval time.Duration) {
 }
 
 func (keeper keeperSubscription) getBlockHeightPost() (*big.Int, error) {
-	payload, err := evm.GetBlockNumberPayload()
+	/*payload, err := evm.GetBlockNumberPayload()
 	if err != nil {
 		return nil, err
 	}
@@ -350,7 +349,8 @@ func (keeper keeperSubscription) getBlockHeightPost() (*big.Int, error) {
 		return nil, err
 	}
 
-	return hexutil.DecodeBig(blockNum)
+	return hexutil.DecodeBig(blockNum)*/
+	return nil, nil
 }
 
 func (keeper *keeperSubscription) updateLastInitiatedRun() {
@@ -359,7 +359,7 @@ func (keeper *keeperSubscription) updateLastInitiatedRun() {
 }
 
 func (keeper *keeperSubscription) query() {
-	blockHeight, err := keeper.getBlockHeightPost()
+	/*blockHeight, err := keeper.getBlockHeightPost()
 	if err != nil {
 		logger.Error("Unable to get the current block height:", err)
 		return
@@ -415,7 +415,7 @@ func (keeper *keeperSubscription) query() {
 
 	for _, event := range events {
 		keeper.events <- event
-	}
+	}*/
 }
 
 func (keeper keeperSubscription) isCooldownDone() bool {
@@ -608,8 +608,8 @@ func (keeper keeperSubscription) parseResponse(response common2.JsonrpcMessage) 
 	event := map[string]interface{}{
 		"format":           "preformatted",
 		"address":          keeper.address.String(),
-		"functionSelector": evm.bytesToHex(executeData[:4]),
-		"result":           evm.bytesToHex(executeData[4:]),
+		"functionSelector": evm.BytesToHex(executeData[:4]),
+		"result":           evm.BytesToHex(executeData[4:]),
 		"fromAddresses":    []string{keeper.from.Hex()},
 	}
 

@@ -4,11 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/smartcontractkit/external-initiator/blockchain/ethereum"
-	"github.com/smartcontractkit/external-initiator/blockchain/evm"
-	"math/big"
-	"strings"
-
 	"github.com/Conflux-Chain/go-conflux-sdk/types/cfxaddress"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -16,8 +11,10 @@ import (
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/chainlink/core/store/models"
 	common2 "github.com/smartcontractkit/external-initiator/blockchain/common"
+	"github.com/smartcontractkit/external-initiator/blockchain/evm"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
+	"math/big"
 )
 
 const CFX = "conflux"
@@ -213,7 +210,7 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 
 	switch e.p {
 	case subscriber.WS:
-		var res ethereum.ethSubscribeResponse
+		/*var res ethereum.ethSubscribeResponse
 		if err := json.Unmarshal(msg.Params, &res); err != nil {
 			logger.Error("unmarshal:", err)
 			return nil, false
@@ -248,7 +245,7 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 		if err != nil {
 			logger.Error("marshal:", err)
 			return nil, false
-		}
+		}*/
 
 		// events = append(events, event)
 
@@ -267,7 +264,7 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 				return nil, false
 			}
 
-			request, err := evm.logEventToOracleRequest(evt_eth)
+			request, err := evm.LogEventToOracleRequest(evt_eth)
 			if err != nil {
 				logger.Error("failed to get oracle request:", err)
 				return nil, false

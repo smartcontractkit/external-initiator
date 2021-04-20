@@ -2,15 +2,11 @@ package blockchain
 
 import (
 	"encoding/json"
-	"github.com/smartcontractkit/external-initiator/blockchain/ethereum"
-	"github.com/smartcontractkit/external-initiator/blockchain/evm"
-	"math/big"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/smartcontractkit/chainlink/core/logger"
-	"github.com/smartcontractkit/chainlink/core/store/models"
 	common2 "github.com/smartcontractkit/external-initiator/blockchain/common"
+	"github.com/smartcontractkit/external-initiator/blockchain/evm"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 )
@@ -20,7 +16,7 @@ const HMY = "harmony"
 // The hmyManager implements the subscriber.JsonManager interface and allows
 // for interacting with HMY nodes over RPC or WS.
 type hmyManager struct {
-	fq           *evm.filterQuery
+	fq           *evm.FilterQuery
 	p            subscriber.Type
 	endpointName string
 	jobid        string
@@ -30,7 +26,7 @@ type hmyManager struct {
 // connection type and store.EthSubscription config.
 func createHmyManager(p subscriber.Type, config store.Subscription) hmyManager {
 	return hmyManager{
-		fq:           evm.createEvmFilterQuery(config.Job, config.Ethereum.Addresses),
+		fq:           evm.CreateEvmFilterQuery(config.Job, config.Ethereum.Addresses),
 		p:            p,
 		endpointName: config.EndpointName,
 		jobid:        config.Job,
@@ -46,7 +42,7 @@ func createHmyManager(p subscriber.Type, config store.Subscription) hmyManager {
 // If hmyManager is using RPC:
 // Sends a "hmy_getLogs" request.
 func (h hmyManager) GetTriggerJson() []byte {
-	if h.p == subscriber.RPC && h.fq.FromBlock == "" {
+	/*if h.p == subscriber.RPC && h.fq.FromBlock == "" {
 		h.fq.FromBlock = "latest"
 	}
 
@@ -82,7 +78,8 @@ func (h hmyManager) GetTriggerJson() []byte {
 		return nil
 	}
 
-	return bytes
+	return bytes*/
+	return nil
 }
 
 // GetTestJson generates a JSON payload to test
@@ -159,7 +156,7 @@ func (h hmyManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 
 	switch h.p {
 	case subscriber.WS:
-		var res ethereum.ethSubscribeResponse
+		/*var res ethereum.ethSubscribeResponse
 		if err := json.Unmarshal(msg.Params, &res); err != nil {
 			logger.Error("unmarshal:", err)
 			return nil, false
@@ -185,12 +182,12 @@ func (h hmyManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 		if err != nil {
 			logger.Error("marshal:", err)
 			return nil, false
-		}
+		}*/
 
 		// events = append(events, event)
 
 	case subscriber.RPC:
-		var rawEvents []models.Log
+		/*var rawEvents []models.Log
 		if err := json.Unmarshal(msg.Result, &rawEvents); err != nil {
 			logger.Error("unmarshal:", err)
 			return nil, false
@@ -231,7 +228,7 @@ func (h hmyManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 			if h.fq.FromBlock == "latest" || h.fq.FromBlock == "" || curBlkn.Cmp(fromBlkn) > 0 {
 				h.fq.FromBlock = hexutil.EncodeBig(curBlkn)
 			}
-		}
+		}*/
 
 	default:
 		logger.Errorw(common2.ErrSubscriberType.Error(), "type", h.p)

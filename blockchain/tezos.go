@@ -437,7 +437,7 @@ type xtzInternalOperationParameters struct {
 	Value      json.RawMessage `json:"value"`
 }
 
-func getXtzKeyValues(vals []string) (map[string]string, error) {
+func getXtzKeyValues(vals []string) (map[string]interface{}, error) {
 	if len(vals) < 7 {
 		return nil, errors.New("not enough values provided")
 	}
