@@ -74,7 +74,7 @@ type Params struct {
 	FluxMonitor json.RawMessage `json:"fluxmonitor"`
 
 	// Name FM:
-	FeedId    uint32 `json:"feed_id"`
+	FeedId    string `json:"feed_id"`
 	AccountId string `json:"account_id"`
 }
 

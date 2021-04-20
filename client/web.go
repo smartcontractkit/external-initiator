@@ -138,13 +138,16 @@ type CreateSubscriptionReq struct {
 }
 
 func validateRequest(t *CreateSubscriptionReq, endpointType string) error {
-	validations := append([]int{
-		len(t.JobID),
-	}, blockchain.GetValidations(endpointType, t.Params)...)
+
+	if len(t.JobID) == 0 {
+		return errors.New("missing Job ID")
+	}
+
+	validations := blockchain.GetValidations(endpointType, t.Params)
 
 	for _, v := range validations {
-		if v < 1 {
-			return errors.New("missing required field(s)")
+		if v != "" {
+			return errors.New("missing required field: " + v)
 		}
 	}
 
