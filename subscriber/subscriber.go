@@ -75,9 +75,9 @@ func NewSubscriber(endpoint store.Endpoint) (ISubscriber, error) {
 
 	switch u.Scheme {
 	case "ws", "wss":
-		return NewWebsocketConnection(endpoint.Url)
+		return NewWebsocketConnection(endpoint)
 	case "http", "https":
-		return NewRPCSubscriber(endpoint.Url)
+		return NewRPCSubscriber(endpoint)
 	}
 
 	return nil, errors.New("unexpected URL scheme")

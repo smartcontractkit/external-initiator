@@ -19,10 +19,16 @@ type manager struct {
 }
 
 func createManager(sub store.Subscription) (*manager, error) {
+	conn, err := subscriber.NewSubscriber(sub.Endpoint)
+	if err != nil {
+		return nil, err
+	}
+
 	return &manager{
 		fq:           evm.CreateEvmFilterQuery(sub.Job, sub.Ethereum.Addresses),
 		endpointName: sub.EndpointName,
 		jobid:        sub.Job,
+		subscriber:   conn,
 	}, nil
 }
 

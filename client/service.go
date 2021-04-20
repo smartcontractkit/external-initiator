@@ -20,6 +20,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/smartcontractkit/chainlink/core/logger"
+	"github.com/tidwall/gjson"
 )
 
 var (
@@ -226,9 +227,8 @@ func (srv *Service) subscribe(sub store.Subscription) error {
 
 	var startService func(sub store.Subscription, ch chan subscriber.Event, js *store.JobSpec) (services.Service, error)
 
-	// TODO: Should load entire job spec
 	js, err := srv.store.LoadJobSpec(sub.Job)
-	if err != nil || js == nil {
+	if err != nil || gjson.GetBytes(js.Spec, "fluxmonitor").Raw == "null" {
 		startService = srv.subscribeRunlog
 	} else {
 		startService = srv.subscribeFluxmonitor

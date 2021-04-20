@@ -69,7 +69,16 @@ func ValidateParams(t string, params common.Params) (missing []string) {
 }
 
 func CreateSubscription(sub store.Subscription, params common.Params) store.Subscription {
+	addresses := params.Addresses
+	if len(params.Addresses) == 0 && params.Address != "" {
+		addresses = []string{params.Address}
+	}
+
 	switch sub.Endpoint.Type {
+	case ethereum.Name:
+		sub.Ethereum = store.EthSubscription{
+			Addresses: addresses,
+		}
 	case substrate.Name:
 		sub.Substrate = store.SubstrateSubscription{
 			AccountIds: params.AccountIds,

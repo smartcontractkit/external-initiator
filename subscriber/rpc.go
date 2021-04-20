@@ -4,15 +4,16 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"sync"
 	"time"
 
+	"github.com/smartcontractkit/external-initiator/store"
+
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"go.uber.org/atomic"
 )
-
-const SubscribeTicker = 10 * time.Second
 
 // RpcSubscriber holds the configuration for
 // an RPC subscription.
@@ -28,9 +29,10 @@ type RpcSubscriber struct {
 	chClose chan struct{}
 }
 
-func NewRPCSubscriber(endpoint string) (*RpcSubscriber, error) {
+func NewRPCSubscriber(endpoint store.Endpoint) (*RpcSubscriber, error) {
 	rpc := &RpcSubscriber{
-		Endpoint: endpoint,
+		Endpoint: endpoint.Url,
+		Interval: time.Duration(endpoint.RefreshInt) * time.Second,
 		chClose:  make(chan struct{}),
 	}
 
@@ -62,7 +64,7 @@ func (rpc *RpcSubscriber) Subscribe(ctx context.Context, method, _ string, param
 		// error, we can't assume that the reader is already running.
 		ch <- res
 
-		ticker := time.NewTicker(SubscribeTicker)
+		ticker := time.NewTicker(rpc.Interval)
 		defer ticker.Stop()
 
 		for {
@@ -103,6 +105,11 @@ func (rpc *RpcSubscriber) Request(ctx context.Context, method string, params jso
 	}
 	defer logger.ErrorIfCalling(resp.Body.Close)
 
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
 	var msg JsonrpcMessage
-	return msg.Result, json.Unmarshal(payload, &msg)
+	return msg.Result, json.Unmarshal(respBody, &msg)
 }

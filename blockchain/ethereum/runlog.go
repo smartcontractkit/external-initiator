@@ -59,7 +59,18 @@ func (rm runlogManager) getEventsRPC(ctx context.Context, ch chan<- RunlogReques
 		return nil
 	}
 
+	requests, err := rm.getRecentEventsRPC(ctx, startingBlockNum)
+	if err != nil {
+		return err
+	}
+
 	go func() {
+		// We expect ch to be blocked until the job has been created,
+		// so we wait with writing until we're in a new goroutine
+		for _, request := range requests {
+			ch <- request
+		}
+
 		for {
 			select {
 			case block := <-newBlocks:
@@ -70,7 +81,7 @@ func (rm runlogManager) getEventsRPC(ctx context.Context, ch chan<- RunlogReques
 				}
 				// If the request was successful, update the last
 				// block number we should query from
-				startingBlockNum = block
+				startingBlockNum = block + 1
 				for _, request := range requests {
 					ch <- request
 				}
@@ -90,7 +101,7 @@ func (rm runlogManager) getRecentEventsRPC(ctx context.Context, fromBlock uint64
 		return nil, err
 	}
 
-	params, err := json.Marshal([]interface{}{"logs", fq})
+	params, err := json.Marshal([]interface{}{fq})
 	if err != nil {
 		return nil, err
 	}
@@ -127,6 +138,19 @@ func parseEthLogsResponse(result json.RawMessage) ([]RunlogRequest, error) {
 	}
 
 	return requests, nil
+}
+
+func parseEthLogResponse(result json.RawMessage) (RunlogRequest, error) {
+	var event models.Log
+	if err := json.Unmarshal(result, &event); err != nil {
+		return nil, err
+	}
+
+	if event.Removed {
+		return nil, errors.New("event was removed")
+	}
+
+	return evm.LogEventToOracleRequest(event)
 }
 
 func (rm runlogManager) subscribeNewBlocks(ctx context.Context, ch chan<- uint64) error {
@@ -194,16 +218,15 @@ func (rm runlogManager) getEventsWS(ctx context.Context, ch chan<- RunlogRequest
 
 	filter, err := rm.fq.ToMapInterface()
 	if err != nil {
-		return nil
+		return err
 	}
 
-	filterBytes, err := json.Marshal(filter)
+	params, err := json.Marshal([]interface{}{"logs", filter})
 	if err != nil {
-		return nil
+		return err
 	}
 
 	responses := make(chan json.RawMessage)
-	params := json.RawMessage(`["logs",` + string(filterBytes) + `]`)
 	err = rm.subscriber.Subscribe(ctx, "eth_subscribe", "eth_unsubscribe", params, responses)
 	if err != nil {
 		return err
@@ -213,14 +236,12 @@ func (rm runlogManager) getEventsWS(ctx context.Context, ch chan<- RunlogRequest
 		for {
 			select {
 			case resp := <-responses:
-				requests, err := parseEthLogsResponse(resp)
+				request, err := parseEthLogResponse(resp)
 				if err != nil {
 					logger.Error(err)
 					continue
 				}
-				for _, request := range requests {
-					ch <- request
-				}
+				ch <- request
 			case <-ctx.Done():
 				return
 			}

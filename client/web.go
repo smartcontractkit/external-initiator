@@ -195,9 +195,16 @@ func (srv *HttpService) CreateSubscription(c *gin.Context) {
 		return
 	}
 
+	spec, err := json.Marshal(req.Params)
+	if err != nil {
+		logger.Error(err)
+		c.JSON(http.StatusInternalServerError, nil)
+		return
+	}
+
 	js := &store.JobSpec{
 		Job:  req.JobID,
-		Spec: req.Params.FluxMonitor,
+		Spec: spec,
 	}
 
 	if err := srv.Store.SaveJobSpec(js); err != nil {

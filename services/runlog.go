@@ -30,6 +30,7 @@ func NewRunlog(job string, triggerJobRun chan subscriber.Event, blockchainManage
 		ctxCancel:    cancel,
 		chJobTrigger: triggerJobRun,
 		logger:       logger.Default.With("job", job),
+		chClose:      make(chan struct{}),
 	}
 	run.logger.Infof("New Runlog job")
 
