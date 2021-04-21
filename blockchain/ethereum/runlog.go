@@ -40,9 +40,9 @@ func (rm runlogManager) SubscribeEvents(ctx context.Context, ch chan<- RunlogReq
 		return rm.getEventsRPC(ctx, ch)
 	case subscriber.WS:
 		return rm.getEventsWS(ctx, ch)
+	default:
+		return fmt.Errorf("got unexpected subscriber type: %d", rm.subscriber.Type())
 	}
-
-	return errors.New("got unexpected subscriber type")
 }
 
 func (rm runlogManager) getEventsRPC(ctx context.Context, ch chan<- RunlogRequest) error {
