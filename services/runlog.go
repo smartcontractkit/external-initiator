@@ -34,13 +34,6 @@ func NewRunlog(job string, triggerJobRun chan subscriber.Event, blockchainManage
 	}
 	run.logger.Infof("New Runlog job")
 
-	/*backfilledRequests, err := run.blockchain.Backfill(ctx)
-	if err != nil {
-		run.Stop()
-		return nil, err
-	}
-	go run.handleRequest(backfilledRequests...)*/
-
 	runlogEvents := make(chan common.RunlogRequest)
 	err := run.blockchain.SubscribeEvents(ctx, runlogEvents)
 	if err != nil {

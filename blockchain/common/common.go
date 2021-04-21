@@ -15,16 +15,6 @@ var (
 	ErrSubscriberType = errors.New("unknown subscriber type")
 )
 
-const (
-	FMRequestState    = "fm_requestState"
-	FMSubscribeEvents = "fm_subscribeEvents"
-	FMJobRun          = "fm_jobRun"
-
-	RunlogBackfill  = "runlog_backfill"
-	RunlogSubscribe = "runlog_subscribe"
-	RunlogJobRun    = "runlog_jobRun"
-)
-
 type FMEventNewRound struct {
 	RoundID         uint32
 	OracleInitiated bool

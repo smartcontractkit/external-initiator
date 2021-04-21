@@ -225,8 +225,7 @@ func (srv *Service) subscribe(sub store.Subscription) error {
 		return errors.New("already subscribed to this jobid")
 	}
 
-	var startService func(sub store.Subscription, ch chan subscriber.Event, js *store.JobSpec) (services.Service, error)
-
+	var startService services.Starter
 	js, err := srv.store.LoadJobSpec(sub.Job)
 	if err != nil || gjson.GetBytes(js.Spec, "fluxmonitor").Raw == "null" {
 		startService = srv.subscribeRunlog
