@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	. "github.com/smartcontractkit/external-initiator/blockchain/common"
+	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"github.com/smartcontractkit/external-initiator/blockchain/evm"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
@@ -34,7 +34,7 @@ func CreateRunlogManager(sub store.Subscription) (*runlogManager, error) {
 	}, nil
 }
 
-func (rm runlogManager) SubscribeEvents(ctx context.Context, ch chan<- RunlogRequest) error {
+func (rm runlogManager) SubscribeEvents(ctx context.Context, ch chan<- common.RunlogRequest) error {
 	switch rm.subscriber.Type() {
 	case subscriber.RPC:
 		return rm.getEventsRPC(ctx, ch)
@@ -45,7 +45,7 @@ func (rm runlogManager) SubscribeEvents(ctx context.Context, ch chan<- RunlogReq
 	}
 }
 
-func (rm runlogManager) getEventsRPC(ctx context.Context, ch chan<- RunlogRequest) error {
+func (rm runlogManager) getEventsRPC(ctx context.Context, ch chan<- common.RunlogRequest) error {
 	newBlocks := make(chan uint64)
 	err := rm.subscribeNewBlocks(ctx, newBlocks)
 	if err != nil {
@@ -94,7 +94,7 @@ func (rm runlogManager) getEventsRPC(ctx context.Context, ch chan<- RunlogReques
 	return nil
 }
 
-func (rm runlogManager) getRecentEventsRPC(ctx context.Context, fromBlock uint64) ([]RunlogRequest, error) {
+func (rm runlogManager) getRecentEventsRPC(ctx context.Context, fromBlock uint64) ([]common.RunlogRequest, error) {
 	method := "eth_getLogs"
 	fq, err := rm.getFilterQuery(fmt.Sprintf("%d", fromBlock))
 	if err != nil {
@@ -117,13 +117,13 @@ func (rm runlogManager) getRecentEventsRPC(ctx context.Context, fromBlock uint64
 	return parseEthLogsResponse(resp)
 }
 
-func parseEthLogsResponse(result json.RawMessage) ([]RunlogRequest, error) {
+func parseEthLogsResponse(result json.RawMessage) ([]common.RunlogRequest, error) {
 	var events []models.Log
 	if err := json.Unmarshal(result, &events); err != nil {
 		return nil, err
 	}
 
-	var requests []RunlogRequest
+	var requests []common.RunlogRequest
 	for _, evt := range events {
 		if evt.Removed {
 			continue
@@ -140,7 +140,7 @@ func parseEthLogsResponse(result json.RawMessage) ([]RunlogRequest, error) {
 	return requests, nil
 }
 
-func parseEthLogResponse(result json.RawMessage) (RunlogRequest, error) {
+func parseEthLogResponse(result json.RawMessage) (common.RunlogRequest, error) {
 	var event models.Log
 	if err := json.Unmarshal(result, &event); err != nil {
 		return nil, err
@@ -211,7 +211,7 @@ func (rm runlogManager) getFilterQuery(fromBlock string) (interface{}, error) {
 	return fq.ToMapInterface()
 }
 
-func (rm runlogManager) getEventsWS(ctx context.Context, ch chan<- RunlogRequest) error {
+func (rm runlogManager) getEventsWS(ctx context.Context, ch chan<- common.RunlogRequest) error {
 	if rm.fq.FromBlock == "" {
 		rm.fq.FromBlock = "latest"
 	}
@@ -251,7 +251,7 @@ func (rm runlogManager) getEventsWS(ctx context.Context, ch chan<- RunlogRequest
 	return nil
 }
 
-func (rm runlogManager) CreateJobRun(request RunlogRequest) map[string]interface{} {
+func (rm runlogManager) CreateJobRun(request common.RunlogRequest) map[string]interface{} {
 	// This implementation does not need to make any changes
 	// to the request payload.
 	return request

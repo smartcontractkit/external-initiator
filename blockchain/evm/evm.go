@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"math/big"
 
-	. "github.com/smartcontractkit/external-initiator/blockchain/common"
+	"github.com/smartcontractkit/external-initiator/blockchain/common"
 
-	"github.com/ethereum/go-ethereum/common"
+	eth "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/chainlink/core/utils"
@@ -29,14 +29,14 @@ const (
 )
 
 func CreateEvmFilterQuery(jobid string, strAddresses []string) *FilterQuery {
-	var addresses []common.Address
+	var addresses []eth.Address
 	for _, a := range strAddresses {
-		addresses = append(addresses, common.HexToAddress(a))
+		addresses = append(addresses, eth.HexToAddress(a))
 	}
 
 	// Hard-set the topics to match the OracleRequest()
 	// event emitted by the oracle contract provided.
-	topics := [][]common.Hash{{
+	topics := [][]eth.Hash{{
 		models.RunLogTopic20190207withoutIndexes,
 	}, {
 		StringToBytes32(jobid),
@@ -49,10 +49,10 @@ func CreateEvmFilterQuery(jobid string, strAddresses []string) *FilterQuery {
 }
 
 type FilterQuery struct {
-	BlockHash *common.Hash     // used by eth_getLogs, return logs only from block with this hash
-	FromBlock string           // beginning of the queried range, nil means genesis block
-	ToBlock   string           // end of the range, nil means latest block
-	Addresses []common.Address // restricts matches to events created by specific contracts
+	BlockHash *eth.Hash     // used by eth_getLogs, return logs only from block with this hash
+	FromBlock string        // beginning of the queried range, nil means genesis block
+	ToBlock   string        // end of the range, nil means latest block
+	Addresses []eth.Address // restricts matches to events created by specific contracts
 
 	// The Topic list restricts matches to particular event topics. Each event has a list
 	// of topics. Topics matches a prefix of that list. An empty element slice matches any
@@ -65,7 +65,7 @@ type FilterQuery struct {
 	// {{}, {B}}          matches any topic in first position AND B in second position
 	// {{A}, {B}}         matches topic A in first position AND B in second position
 	// {{A, B}, {C, D}}   matches topic (A OR B) in first position AND (C OR D) in second position
-	Topics [][]common.Hash
+	Topics [][]eth.Hash
 }
 
 func (q FilterQuery) ToMapInterface() (interface{}, error) {
@@ -93,8 +93,8 @@ func (q FilterQuery) ToMapInterface() (interface{}, error) {
 	return arg, nil
 }
 
-func StringToBytes32(str string) common.Hash {
-	value := common.RightPadBytes([]byte(str), utils.EVMWordByteLen)
+func StringToBytes32(str string) eth.Hash {
+	value := eth.RightPadBytes([]byte(str), utils.EVMWordByteLen)
 	hx := utils.RemoveHexPrefix(hexutil.Encode(value))
 
 	if len(hx) > utils.EVMWordHexLen {
@@ -102,25 +102,25 @@ func StringToBytes32(str string) common.Hash {
 	}
 
 	hxStr := utils.AddHexPrefix(hx)
-	return common.HexToHash(hxStr)
+	return eth.HexToHash(hxStr)
 }
 
-func LogEventToOracleRequest(log models.Log) (RunlogRequest, error) {
+func LogEventToOracleRequest(log models.Log) (common.RunlogRequest, error) {
 	cborData, dataPrefixBytes, err := LogDataParse(log.Data)
 	if err != nil {
-		return RunlogRequest{}, err
+		return common.RunlogRequest{}, err
 	}
 	js, err := models.ParseCBOR(cborData)
 	if err != nil {
-		return RunlogRequest{}, fmt.Errorf("error parsing CBOR: %v", err)
+		return common.RunlogRequest{}, fmt.Errorf("error parsing CBOR: %v", err)
 	}
 
 	request, err := js.AsMap()
 	if err != nil {
-		return RunlogRequest{}, err
+		return common.RunlogRequest{}, err
 	}
 
-	return MergeMaps(request, map[string]interface{}{
+	return common.MergeMaps(request, map[string]interface{}{
 		"address":          log.Address.String(),
 		"dataPrefix":       BytesToHex(dataPrefixBytes),
 		"functionSelector": models.OracleFulfillmentFunctionID20190128withoutCast,
@@ -169,7 +169,7 @@ type NewHeadsResponseParams struct {
 	Result       map[string]interface{} `json:"result"`
 }
 
-func ParseBlocknumberFromNewHeads(msg JsonrpcMessage) (*big.Int, error) {
+func ParseBlocknumberFromNewHeads(msg common.JsonrpcMessage) (*big.Int, error) {
 	var params NewHeadsResponseParams
 	err := json.Unmarshal(msg.Params, &params)
 	if err != nil {
@@ -180,13 +180,4 @@ func ParseBlocknumberFromNewHeads(msg JsonrpcMessage) (*big.Int, error) {
 		return nil, errors.New("newHeads result is missing block number")
 	}
 	return hexutil.DecodeBig(fmt.Sprint(number))
-}
-
-func GetBlockNumberPayload() ([]byte, error) {
-	msg := JsonrpcMessage{
-		Version: "2.0",
-		ID:      json.RawMessage(`2`),
-		Method:  "eth_blockNumber",
-	}
-	return json.Marshal(msg)
 }
