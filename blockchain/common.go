@@ -45,17 +45,19 @@ var blockchains = []string{
 	Keeper,
 	BIRITA,
 	Agoric,
+	Algorand,
 }
 
 type Params struct {
-	Endpoint    string   `json:"endpoint"`
-	Addresses   []string `json:"addresses"`
-	Topics      []string `json:"topics"`
-	AccountIds  []string `json:"accountIds"`
-	Address     string   `json:"address"`
-	UpkeepID    string   `json:"upkeepId"`
-	ServiceName string   `json:"serviceName"`
-	From        string   `json:"from"`
+	Endpoint     string   `json:"endpoint"`
+	Addresses    []string `json:"addresses"`
+	Topics       []string `json:"topics"`
+	AccountIds   []string `json:"accountIds"`
+	Address      string   `json:"address"`
+	UpkeepID     string   `json:"upkeepId"`
+	ServiceName  string   `json:"serviceName"`
+	From         string   `json:"from"`
+	AlgoAPIToken string   `json:"algoAPIToken"`
 }
 
 // CreateJsonManager creates a new instance of a JSON blockchain manager with the provided
@@ -95,6 +97,8 @@ func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error)
 		return createKeeperSubscriber(sub)
 	case BIRITA:
 		return createBSNIritaSubscriber(sub)
+	case Algorand:
+		return createAlgoSubscriber(sub)
 	}
 
 	return nil, errors.New("unknown blockchain type for Client subscription")
@@ -103,7 +107,7 @@ func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error)
 func GetConnectionType(endpoint store.Endpoint) (subscriber.Type, error) {
 	switch endpoint.Type {
 	// Add blockchain implementations that encapsulate entire connection here
-	case XTZ, ONT, IOTX, Keeper, BIRITA:
+	case XTZ, ONT, IOTX, Keeper, BIRITA, Algorand:
 		return subscriber.Client, nil
 	default:
 		u, err := url.Parse(endpoint.Url)
@@ -174,8 +178,12 @@ func GetValidations(t string, params Params) []int {
 		return []int{
 			1,
 		}
+	case Algorand:
+		return []int{
+			len(params.Address),
+			len(params.AlgoAPIToken),
+		}
 	}
-
 	return nil
 }
 
@@ -225,6 +233,11 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 		}
 	case Agoric:
 		sub.Agoric = store.AgoricSubscription{}
+	case Algorand:
+		sub.Algorand = store.AlgorandSubscription{
+			Address:      params.Address,
+			AlgoAPIToken: params.AlgoAPIToken,
+		}
 	}
 }
 
