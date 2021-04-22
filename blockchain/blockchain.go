@@ -40,7 +40,7 @@ func ValidBlockchain(name string) bool {
 	return false
 }
 
-func GetValidations(t string, params common.Params) (missing []string) {
+func ValidateParams(t string, params common.Params) (missing []string) {
 	switch t {
 	case substrate.Name:
 		if params.FluxMonitor == nil {

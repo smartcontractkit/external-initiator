@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/smartcontractkit/external-initiator/blockchain"
@@ -143,12 +144,9 @@ func validateRequest(t *CreateSubscriptionReq, endpointType string) error {
 		return errors.New("missing Job ID")
 	}
 
-	validations := blockchain.GetValidations(endpointType, t.Params)
-
-	for _, v := range validations {
-		if v != "" {
-			return errors.New("missing required field: " + v)
-		}
+	missing := blockchain.ValidateParams(endpointType, t.Params)
+	if len(missing) > 1 {
+		return errors.New("missing required fields: " + strings.Join(missing, ", "))
 	}
 
 	if t.Params.FluxMonitor == nil {

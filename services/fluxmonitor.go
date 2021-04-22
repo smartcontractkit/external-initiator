@@ -101,7 +101,7 @@ func ParseFMSpec(jsonSpec json.RawMessage, runtimeConfig store.RuntimeConfig) (f
 	}
 
 	if len(fmSpecErrors) > 0 {
-		return fmConfig, fmt.Errorf(strings.Join(fmSpecErrors, ", "))
+		return fmConfig, errors.New(strings.Join(fmSpecErrors, ", "))
 	}
 
 	return
