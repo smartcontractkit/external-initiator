@@ -77,10 +77,9 @@ func ParseFMSpec(jsonSpec json.RawMessage, runtimeConfig store.RuntimeConfig) (f
 		fmSpecErrors = append(fmSpecErrors, "'absoluteThreshold' must be non-negative")
 	}
 
-	// this is the case in core
-	// if gjson.GetBytes(jsonSpec, "pollTimer.disabled").Bool() && gjson.GetBytes(jsonSpec, "idleTimer.disabled").Bool() {
-	// 	fmSpecErrors = append(fmSpecErrors, "must enable pollTimer, idleTimer, or both")
-	// }
+	if gjson.GetBytes(jsonSpec, "pollTimer.disabled").Bool() && gjson.GetBytes(jsonSpec, "idleTimer.disabled").Bool() {
+		fmSpecErrors = append(fmSpecErrors, "must enable pollTimer, idleTimer, or both")
+	}
 
 	if !gjson.GetBytes(jsonSpec, "idleTimer.disabled").Bool() {
 		fmConfig.Heartbeat, err = time.ParseDuration(gjson.GetBytes(jsonSpec, "idleTimer.duration").String())
@@ -101,9 +100,8 @@ func ParseFMSpec(jsonSpec json.RawMessage, runtimeConfig store.RuntimeConfig) (f
 		}
 	}
 
-	if len(fmSpecErrors) != 0 || fmSpecErrors != nil {
+	if len(fmSpecErrors) > 0 {
 		return fmConfig, fmt.Errorf(strings.Join(fmSpecErrors, ", "))
-
 	}
 
 	return

@@ -49,7 +49,7 @@ func GetValidations(t string, params common.Params) (missing []string) {
 		if params.AccountId == "" {
 			missing = append(missing, "account_id")
 		}
-		if params.FeedId == "" {
+		if params.FeedId == nil {
 			missing = append(missing, "feed_id")
 		}
 	}
@@ -62,7 +62,7 @@ func CreateSubscription(sub store.Subscription, params common.Params) store.Subs
 	case substrate.Name:
 		sub.Substrate = store.SubstrateSubscription{
 			AccountIds: params.AccountIds,
-			FeedId:     params.FeedId,
+			FeedId:     *params.FeedId,
 			AccountId:  params.AccountId,
 		}
 	}

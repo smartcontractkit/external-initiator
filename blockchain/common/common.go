@@ -74,8 +74,8 @@ type Params struct {
 	FluxMonitor json.RawMessage `json:"fluxmonitor"`
 
 	// Name FM:
-	FeedId    string `json:"feed_id"`
-	AccountId string `json:"account_id"`
+	FeedId    *uint32 `json:"feed_id"`
+	AccountId string  `json:"account_id"`
 }
 
 // JsonrpcMessage declares JSON-RPC message type
