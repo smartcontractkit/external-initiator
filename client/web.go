@@ -7,10 +7,12 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/smartcontractkit/external-initiator/blockchain"
 	"github.com/smartcontractkit/external-initiator/blockchain/common"
+	"github.com/smartcontractkit/external-initiator/services"
 	"github.com/smartcontractkit/external-initiator/store"
 
 	"github.com/Depado/ginprom"
@@ -137,14 +139,24 @@ type CreateSubscriptionReq struct {
 }
 
 func validateRequest(t *CreateSubscriptionReq, endpointType string) error {
-	validations := append([]int{
-		len(t.JobID),
-	}, blockchain.GetValidations(endpointType, t.Params)...)
 
-	for _, v := range validations {
-		if v < 1 {
-			return errors.New("missing required field(s)")
-		}
+	if len(t.JobID) == 0 {
+		return errors.New("missing Job ID")
+	}
+
+	missing := blockchain.ValidateParams(endpointType, t.Params)
+	if len(missing) > 1 {
+		return errors.New("missing required fields: " + strings.Join(missing, ", "))
+	}
+
+	if t.Params.FluxMonitor == nil {
+		return nil
+	}
+
+	// RuntimeConfig is not relevant here, just checking if job spec is valid. Passing empty
+	_, err := services.ParseFMSpec(t.Params.FluxMonitor, store.RuntimeConfig{})
+	if err != nil {
+		return err
 	}
 
 	return nil

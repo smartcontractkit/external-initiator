@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -37,8 +38,8 @@ type FluxMonitorConfig struct {
 	RuntimeConfig store.RuntimeConfig
 }
 
-func ParseFMSpec(jsonSpec json.RawMessage, runtimeConfig store.RuntimeConfig) (FluxMonitorConfig, error) {
-	var fmConfig FluxMonitorConfig
+func ParseFMSpec(jsonSpec json.RawMessage, runtimeConfig store.RuntimeConfig) (fmConfig FluxMonitorConfig, err error) {
+	var fmSpecErrors []string
 
 	res := gjson.GetBytes(jsonSpec, "feeds.#.url")
 	var adapters []url.URL
@@ -54,27 +55,56 @@ func ParseFMSpec(jsonSpec json.RawMessage, runtimeConfig store.RuntimeConfig) (F
 	fmConfig.AbsoluteThreshold = gjson.GetBytes(jsonSpec, "absoluteThreshold").Float()
 	fmConfig.RuntimeConfig = runtimeConfig
 
-	var err error
+	if len(fmConfig.Adapters) == 0 {
+		fmSpecErrors = append(fmSpecErrors, "at least one feed url should be specified. Example format: "+
+			"["+
+			"{ \"url\": \"http://localhost:8080\" },"+
+			"{ \"url\": \"http://localhost:8081\" }"+
+			"]")
+	}
+
+	//This is better not be strictly validated so it is flexible for different kind of requests
+	if fmConfig.RequestData == "" {
+		fmSpecErrors = append(fmSpecErrors, "no requestData")
+	}
+	if fmConfig.Multiply == 0 {
+		fmSpecErrors = append(fmSpecErrors, "no precision")
+	}
+	if fmConfig.Threshold <= 0 {
+		fmSpecErrors = append(fmSpecErrors, "'threshold' must be positive")
+	}
+	if fmConfig.AbsoluteThreshold < 0 {
+		fmSpecErrors = append(fmSpecErrors, "'absoluteThreshold' must be non-negative")
+	}
+
+	if gjson.GetBytes(jsonSpec, "pollTimer.disabled").Bool() && gjson.GetBytes(jsonSpec, "idleTimer.disabled").Bool() {
+		fmSpecErrors = append(fmSpecErrors, "must enable pollTimer, idleTimer, or both")
+	}
+
 	if !gjson.GetBytes(jsonSpec, "idleTimer.disabled").Bool() {
 		fmConfig.Heartbeat, err = time.ParseDuration(gjson.GetBytes(jsonSpec, "idleTimer.duration").String())
 		if err != nil {
-			return FluxMonitorConfig{}, errors.Wrap(err, "unable to parse idleTimer duration")
+			fmSpecErrors = append(fmSpecErrors, "unable to parse idleTimer duration")
 		}
 		if fmConfig.Heartbeat < 1*time.Second {
-			return FluxMonitorConfig{}, errors.New("idleTimer duration is less than 1s")
+			fmSpecErrors = append(fmSpecErrors, "idleTimer duration is less than 1s")
 		}
 	}
 	if !gjson.GetBytes(jsonSpec, "pollTimer.disabled").Bool() {
 		fmConfig.PollInterval, err = time.ParseDuration(gjson.GetBytes(jsonSpec, "pollTimer.period").String())
 		if err != nil {
-			return FluxMonitorConfig{}, errors.Wrap(err, "unable to parse pollTimer period")
+			fmSpecErrors = append(fmSpecErrors, "unable to parse pollTimer period")
 		}
 		if fmConfig.PollInterval < 1*time.Second {
-			return FluxMonitorConfig{}, errors.New("pollTimer period is less than 1s")
+			fmSpecErrors = append(fmSpecErrors, "pollTimer period is less than 1s")
 		}
 	}
 
-	return fmConfig, nil
+	if len(fmSpecErrors) > 0 {
+		return fmConfig, errors.New(strings.Join(fmSpecErrors, ", "))
+	}
+
+	return
 }
 
 type AdapterResponse struct {

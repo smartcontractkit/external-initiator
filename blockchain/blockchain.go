@@ -40,16 +40,21 @@ func ValidBlockchain(name string) bool {
 	return false
 }
 
-func GetValidations(t string, params common.Params) []int {
+func ValidateParams(t string, params common.Params) (missing []string) {
 	switch t {
 	case substrate.Name:
-		return []int{
-			len(params.FluxMonitor),
-			len(params.AccountId),
+		if params.FluxMonitor == nil {
+			return
+		}
+		if params.AccountId == "" {
+			missing = append(missing, "account_id")
+		}
+		if params.FeedId == nil {
+			missing = append(missing, "feed_id")
 		}
 	}
 
-	return nil
+	return
 }
 
 func CreateSubscription(sub store.Subscription, params common.Params) store.Subscription {
@@ -57,7 +62,7 @@ func CreateSubscription(sub store.Subscription, params common.Params) store.Subs
 	case substrate.Name:
 		sub.Substrate = store.SubstrateSubscription{
 			AccountIds: params.AccountIds,
-			FeedId:     params.FeedId,
+			FeedId:     *params.FeedId,
 			AccountId:  params.AccountId,
 		}
 	}
