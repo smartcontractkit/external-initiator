@@ -225,16 +225,15 @@ func (srv *Service) subscribe(sub store.Subscription) error {
 		return errors.New("already subscribed to this jobid")
 	}
 
-	var startService services.Starter
+	var service services.Service
+	var err error
+	triggerJobRun := make(chan subscriber.Event, 100)
 	js, err := srv.store.LoadJobSpec(sub.Job)
 	if err != nil || gjson.GetBytes(js.Spec, "fluxmonitor").Raw == "null" {
-		startService = srv.subscribeRunlog
+		service, err = srv.subscribeRunlog(sub, triggerJobRun, js)
 	} else {
-		startService = srv.subscribeFluxmonitor
+		service, err = srv.subscribeFluxmonitor(sub, triggerJobRun, js)
 	}
-
-	triggerJobRun := make(chan subscriber.Event, 100)
-	service, err := startService(sub, triggerJobRun, js)
 	if err != nil {
 		return err
 	}
