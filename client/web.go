@@ -153,8 +153,13 @@ func validateRequest(t *CreateSubscriptionReq, endpointType string) error {
 		return nil
 	}
 
+	spec, err := json.Marshal(t.Params)
+	if err != nil {
+		return err
+	}
+
 	// RuntimeConfig is not relevant here, just checking if job spec is valid. Passing empty
-	_, err := services.ParseFMSpec(t.Params.FluxMonitor, store.RuntimeConfig{})
+	_, err = services.ParseFMSpec(spec, store.RuntimeConfig{})
 	if err != nil {
 		return err
 	}

@@ -77,12 +77,12 @@ func ParseFMSpec(jsonSpec json.RawMessage, runtimeConfig store.RuntimeConfig) (f
 		fmSpecErrors = append(fmSpecErrors, "'absoluteThreshold' must be non-negative")
 	}
 
-	if gjson.GetBytes(jsonSpec, "fluxmonitor.pollTimer.disabled").Bool() && gjson.GetBytes(jsonSpec, "idleTimer.disabled").Bool() {
+	if gjson.GetBytes(jsonSpec, "fluxmonitor.pollTimer.disabled").Bool() && gjson.GetBytes(jsonSpec, "fluxmonitor.idleTimer.disabled").Bool() {
 		fmSpecErrors = append(fmSpecErrors, "must enable pollTimer, idleTimer, or both")
 	}
 
 	if !gjson.GetBytes(jsonSpec, "fluxmonitor.idleTimer.disabled").Bool() {
-		fmConfig.Heartbeat, err = time.ParseDuration(gjson.GetBytes(jsonSpec, "idleTimer.duration").String())
+		fmConfig.Heartbeat, err = time.ParseDuration(gjson.GetBytes(jsonSpec, "fluxmonitor.idleTimer.duration").String())
 		if err != nil {
 			fmSpecErrors = append(fmSpecErrors, "unable to parse idleTimer duration")
 		}
