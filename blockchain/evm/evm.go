@@ -68,7 +68,7 @@ type FilterQuery struct {
 	Topics [][]eth.Hash
 }
 
-func (q FilterQuery) ToMapInterface() (interface{}, error) {
+func (q FilterQuery) ToMapInterface() (map[string]interface{}, error) {
 	arg := map[string]interface{}{
 		"address": q.Addresses,
 		"topics":  q.Topics,

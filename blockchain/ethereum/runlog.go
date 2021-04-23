@@ -199,7 +199,7 @@ func parseBlockNumberResult(data []byte) (uint64, error) {
 	return strconv.ParseUint(str, 0, 64)
 }
 
-func (rm runlogManager) getFilterQuery(fromBlock string) (interface{}, error) {
+func (rm runlogManager) getFilterQuery(fromBlock string) (map[string]interface{}, error) {
 	fq := *rm.fq
 
 	if fromBlock != "" {
