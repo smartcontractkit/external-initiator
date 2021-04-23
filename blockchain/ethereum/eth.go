@@ -8,6 +8,12 @@ import (
 
 const Name = "ethereum"
 
+type EthParams struct {
+	Address   string   `json:"address"`
+	Addresses []string `json:"addresses"`
+	Topics    []string `json:"topics"`
+}
+
 // The manager implements the subscriber.JsonManager interface and allows
 // for interacting with ETH nodes over RPC or WS.
 type manager struct {

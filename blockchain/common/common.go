@@ -58,22 +58,6 @@ type RunlogManager interface {
 	CreateJobRun(request RunlogRequest) map[string]interface{}
 }
 
-type Params struct {
-	Endpoint    string          `json:"endpoint"`
-	Addresses   []string        `json:"addresses"`
-	Topics      []string        `json:"topics"`
-	AccountIds  []string        `json:"accountIds"`
-	Address     string          `json:"address"`
-	UpkeepID    string          `json:"upkeepId"`
-	ServiceName string          `json:"serviceName"`
-	From        string          `json:"from"`
-	FluxMonitor json.RawMessage `json:"fluxmonitor"`
-
-	// Name FM:
-	FeedId    *uint32 `json:"feed_id"`
-	AccountId string  `json:"account_id"`
-}
-
 // JsonrpcMessage declares JSON-RPC message type
 type JsonrpcMessage struct {
 	Version string          `json:"jsonrpc"`

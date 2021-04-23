@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strconv"
 
 	"github.com/smartcontractkit/external-initiator/blockchain/common"
 
@@ -180,4 +181,14 @@ func ParseBlocknumberFromNewHeads(msg common.JsonrpcMessage) (*big.Int, error) {
 		return nil, errors.New("newHeads result is missing block number")
 	}
 	return hexutil.DecodeBig(fmt.Sprint(number))
+}
+
+func ParseBlockNumberResult(data []byte) (uint64, error) {
+	var str string
+	err := json.Unmarshal(data, &str)
+	if err != nil {
+		return 0, err
+	}
+
+	return strconv.ParseUint(str, 0, 64)
 }

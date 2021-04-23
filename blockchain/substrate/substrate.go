@@ -25,6 +25,12 @@ var (
 	ErrorResultIsNull = errors.New("result is null")
 )
 
+type Params struct {
+	FeedId     *uint32  `json:"feed_id"`
+	AccountId  string   `json:"account_id"`
+	AccountIds []string `json:"accountIds"`
+}
+
 type manager struct {
 	endpointName string
 

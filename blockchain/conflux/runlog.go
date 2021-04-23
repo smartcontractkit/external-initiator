@@ -1,10 +1,11 @@
-package ethereum
+package conflux
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/smartcontractkit/external-initiator/blockchain/common"
@@ -13,10 +14,13 @@ import (
 	"github.com/smartcontractkit/external-initiator/subscriber"
 
 	"github.com/smartcontractkit/chainlink/core/logger"
-	"github.com/smartcontractkit/chainlink/core/store/models"
 )
 
 const RpcRequestTimeout = 5 * time.Second
+
+var (
+	ErrRevertLogIgnored = errors.New("revertTo log ignored")
+)
 
 type runlogManager struct {
 	*manager
@@ -94,7 +98,7 @@ func (rm runlogManager) getEventsRPC(ctx context.Context, ch chan<- common.Runlo
 }
 
 func (rm runlogManager) getRecentEventsRPC(ctx context.Context, fromBlock uint64) ([]common.RunlogRequest, error) {
-	method := "eth_getLogs"
+	method := "cfx_getLogs"
 	fq, err := rm.getFilterQuery(fmt.Sprintf("%d", fromBlock))
 	if err != nil {
 		return nil, err
@@ -117,13 +121,18 @@ func (rm runlogManager) getRecentEventsRPC(ctx context.Context, fromBlock uint64
 }
 
 func parseEthLogsResponse(result json.RawMessage) ([]common.RunlogRequest, error) {
-	var events []models.Log
+	var events []cfxLogResponse
 	if err := json.Unmarshal(result, &events); err != nil {
 		return nil, err
 	}
 
 	var requests []common.RunlogRequest
-	for _, evt := range events {
+	for _, cfxEvt := range events {
+		evt, err := cfx2EthResponse(cfxEvt)
+		if err != nil {
+			return nil, err
+		}
+
 		if evt.Removed {
 			continue
 		}
@@ -140,8 +149,18 @@ func parseEthLogsResponse(result json.RawMessage) ([]common.RunlogRequest, error
 }
 
 func parseEthLogResponse(result json.RawMessage) (common.RunlogRequest, error) {
-	var event models.Log
-	if err := json.Unmarshal(result, &event); err != nil {
+	// filter out revert logs (https://developer.conflux-chain.org/docs/conflux-doc/docs/pubsub)
+	if strings.Contains(string(result), "revertTo") {
+		return nil, ErrRevertLogIgnored
+	}
+
+	var cfxEvent cfxLogResponse
+	if err := json.Unmarshal(result, &cfxEvent); err != nil {
+		return nil, err
+	}
+
+	event, err := cfx2EthResponse(cfxEvent)
+	if err != nil {
 		return nil, err
 	}
 
@@ -154,7 +173,7 @@ func parseEthLogResponse(result json.RawMessage) (common.RunlogRequest, error) {
 
 func (rm runlogManager) subscribeNewBlocks(ctx context.Context, ch chan<- uint64) error {
 	listener := make(chan json.RawMessage)
-	err := rm.subscriber.Subscribe(ctx, "eth_blockNumber", "", nil, listener)
+	err := rm.subscriber.Subscribe(ctx, "cfx_epochNumber", "", nil, listener)
 	if err != nil {
 		return err
 	}
@@ -192,20 +211,20 @@ func (rm runlogManager) getFilterQuery(fromBlock string) (map[string]interface{}
 	fq := *rm.fq
 
 	if fromBlock != "" {
-		fq.FromBlock = fromBlock
+		fq.FromEpoch = fromBlock
 	} else {
-		fq.FromBlock = "latest"
+		fq.FromEpoch = "latest"
 	}
 
-	return fq.ToMapInterface()
+	return fq.toMapInterface()
 }
 
 func (rm runlogManager) getEventsWS(ctx context.Context, ch chan<- common.RunlogRequest) error {
-	if rm.fq.FromBlock == "" {
-		rm.fq.FromBlock = "latest"
+	if rm.fq.FromEpoch == "" {
+		rm.fq.FromEpoch = "latest_state"
 	}
 
-	filter, err := rm.fq.ToMapInterface()
+	filter, err := rm.fq.toMapInterface()
 	if err != nil {
 		return err
 	}
@@ -216,7 +235,7 @@ func (rm runlogManager) getEventsWS(ctx context.Context, ch chan<- common.Runlog
 	}
 
 	responses := make(chan json.RawMessage)
-	err = rm.subscriber.Subscribe(ctx, "eth_subscribe", "eth_unsubscribe", params, responses)
+	err = rm.subscriber.Subscribe(ctx, "cfx_subscribe", "cfx_unsubscribe", params, responses)
 	if err != nil {
 		return err
 	}
@@ -226,7 +245,10 @@ func (rm runlogManager) getEventsWS(ctx context.Context, ch chan<- common.Runlog
 			select {
 			case resp := <-responses:
 				request, err := parseEthLogResponse(resp)
-				if err != nil {
+				if err == ErrRevertLogIgnored {
+					logger.Debug(err)
+					continue
+				} else if err != nil {
 					logger.Error(err)
 					continue
 				}

@@ -66,49 +66,6 @@ func TestCreateRunlogManager(t *testing.T) {
 	}
 }
 
-func Test_parseBlockNumberResult(t *testing.T) {
-	type args struct {
-		data []byte
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    uint64
-		wantErr bool
-	}{
-		{
-			"parses a correct response",
-			args{[]byte(`"0x01"`)},
-			1,
-			false,
-		},
-		{
-			"parses even if there's no leading 0",
-			args{[]byte(`"0x1"`)},
-			1,
-			false,
-		},
-		{
-			"fails on invalid payload",
-			args{[]byte(`"abc"`)},
-			0,
-			true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseBlockNumberResult(tt.args.data)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("parseBlockNumberResult() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("parseBlockNumberResult() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func Test_parseEthLogResponse(t *testing.T) {
 	type args struct {
 		result json.RawMessage
