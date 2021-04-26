@@ -289,7 +289,7 @@ func (srv *Service) LoadJobSpec(jobid string) (*store.JobSpec, error) {
 // provided.
 func (srv *Service) SaveSubscription(arg *store.Subscription) error {
 	if err := srv.store.SaveSubscription(arg); err != nil {
-		return err
+		return errors.Wrap(err, "unable to store subscription")
 	}
 
 	return srv.subscribe(*arg)
