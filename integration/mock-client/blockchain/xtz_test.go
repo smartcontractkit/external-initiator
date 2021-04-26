@@ -36,3 +36,16 @@ func TestGetXtzOperationsResponse(t *testing.T) {
 			assert.Greater(t, len(fourth), 0)
 		})
 }
+
+func TestGetXtzContractScriptResponse(t *testing.T) {
+	t.Run("creates an appropriately structured mock Tezos block",
+		func(t *testing.T) {
+			resp, err := getXtzResponse("contractScript")
+			assert.NoError(t, err)
+			script, ok := resp.(map[string]interface{})
+			assert.True(t, ok)
+			storage, ok := script["storage"].(map[string]interface{})
+			assert.True(t, ok)
+			assert.Equal(t, storage["prim"], "Pair")
+		})
+}

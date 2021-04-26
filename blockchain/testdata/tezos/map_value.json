@@ -1,0 +1,44 @@
+[
+    {
+        "prim": "Elt",
+        "args": [
+            {
+                "string": "from"
+            },
+            {
+                "prim": "Right",
+                "args": [
+                    {
+                        "prim": "Right",
+                        "args": [
+                            {
+                                "string": "EUR"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "prim": "Elt",
+        "args": [
+            {
+                "string": "to"
+            },
+            {
+                "prim": "Right",
+                "args": [
+                    {
+                        "prim": "Right",
+                        "args": [
+                            {
+                                "string": "XTZ"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+]
