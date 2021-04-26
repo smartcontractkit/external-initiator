@@ -178,6 +178,10 @@ func (srv *Service) Run() error {
 
 func closeSubscription(sub *activeSubscription) {
 	sub.onStop.Do(func() {
+		if sub.Service == nil {
+			return
+		}
+
 		sub.Service.Stop()
 	})
 }

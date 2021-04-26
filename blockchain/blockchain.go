@@ -28,7 +28,7 @@ type Params struct {
 	UpkeepID    string          `json:"upkeepId"`
 	ServiceName string          `json:"serviceName"`
 	From        string          `json:"from"`
-	FluxMonitor json.RawMessage `json:"fluxmonitor"`
+	FluxMonitor json.RawMessage `json:"fluxmonitor,omitempty"`
 
 	ethereum.EthParams
 	substrate.Params
