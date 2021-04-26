@@ -117,10 +117,10 @@ func (rm runlogManager) getRecentEventsRPC(ctx context.Context, fromBlock uint64
 		return nil, err
 	}
 
-	return parseEthLogsResponse(resp)
+	return parseCfxLogsResponse(resp)
 }
 
-func parseEthLogsResponse(result json.RawMessage) ([]common.RunlogRequest, error) {
+func parseCfxLogsResponse(result json.RawMessage) ([]common.RunlogRequest, error) {
 	var events []cfxLogResponse
 	if err := json.Unmarshal(result, &events); err != nil {
 		return nil, err

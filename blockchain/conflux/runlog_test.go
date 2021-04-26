@@ -48,13 +48,13 @@ func Test_parseEthLogsResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseEthLogsResponse(tt.args.result)
+			got, err := parseCfxLogsResponse(tt.args.result)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("parseEthLogsResponse() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("parseCfxLogsResponse() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("parseEthLogsResponse() got = %v, want %v", got, tt.want)
+				t.Errorf("parseCfxLogsResponse() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
