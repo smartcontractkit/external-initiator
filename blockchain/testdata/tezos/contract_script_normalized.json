@@ -1,0 +1,200 @@
+{
+    "code": [
+        {
+            "prim": "parameter",
+            "args": []
+        },
+        {
+            "prim": "storage",
+            "args": [
+                {
+                    "prim": "pair",
+                    "args": [
+                        {
+                            "prim": "pair",
+                            "args": [
+                                {
+                                    "prim": "pair",
+                                    "args": [
+                                        {
+                                            "prim": "bool",
+                                            "annots": [
+                                                "%active"
+                                            ]
+                                        },
+                                        {
+                                            "prim": "address",
+                                            "annots": [
+                                                "%adminAddress"
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "prim": "int",
+                                    "annots": [
+                                        "%minCancelTimeout"
+                                    ]
+                                },
+                                {
+                                    "prim": "nat",
+                                    "annots": [
+                                        "%minPayment"
+                                    ]
+                                },
+                                {
+                                    "prim": "address",
+                                    "annots": [
+                                        "%tokenAddress"
+                                    ]
+                                }
+                            ],
+                            "annots": [
+                                "%config"
+                            ]
+                        },
+                        {
+                            "prim": "big_map",
+                            "args": [
+                                {
+                                    "prim": "bytes"
+                                },
+                                {
+                                    "prim": "pair",
+                                    "args": [
+                                        {
+                                            "prim": "nat",
+                                            "annots": [
+                                                "%payment"
+                                            ]
+                                        },
+                                        {
+                                            "prim": "pair",
+                                            "args": [
+                                                {
+                                                    "prim": "address",
+                                                    "annots": [
+                                                        "%callbackAddress"
+                                                    ]
+                                                },
+                                                {
+                                                    "prim": "timestamp",
+                                                    "annots": [
+                                                        "%cancelTimeout"
+                                                    ]
+                                                },
+                                                {
+                                                    "prim": "address",
+                                                    "annots": [
+                                                        "%clientAddress"
+                                                    ]
+                                                },
+                                                {
+                                                    "prim": "nat",
+                                                    "annots": [
+                                                        "%id"
+                                                    ]
+                                                },
+                                                {
+                                                    "prim": "string",
+                                                    "annots": [
+                                                        "%jobId"
+                                                    ]
+                                                },
+                                                {
+                                                    "prim": "address",
+                                                    "annots": [
+                                                        "%oracleAddress"
+                                                    ]
+                                                },
+                                                {
+                                                    "prim": "map",
+                                                    "args": [
+                                                        {
+                                                            "prim": "string"
+                                                        },
+                                                        {
+                                                            "prim": "or",
+                                                            "args": [
+                                                                {
+                                                                    "prim": "bytes",
+                                                                    "annots": [
+                                                                        "%bytes"
+                                                                    ]
+                                                                },
+                                                                {
+                                                                    "prim": "or",
+                                                                    "args": [
+                                                                        {
+                                                                            "prim": "int",
+                                                                            "annots": [
+                                                                                "%int"
+                                                                            ]
+                                                                        },
+                                                                        {
+                                                                            "prim": "string",
+                                                                            "annots": [
+                                                                                "%string"
+                                                                            ]
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            ]
+                                                        }
+                                                    ],
+                                                    "annots": [
+                                                        "%parameters"
+                                                    ]
+                                                }
+                                            ],
+                                            "annots": [
+                                                "%request"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ],
+                            "annots": [
+                                "%requests"
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "prim": "code",
+            "args": []
+        }
+    ],
+    "storage": {
+        "prim": "Pair",
+        "args": [
+            [
+                {
+                    "prim": "Pair",
+                    "args": [
+                        {
+                            "prim": "True"
+                        },
+                        {
+                            "bytes": "0000d3789f9f4223c271403bde738fd304691e796ee8"
+                        }
+                    ]
+                },
+                {
+                    "int": "5"
+                },
+                {
+                    "int": "1"
+                },
+                {
+                    "bytes": "019e5225d7e53fce0fe227ced8286460e91f78cd3e00"
+                }
+            ],
+            {
+                "int": "6"
+            }
+        ]
+    }
+}
