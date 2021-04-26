@@ -24,29 +24,11 @@ const (
 	// Client are connections encapsulated in its
 	// entirety by the blockchain implementation.
 	Client
-	// Unknown is just a placeholder for when
-	// it cannot be determined how connections
-	// should be made. When this is returned,
-	// it should be considered an error.
-	Unknown
 )
-
-// SubConfig holds the configuration required to connect
-// to the external endpoint.
-type SubConfig struct {
-	Endpoint string
-}
 
 // Event is the individual event that occurs during
 // the subscription.
 type Event map[string]interface{}
-
-// IParser holds the interface for parsing data
-// from the external endpoint into an array of Events
-// based on the blockchain's parser.
-type IParser interface {
-	ParseResponse(data []byte) ([]Event, bool)
-}
 
 // JsonrpcMessage declares JSON-RPC message type
 type JsonrpcMessage struct {
@@ -81,6 +63,8 @@ type ISubscriber interface {
 	Request(ctx context.Context, method string, params json.RawMessage) (result json.RawMessage, err error)
 	// Stop the subscriber and Stop all connections
 	Stop()
+	// Type is the connection type of the subscriber
+	Type() Type
 }
 
 func NewSubscriber(endpoint store.Endpoint) (ISubscriber, error) {
@@ -91,10 +75,9 @@ func NewSubscriber(endpoint store.Endpoint) (ISubscriber, error) {
 
 	switch u.Scheme {
 	case "ws", "wss":
-		return NewWebsocketConnection(endpoint.Url)
+		return NewWebsocketConnection(endpoint)
 	case "http", "https":
-		// TODO: Implement
-		return nil, nil
+		return NewRPCSubscriber(endpoint)
 	}
 
 	return nil, errors.New("unexpected URL scheme")

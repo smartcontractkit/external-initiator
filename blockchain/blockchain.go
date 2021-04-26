@@ -5,11 +5,13 @@ package blockchain
 import (
 	"fmt"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/smartcontractkit/external-initiator/blockchain/common"
+	"github.com/smartcontractkit/external-initiator/blockchain/ethereum"
 	"github.com/smartcontractkit/external-initiator/blockchain/substrate"
 	"github.com/smartcontractkit/external-initiator/store"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 var (
@@ -19,16 +21,27 @@ var (
 	}, []string{"endpoint", "jobid"})
 )
 
-func CreateManager(sub store.Subscription) (common.Manager, error) {
+func CreateFluxMonitorManager(sub store.Subscription) (common.FluxMonitorManager, error) {
 	switch sub.Endpoint.Type {
 	case substrate.Name:
-		return substrate.CreateSubstrateManager(sub)
+		return substrate.CreateFluxMonitorManager(sub)
+	}
+	return nil, fmt.Errorf("unknown endpoint type: %s", sub.Endpoint.Type)
+}
+
+func CreateRunlogManager(sub store.Subscription) (common.RunlogManager, error) {
+	switch sub.Endpoint.Type {
+	case ethereum.Name:
+		return ethereum.CreateRunlogManager(sub)
+	case substrate.Name:
+		return substrate.CreateRunlogManager(sub)
 	}
 	return nil, fmt.Errorf("unknown endpoint type: %s", sub.Endpoint.Type)
 }
 
 var blockchains = []string{
 	substrate.Name,
+	ethereum.Name,
 }
 
 func ValidBlockchain(name string) bool {
@@ -58,7 +71,16 @@ func ValidateParams(t string, params common.Params) (missing []string) {
 }
 
 func CreateSubscription(sub store.Subscription, params common.Params) store.Subscription {
+	addresses := params.Addresses
+	if len(params.Addresses) == 0 && params.Address != "" {
+		addresses = []string{params.Address}
+	}
+
 	switch sub.Endpoint.Type {
+	case ethereum.Name:
+		sub.Ethereum = store.EthSubscription{
+			Addresses: addresses,
+		}
 	case substrate.Name:
 		sub.Substrate = store.SubstrateSubscription{
 			AccountIds: params.AccountIds,

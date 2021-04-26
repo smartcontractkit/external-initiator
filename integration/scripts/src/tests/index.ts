@@ -1,3 +1,4 @@
+import * as ETH from './eth'
 import * as Substrate from './substrate'
 
 interface TestInterface {
@@ -6,8 +7,8 @@ interface TestInterface {
 }
 
 const integrations: TestInterface[] = [
-  /*ETH,
-  HMY,
+  ETH,
+  /*HMY,
   XTZ,
   ONT,
   BSC,

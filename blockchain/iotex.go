@@ -9,8 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/smartcontractkit/chainlink/core/logger"
-	"github.com/smartcontractkit/chainlink/core/store/models"
+	"github.com/smartcontractkit/external-initiator/blockchain/evm"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 
@@ -19,6 +18,8 @@ import (
 
 	"github.com/facebookgo/clock"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/smartcontractkit/chainlink/core/logger"
+	"github.com/smartcontractkit/chainlink/core/store/models"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
@@ -195,7 +196,7 @@ func (io *iotexSubscription) poll(ctx context.Context) {
 }
 
 func createIoTeXLogFilter(jobid string, addresses []string) *iotexapi.LogsFilter {
-	topic := StringToBytes32(jobid)
+	topic := evm.StringToBytes32(jobid)
 	return &iotexapi.LogsFilter{
 		Address: addresses,
 		Topics: []*iotexapi.Topics{
@@ -212,7 +213,7 @@ func createIoTeXLogFilter(jobid string, addresses []string) *iotexapi.LogsFilter
 func iotexLogEventToSubscriberEvents(logs []*iotextypes.Log) ([]subscriber.Event, error) {
 	events := make([]subscriber.Event, 0, len(logs))
 	for _, log := range logs {
-		cborData, dataPrefixBytes, err := logDataParse(log.GetData())
+		cborData, dataPrefixBytes, err := evm.LogDataParse(log.GetData())
 		if err != nil {
 			return nil, err
 		}
@@ -222,7 +223,7 @@ func iotexLogEventToSubscriberEvents(logs []*iotextypes.Log) ([]subscriber.Event
 		}
 		js, err = js.MultiAdd(models.KV{
 			"address":          log.GetContractAddress(),
-			"dataPrefix":       bytesToHex(dataPrefixBytes),
+			"dataPrefix":       evm.BytesToHex(dataPrefixBytes),
 			"functionSelector": models.OracleFulfillmentFunctionID20190128withoutCast,
 		})
 		if err != nil {

@@ -45,20 +45,20 @@ func Test_hmyLogRequestToResponse(t *testing.T) {
 			"correct hmy_log request",
 			args{
 				JsonrpcMessage{
-					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[["%s"]],"address":["%s"]}]`, hash.String(), address.String())),
+					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[["%s"]],"address":["%s"]}]`, hmyHash.String(), hmyAddress.String())),
 				},
 			},
-			getHmyLogResponse(address.String(), []string{hash.String()}),
+			getHmyLogResponse(hmyAddress.String(), []string{hmyHash.String()}),
 			false,
 		},
 		{
 			"hmy_log request with empty topics",
 			args{
 				JsonrpcMessage{
-					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[null],"address":["%s"]}]`, address.String())),
+					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[null],"address":["%s"]}]`, hmyAddress.String())),
 				},
 			},
-			getHmyLogResponse(address.String(), nil),
+			getHmyLogResponse(hmyAddress.String(), nil),
 			false,
 		},
 		{
@@ -114,7 +114,7 @@ func Test_getHmyAddressesFromMap(t *testing.T) {
 					"address": json.RawMessage(fmt.Sprintf(`["%s"]`, hmyAddress.String())),
 				},
 			},
-			[]common.Address{address},
+			[]common.Address{hmyAddress},
 			false,
 		},
 		{
@@ -124,7 +124,7 @@ func Test_getHmyAddressesFromMap(t *testing.T) {
 					"address": json.RawMessage(fmt.Sprintf(`["%s", "%s", "%s"]`, hmyAddress.String(), hmyAddress.String(), hmyAddress.String())),
 				},
 			},
-			[]common.Address{address, address, address},
+			[]common.Address{hmyAddress, hmyAddress, hmyAddress},
 			false,
 		},
 		{
@@ -291,14 +291,14 @@ func Test_handleHmyGetLogs(t *testing.T) {
 			args{
 				JsonrpcMessage{
 					ID:     []byte(`123`),
-					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[["%s"]],"address":["%s"]}]`, hash.String(), address.String())),
+					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[["%s"]],"address":["%s"]}]`, hmyHash.String(), hmyAddress.String())),
 				},
 			},
 			[]JsonrpcMessage{
 				{
 					Version: "2.0",
 					ID:      []byte(`123`),
-					Result:  hmyInterfaceToJson([]hmyLogResponse{getHmyLogResponse(address.String(), []string{hash.String()})}),
+					Result:  hmyInterfaceToJson([]hmyLogResponse{getHmyLogResponse(hmyAddress.String(), []string{hmyHash.String()})}),
 				},
 			},
 			false,
@@ -308,7 +308,7 @@ func Test_handleHmyGetLogs(t *testing.T) {
 			args{
 				JsonrpcMessage{
 					ID:     []byte(`123`),
-					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[["%s"]],"address":[]}]`, hash.String())),
+					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[["%s"]],"address":[]}]`, hmyHash.String())),
 				},
 			},
 			nil,
@@ -531,7 +531,7 @@ func Test_handleHmyMapStringInterface(t *testing.T) {
 			"fails on no addresses",
 			args{
 				map[string]json.RawMessage{
-					"topics":  json.RawMessage(fmt.Sprintf(`[["%s"]]`, hash.String())),
+					"topics":  json.RawMessage(fmt.Sprintf(`[["%s"]]`, hmyHash.String())),
 					"address": json.RawMessage(`[]`),
 				},
 			},

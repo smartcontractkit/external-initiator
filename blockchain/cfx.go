@@ -5,7 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"strings"
+
+	"github.com/smartcontractkit/external-initiator/blockchain/evm"
+	"github.com/smartcontractkit/external-initiator/store"
+	"github.com/smartcontractkit/external-initiator/subscriber"
 
 	"github.com/Conflux-Chain/go-conflux-sdk/types/cfxaddress"
 	"github.com/ethereum/go-ethereum/common"
@@ -14,8 +17,6 @@ import (
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/chainlink/core/store/models"
 	common2 "github.com/smartcontractkit/external-initiator/blockchain/common"
-	"github.com/smartcontractkit/external-initiator/store"
-	"github.com/smartcontractkit/external-initiator/subscriber"
 )
 
 const CFX = "conflux"
@@ -43,7 +44,7 @@ func createCfxManager(p subscriber.Type, config store.Subscription) cfxManager {
 	topics := [][]common.Hash{{
 		models.RunLogTopic20190207withoutIndexes,
 	}, {
-		StringToBytes32(config.Job),
+		evm.StringToBytes32(config.Job),
 	}}
 
 	return cfxManager{
@@ -211,7 +212,7 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 
 	switch e.p {
 	case subscriber.WS:
-		var res ethSubscribeResponse
+		/*var res ethereum.ethSubscribeResponse
 		if err := json.Unmarshal(msg.Params, &res); err != nil {
 			logger.Error("unmarshal:", err)
 			return nil, false
@@ -236,7 +237,7 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 			return nil, false
 		}
 
-		request, err := logEventToOracleRequest(evt_eth)
+		request, err := evm.logEventToOracleRequest(evt_eth)
 		if err != nil {
 			logger.Error("failed to get oracle request:", err)
 			return nil, false
@@ -246,7 +247,7 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 		if err != nil {
 			logger.Error("marshal:", err)
 			return nil, false
-		}
+		}*/
 
 		// events = append(events, event)
 
@@ -265,7 +266,7 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 				return nil, false
 			}
 
-			request, err := logEventToOracleRequest(evt_eth)
+			request, err := evm.LogEventToOracleRequest(evt_eth)
 			if err != nil {
 				logger.Error("failed to get oracle request:", err)
 				return nil, false

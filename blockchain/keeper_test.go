@@ -7,11 +7,13 @@ import (
 	"reflect"
 	"testing"
 
+	common2 "github.com/smartcontractkit/external-initiator/blockchain/common"
+	"github.com/smartcontractkit/external-initiator/blockchain/evm"
+	"github.com/smartcontractkit/external-initiator/subscriber"
+
 	"github.com/bmizerany/assert"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
-	common2 "github.com/smartcontractkit/external-initiator/blockchain/common"
-	"github.com/smartcontractkit/external-initiator/subscriber"
 	"github.com/stretchr/testify/require"
 )
 
@@ -110,7 +112,7 @@ func Test_ethCallSubscription_getCallPayload(t *testing.T) {
 	from := common.HexToAddress("0xfff5a916Ea1049f591B07B1B62d800d16630002e")
 	data, err := testAbi.Pack(checkMethod, big.NewInt(123), from)
 	require.NoError(t, err)
-	dataHex := bytesToHex(data)
+	dataHex := evm.BytesToHex(data)
 	t.Run("ABI packs correct data string", func(t *testing.T) {
 		expected := "0xc41b813a000000000000000000000000000000000000000000000000000000000000007b000000000000000000000000fff5a916ea1049f591b07b1b62d800d16630002e"
 		assert.Equal(t, expected, dataHex)

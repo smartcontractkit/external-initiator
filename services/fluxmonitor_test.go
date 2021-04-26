@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -23,39 +22,28 @@ const CommonJobTriggerTimeout = 200 * time.Millisecond
 
 type mockBlockchainManager struct{}
 
+func (sm *mockBlockchainManager) Stop() {
+	// TODO: Remove?
+}
+
+func (sm *mockBlockchainManager) GetState(ctx context.Context) (*common.FluxAggregatorState, error) {
+	return &common.FluxAggregatorState{
+		CanSubmit:    true,
+		LatestAnswer: *big.NewInt(40000),
+		RoundID:      1,
+	}, nil
+}
+
+func (sm *mockBlockchainManager) SubscribeEvents(ctx context.Context, ch chan<- interface{}) error {
+	FAEvents = ch
+	return nil
+}
+
+func (sm *mockBlockchainManager) CreateJobRun(roundId uint32) map[string]interface{} {
+	return map[string]interface{}{}
+}
+
 var FAEvents = make(chan<- interface{})
-
-func (sm *mockBlockchainManager) Request(t string) (interface{}, error) {
-	switch t {
-	case common.FMRequestState:
-		// initialize with reasonable defaults
-		return &common.FluxAggregatorState{
-			CanSubmit:    true,
-			LatestAnswer: *big.NewInt(40000),
-			RoundID:      1,
-		}, nil
-
-	}
-	return nil, errors.New("request type is not implemented")
-}
-
-func (sm *mockBlockchainManager) Subscribe(_ context.Context, t string, ch chan<- interface{}) error {
-	switch t {
-	case common.FMSubscribeEvents:
-		FAEvents = ch
-		return nil
-	}
-	return errors.New("subscribe type is not implemented")
-}
-
-func (sm *mockBlockchainManager) CreateJobRun(t string, _ interface{}) (map[string]interface{}, error) {
-	switch t {
-	case common.FMJobRun:
-		return map[string]interface{}{}, nil
-	}
-
-	return nil, errors.New("job run type not implemented")
-}
 
 func createMockAdapter(result string) *url.URL {
 	var payload []byte

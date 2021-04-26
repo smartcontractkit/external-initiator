@@ -1,20 +1,18 @@
-package blockchain
+package evm
 
 import (
-	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
-	"net/http"
-	"net/url"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/smartcontractkit/external-initiator/blockchain/common"
+
+	eth "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/chainlink/core/utils"
-	common2 "github.com/smartcontractkit/external-initiator/blockchain/common"
 )
 
 const (
@@ -30,31 +28,31 @@ const (
 	dataLengthSize   = evmWordSize
 )
 
-func createEvmFilterQuery(jobid string, strAddresses []string) *filterQuery {
-	var addresses []common.Address
+func CreateEvmFilterQuery(jobid string, strAddresses []string) *FilterQuery {
+	var addresses []eth.Address
 	for _, a := range strAddresses {
-		addresses = append(addresses, common.HexToAddress(a))
+		addresses = append(addresses, eth.HexToAddress(a))
 	}
 
 	// Hard-set the topics to match the OracleRequest()
 	// event emitted by the oracle contract provided.
-	topics := [][]common.Hash{{
+	topics := [][]eth.Hash{{
 		models.RunLogTopic20190207withoutIndexes,
 	}, {
 		StringToBytes32(jobid),
 	}}
 
-	return &filterQuery{
+	return &FilterQuery{
 		Addresses: addresses,
 		Topics:    topics,
 	}
 }
 
-type filterQuery struct {
-	BlockHash *common.Hash     // used by eth_getLogs, return logs only from block with this hash
-	FromBlock string           // beginning of the queried range, nil means genesis block
-	ToBlock   string           // end of the range, nil means latest block
-	Addresses []common.Address // restricts matches to events created by specific contracts
+type FilterQuery struct {
+	BlockHash *eth.Hash     // used by eth_getLogs, return logs only from block with this hash
+	FromBlock string        // beginning of the queried range, nil means genesis block
+	ToBlock   string        // end of the range, nil means latest block
+	Addresses []eth.Address // restricts matches to events created by specific contracts
 
 	// The Topic list restricts matches to particular event topics. Each event has a list
 	// of topics. Topics matches a prefix of that list. An empty element slice matches any
@@ -67,10 +65,10 @@ type filterQuery struct {
 	// {{}, {B}}          matches any topic in first position AND B in second position
 	// {{A}, {B}}         matches topic A in first position AND B in second position
 	// {{A, B}, {C, D}}   matches topic (A OR B) in first position AND (C OR D) in second position
-	Topics [][]common.Hash
+	Topics [][]eth.Hash
 }
 
-func (q filterQuery) toMapInterface() (interface{}, error) {
+func (q FilterQuery) ToMapInterface() (map[string]interface{}, error) {
 	arg := map[string]interface{}{
 		"address": q.Addresses,
 		"topics":  q.Topics,
@@ -95,8 +93,8 @@ func (q filterQuery) toMapInterface() (interface{}, error) {
 	return arg, nil
 }
 
-func StringToBytes32(str string) common.Hash {
-	value := common.RightPadBytes([]byte(str), utils.EVMWordByteLen)
+func StringToBytes32(str string) eth.Hash {
+	value := eth.RightPadBytes([]byte(str), utils.EVMWordByteLen)
 	hx := utils.RemoveHexPrefix(hexutil.Encode(value))
 
 	if len(hx) > utils.EVMWordHexLen {
@@ -104,26 +102,32 @@ func StringToBytes32(str string) common.Hash {
 	}
 
 	hxStr := utils.AddHexPrefix(hx)
-	return common.HexToHash(hxStr)
+	return eth.HexToHash(hxStr)
 }
 
-func logEventToOracleRequest(log models.Log) (models.JSON, error) {
-	cborData, dataPrefixBytes, err := logDataParse(log.Data)
+func LogEventToOracleRequest(log models.Log) (common.RunlogRequest, error) {
+	cborData, dataPrefixBytes, err := LogDataParse(log.Data)
 	if err != nil {
-		return models.JSON{}, err
+		return common.RunlogRequest{}, err
 	}
 	js, err := models.ParseCBOR(cborData)
 	if err != nil {
-		return js, fmt.Errorf("error parsing CBOR: %v", err)
+		return common.RunlogRequest{}, fmt.Errorf("error parsing CBOR: %v", err)
 	}
-	return js.MultiAdd(models.KV{
+
+	request, err := js.AsMap()
+	if err != nil {
+		return common.RunlogRequest{}, err
+	}
+
+	return common.MergeMaps(request, map[string]interface{}{
 		"address":          log.Address.String(),
-		"dataPrefix":       bytesToHex(dataPrefixBytes),
+		"dataPrefix":       BytesToHex(dataPrefixBytes),
 		"functionSelector": models.OracleFulfillmentFunctionID20190128withoutCast,
-	})
+	}), nil
 }
 
-func logDataParse(data []byte) (cborData []byte, dataPrefixBytes []byte, rerr error) {
+func LogDataParse(data []byte) (cborData []byte, dataPrefixBytes []byte, rerr error) {
 	idStart := requesterSize
 	expirationEnd := idStart + idSize + paymentSize + callbackAddrSize + callbackFuncSize + expirationSize
 
@@ -156,17 +160,17 @@ func logDataParse(data []byte) (cborData []byte, dataPrefixBytes []byte, rerr er
 	return cborData, dataPrefixBytes, nil
 }
 
-func bytesToHex(data []byte) string {
+func BytesToHex(data []byte) string {
 	return utils.AddHexPrefix(hex.EncodeToString(data))
 }
 
-type newHeadsResponseParams struct {
+type NewHeadsResponseParams struct {
 	Subscription string                 `json:"subscription"`
 	Result       map[string]interface{} `json:"result"`
 }
 
-func ParseBlocknumberFromNewHeads(msg common2.JsonrpcMessage) (*big.Int, error) {
-	var params newHeadsResponseParams
+func ParseBlocknumberFromNewHeads(msg common.JsonrpcMessage) (*big.Int, error) {
+	var params NewHeadsResponseParams
 	err := json.Unmarshal(msg.Params, &params)
 	if err != nil {
 		return nil, err
@@ -176,25 +180,4 @@ func ParseBlocknumberFromNewHeads(msg common2.JsonrpcMessage) (*big.Int, error) 
 		return nil, errors.New("newHeads result is missing block number")
 	}
 	return hexutil.DecodeBig(fmt.Sprint(number))
-}
-
-func GetBlockNumberPayload() ([]byte, error) {
-	msg := common2.JsonrpcMessage{
-		Version: "2.0",
-		ID:      json.RawMessage(`2`),
-		Method:  "eth_blockNumber",
-	}
-	return json.Marshal(msg)
-}
-
-func sendEthNodePost(endpoint url.URL, payload []byte) (*http.Response, error) {
-	resp, err := http.Post(endpoint.String(), "application/json", bytes.NewReader(payload))
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode >= 400 {
-		_ = resp.Body.Close()
-		return nil, fmt.Errorf("unexpected status code %v from endpoint %s", resp.StatusCode, endpoint.String())
-	}
-	return resp, nil
 }

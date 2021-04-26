@@ -12,7 +12,7 @@ import (
 )
 
 type Runlog struct {
-	blockchain common.Manager
+	blockchain common.RunlogManager
 
 	quitOnce  sync.Once
 	ctxCancel context.CancelFunc
@@ -23,25 +23,19 @@ type Runlog struct {
 	logger *zap.SugaredLogger
 }
 
-func NewRunlog(job string, triggerJobRun chan subscriber.Event, blockchainManager common.Manager) (*Runlog, error) {
+func NewRunlog(job string, triggerJobRun chan subscriber.Event, blockchainManager common.RunlogManager) (*Runlog, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	run := Runlog{
 		blockchain:   blockchainManager,
 		ctxCancel:    cancel,
 		chJobTrigger: triggerJobRun,
 		logger:       logger.Default.With("job", job),
+		chClose:      make(chan struct{}),
 	}
 	run.logger.Infof("New Runlog job")
 
-	backfilledRequests, err := run.blockchain.Request(common.RunlogBackfill)
-	if err != nil {
-		run.Stop()
-		return nil, err
-	}
-	go run.handleRequest(backfilledRequests.([]interface{})...)
-
-	runlogEvents := make(chan interface{})
-	err = run.blockchain.Subscribe(ctx, common.RunlogSubscribe, runlogEvents)
+	runlogEvents := make(chan common.RunlogRequest)
+	err := run.blockchain.SubscribeEvents(ctx, runlogEvents)
 	if err != nil {
 		run.Stop()
 		return nil, err
@@ -56,10 +50,11 @@ func (r *Runlog) Stop() {
 	r.quitOnce.Do(func() {
 		close(r.chClose)
 		r.ctxCancel()
+		r.blockchain.Stop()
 	})
 }
 
-func (r *Runlog) listenForEvents(ch <-chan interface{}) {
+func (r *Runlog) listenForEvents(ch <-chan common.RunlogRequest) {
 	for {
 		select {
 		case req := <-ch:
@@ -70,14 +65,8 @@ func (r *Runlog) listenForEvents(ch <-chan interface{}) {
 	}
 }
 
-func (r *Runlog) handleRequest(reqs ...interface{}) {
+func (r *Runlog) handleRequest(reqs ...common.RunlogRequest) {
 	for _, req := range reqs {
-		kv, err := r.blockchain.CreateJobRun(common.RunlogJobRun, req)
-		if err != nil {
-			logger.Error(err)
-			continue
-		}
-
-		r.chJobTrigger <- kv
+		r.chJobTrigger <- r.blockchain.CreateJobRun(req)
 	}
 }

@@ -41,7 +41,9 @@ type FluxMonitorConfig struct {
 func ParseFMSpec(jsonSpec json.RawMessage, runtimeConfig store.RuntimeConfig) (fmConfig FluxMonitorConfig, err error) {
 	var fmSpecErrors []string
 
-	res := gjson.GetBytes(jsonSpec, "feeds.#.url")
+	fmSpec := gjson.GetBytes(jsonSpec, "fluxmonitor")
+
+	res := fmSpec.Get("feeds.#.url")
 	var adapters []url.URL
 	for _, adapter := range res.Array() {
 		u, _ := url.Parse(adapter.String())
@@ -49,10 +51,10 @@ func ParseFMSpec(jsonSpec json.RawMessage, runtimeConfig store.RuntimeConfig) (f
 	}
 
 	fmConfig.Adapters = adapters
-	fmConfig.RequestData = gjson.GetBytes(jsonSpec, "requestData").Raw
-	fmConfig.Multiply = int32(gjson.GetBytes(jsonSpec, "precision").Int())
-	fmConfig.Threshold = gjson.GetBytes(jsonSpec, "threshold").Float()
-	fmConfig.AbsoluteThreshold = gjson.GetBytes(jsonSpec, "absoluteThreshold").Float()
+	fmConfig.RequestData = fmSpec.Get("requestData").Raw
+	fmConfig.Multiply = int32(fmSpec.Get("precision").Int())
+	fmConfig.Threshold = fmSpec.Get("threshold").Float()
+	fmConfig.AbsoluteThreshold = fmSpec.Get("absoluteThreshold").Float()
 	fmConfig.RuntimeConfig = runtimeConfig
 
 	if len(fmConfig.Adapters) == 0 {
@@ -77,12 +79,12 @@ func ParseFMSpec(jsonSpec json.RawMessage, runtimeConfig store.RuntimeConfig) (f
 		fmSpecErrors = append(fmSpecErrors, "'absoluteThreshold' must be non-negative")
 	}
 
-	if gjson.GetBytes(jsonSpec, "pollTimer.disabled").Bool() && gjson.GetBytes(jsonSpec, "idleTimer.disabled").Bool() {
+	if fmSpec.Get("pollTimer.disabled").Bool() && fmSpec.Get("idleTimer.disabled").Bool() {
 		fmSpecErrors = append(fmSpecErrors, "must enable pollTimer, idleTimer, or both")
 	}
 
-	if !gjson.GetBytes(jsonSpec, "idleTimer.disabled").Bool() {
-		fmConfig.Heartbeat, err = time.ParseDuration(gjson.GetBytes(jsonSpec, "idleTimer.duration").String())
+	if !fmSpec.Get("idleTimer.disabled").Bool() {
+		fmConfig.Heartbeat, err = time.ParseDuration(fmSpec.Get("idleTimer.duration").String())
 		if err != nil {
 			fmSpecErrors = append(fmSpecErrors, "unable to parse idleTimer duration")
 		}
@@ -90,8 +92,8 @@ func ParseFMSpec(jsonSpec json.RawMessage, runtimeConfig store.RuntimeConfig) (f
 			fmSpecErrors = append(fmSpecErrors, "idleTimer duration is less than 1s")
 		}
 	}
-	if !gjson.GetBytes(jsonSpec, "pollTimer.disabled").Bool() {
-		fmConfig.PollInterval, err = time.ParseDuration(gjson.GetBytes(jsonSpec, "pollTimer.period").String())
+	if !fmSpec.Get("pollTimer.disabled").Bool() {
+		fmConfig.PollInterval, err = time.ParseDuration(fmSpec.Get("pollTimer.period").String())
 		if err != nil {
 			fmSpecErrors = append(fmSpecErrors, "unable to parse pollTimer period")
 		}
@@ -116,7 +118,7 @@ type FluxMonitor struct {
 	state  common.FluxAggregatorState
 	config FluxMonitorConfig
 
-	blockchain common.Manager
+	blockchain common.FluxMonitorManager
 
 	latestResult           decimal.Decimal
 	latestResultTimestamp  time.Time
@@ -142,7 +144,7 @@ type FluxMonitor struct {
 	logger *zap.SugaredLogger
 }
 
-func NewFluxMonitor(job string, config FluxMonitorConfig, triggerJobRun chan subscriber.Event, blockchainManager common.Manager) (*FluxMonitor, error) {
+func NewFluxMonitor(job string, config FluxMonitorConfig, triggerJobRun chan subscriber.Event, blockchainManager common.FluxMonitorManager) (*FluxMonitor, error) {
 	fm := FluxMonitor{
 		config:  config,
 		chClose: make(chan struct{}),
@@ -160,22 +162,16 @@ func NewFluxMonitor(job string, config FluxMonitorConfig, triggerJobRun chan sub
 
 	FAEvents := make(chan interface{})
 
-	state, err := fm.blockchain.Request(common.FMRequestState)
+	state, err := fm.blockchain.GetState(context.TODO())
 	if err != nil {
 		return nil, err
-	}
-
-	faState, ok := state.(*common.FluxAggregatorState)
-	if !ok {
-		return nil, errors.New("didn't receive valid FluxAggregatorState")
-	}
-	if faState == nil {
+	} else if state == nil {
 		return nil, errors.New("received nil FluxAggregatorState")
 	}
 
-	fm.state = *faState
+	fm.state = *state
 
-	err = fm.blockchain.Subscribe(context.TODO(), common.FMSubscribeEvents, FAEvents)
+	err = fm.blockchain.SubscribeEvents(context.TODO(), FAEvents)
 	if err != nil {
 		return nil, err
 	}
@@ -189,6 +185,7 @@ func NewFluxMonitor(job string, config FluxMonitorConfig, triggerJobRun chan sub
 func (fm *FluxMonitor) Stop() {
 	fm.quitOnce.Do(func() {
 		close(fm.chClose)
+		fm.blockchain.Stop()
 	})
 }
 
@@ -296,11 +293,6 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 		roundId++
 	}
 
-	jobRequest, err := fm.blockchain.CreateJobRun(common.FMJobRun, roundId)
-	if err != nil {
-		return errors.Wrap(err, "failed to create job request from blockchain manager")
-	}
-
 	if !fm.ValidLatestResult() {
 		err := fm.pollWithRetry()
 		if err != nil {
@@ -308,6 +300,7 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 		}
 	}
 
+	jobRequest := fm.blockchain.CreateJobRun(roundId)
 	// Add common keys that should always be included
 	jobRequest["result"] = fm.latestResult.String()
 	jobRequest["payment"] = fm.state.Payment.String()

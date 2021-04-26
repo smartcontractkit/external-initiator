@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/smartcontractkit/external-initiator/store"
+
 	"github.com/gorilla/websocket"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"go.uber.org/atomic"
@@ -44,14 +46,14 @@ type websocketConnection struct {
 	stopped           bool
 }
 
-func NewWebsocketConnection(endpoint string) (*websocketConnection, error) {
-	conn, _, err := websocket.DefaultDialer.Dial(endpoint, nil)
+func NewWebsocketConnection(endpoint store.Endpoint) (*websocketConnection, error) {
+	conn, _, err := websocket.DefaultDialer.Dial(endpoint.Url, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	wsc := &websocketConnection{
-		endpoint:              endpoint,
+		endpoint:              endpoint.Url,
 		conn:                  conn,
 		subscriptionListeners: make(map[string]chan<- json.RawMessage),
 		nonceListeners:        make(map[uint64]chan<- json.RawMessage),
@@ -62,6 +64,10 @@ func NewWebsocketConnection(endpoint string) (*websocketConnection, error) {
 	go wsc.read()
 
 	return wsc, nil
+}
+
+func (wsc *websocketConnection) Type() Type {
+	return WS
 }
 
 func (wsc *websocketConnection) Stop() {
@@ -185,7 +191,8 @@ func (wsc *websocketConnection) processIncomingMessage(payload json.RawMessage) 
 	}
 
 	var params struct {
-		Subscription string `json:"subscription"`
+		Subscription string          `json:"subscription"`
+		Result       json.RawMessage `json:"result"`
 	}
 	err = json.Unmarshal(msg.Params, &params)
 	if err != nil {
@@ -202,7 +209,7 @@ func (wsc *websocketConnection) processIncomingMessage(payload json.RawMessage) 
 		}
 	}
 
-	ch <- msg.Params
+	ch <- params.Result
 }
 
 func (wsc *websocketConnection) subscribe(req *subscribeRequest) error {

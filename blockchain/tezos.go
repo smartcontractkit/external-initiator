@@ -11,11 +11,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/tidwall/gjson"
 )
 
@@ -437,7 +438,7 @@ type xtzInternalOperationParameters struct {
 	Value      json.RawMessage `json:"value"`
 }
 
-func getXtzKeyValues(vals []string) (map[string]string, error) {
+func getXtzKeyValues(vals []string) (map[string]interface{}, error) {
 	if len(vals) < 7 {
 		return nil, errors.New("not enough values provided")
 	}

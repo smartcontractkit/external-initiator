@@ -15,16 +15,6 @@ var (
 	ErrSubscriberType = errors.New("unknown subscriber type")
 )
 
-const (
-	FMRequestState    = "fm_requestState"
-	FMSubscribeEvents = "fm_subscribeEvents"
-	FMJobRun          = "fm_jobRun"
-
-	RunlogBackfill  = "runlog_backfill"
-	RunlogSubscribe = "runlog_subscribe"
-	RunlogJobRun    = "runlog_jobRun"
-)
-
 type FMEventNewRound struct {
 	RoundID         uint32
 	OracleInitiated bool
@@ -49,17 +39,23 @@ type FluxAggregatorState struct {
 	CanSubmit     bool
 }
 
-type RunlogRequest struct {
-	Params           map[string]string
-	Payment          string
-	RequestId        string
-	CallbackFunction string
-}
+type RunlogRequest map[string]interface{}
 
 type Manager interface {
-	Request(t string) (response interface{}, err error)
-	Subscribe(ctx context.Context, t string, ch chan<- interface{}) (err error)
-	CreateJobRun(t string, v interface{}) (map[string]interface{}, error)
+	Stop()
+}
+
+type FluxMonitorManager interface {
+	Manager
+	GetState(ctx context.Context) (*FluxAggregatorState, error)
+	SubscribeEvents(ctx context.Context, ch chan<- interface{}) error
+	CreateJobRun(roundId uint32) map[string]interface{}
+}
+
+type RunlogManager interface {
+	Manager
+	SubscribeEvents(ctx context.Context, ch chan<- RunlogRequest) error
+	CreateJobRun(request RunlogRequest) map[string]interface{}
 }
 
 type Params struct {
@@ -88,8 +84,8 @@ type JsonrpcMessage struct {
 	Result  json.RawMessage `json:"result,omitempty"`
 }
 
-func ConvertStringArrayToKV(data []string) map[string]string {
-	result := make(map[string]string)
+func ConvertStringArrayToKV(data []string) map[string]interface{} {
+	result := make(map[string]interface{})
 	var key string
 
 	for i, val := range data {
@@ -120,4 +116,11 @@ func MatchesJobID(expected string, actual string) bool {
 	}
 
 	return false
+}
+
+func MergeMaps(m1, m2 map[string]interface{}) map[string]interface{} {
+	for k, v := range m2 {
+		m1[k] = v
+	}
+	return m1
 }

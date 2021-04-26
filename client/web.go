@@ -153,8 +153,13 @@ func validateRequest(t *CreateSubscriptionReq, endpointType string) error {
 		return nil
 	}
 
+	spec, err := json.Marshal(t.Params)
+	if err != nil {
+		return err
+	}
+
 	// RuntimeConfig is not relevant here, just checking if job spec is valid. Passing empty
-	_, err := services.ParseFMSpec(t.Params.FluxMonitor, store.RuntimeConfig{})
+	_, err = services.ParseFMSpec(spec, store.RuntimeConfig{})
 	if err != nil {
 		return err
 	}
@@ -189,15 +194,22 @@ func (srv *HttpService) CreateSubscription(c *gin.Context) {
 		return
 	}
 
-	if err := validateRequest(&req, endpoint.Type); err != nil {
+	if err = validateRequest(&req, endpoint.Type); err != nil {
 		logger.Error(err)
 		c.JSON(http.StatusBadRequest, nil)
 		return
 	}
 
+	spec, err := json.Marshal(req.Params)
+	if err != nil {
+		logger.Error(err)
+		c.JSON(http.StatusInternalServerError, nil)
+		return
+	}
+
 	js := &store.JobSpec{
 		Job:  req.JobID,
-		Spec: req.Params.FluxMonitor,
+		Spec: spec,
 	}
 
 	if err := srv.Store.SaveJobSpec(js); err != nil {

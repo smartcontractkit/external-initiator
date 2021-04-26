@@ -124,7 +124,7 @@ func Test_getCfxAddressesFromMap(t *testing.T) {
 					"address": json.RawMessage(fmt.Sprintf(`["%s", "%s", "%s"]`, cfxAddress.String(), cfxAddress.String(), cfxAddress.String())),
 				},
 			},
-			[]string{address.String(), address.String(), address.String()},
+			[]string{cfxAddress.String(), cfxAddress.String(), cfxAddress.String()},
 			false,
 		},
 		{
@@ -179,7 +179,7 @@ func Test_getCfxTopicsFromMap(t *testing.T) {
 					"topics": json.RawMessage(fmt.Sprintf(`[["%s"]]`, cfxHash.String())),
 				},
 			},
-			[][]common.Hash{{hash}},
+			[][]common.Hash{{cfxHash}},
 			false,
 		},
 		{
@@ -189,7 +189,7 @@ func Test_getCfxTopicsFromMap(t *testing.T) {
 					"topics": json.RawMessage(fmt.Sprintf(`[["%s","%s"],["%s"]]`, cfxHash.String(), cfxHash.String(), cfxHash.String())),
 				},
 			},
-			[][]common.Hash{{hash, hash}, {hash}},
+			[][]common.Hash{{cfxHash, cfxHash}, {cfxHash}},
 			false,
 		},
 		{
@@ -199,7 +199,7 @@ func Test_getCfxTopicsFromMap(t *testing.T) {
 					"topics": json.RawMessage(fmt.Sprintf(`[null,["%s"]]`, cfxHash.String())),
 				},
 			},
-			[][]common.Hash{{hash}},
+			[][]common.Hash{{cfxHash}},
 			false,
 		},
 		{
