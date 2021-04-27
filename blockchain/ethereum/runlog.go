@@ -20,6 +20,8 @@ const RpcRequestTimeout = 5 * time.Second
 
 type runlogManager struct {
 	*manager
+
+	fq *evm.FilterQuery
 }
 
 func CreateRunlogManager(sub store.Subscription) (*runlogManager, error) {
@@ -30,6 +32,7 @@ func CreateRunlogManager(sub store.Subscription) (*runlogManager, error) {
 
 	return &runlogManager{
 		manager: manager,
+		fq:      evm.CreateEvmFilterQuery(sub.Job, sub.Ethereum.Addresses),
 	}, nil
 }
 

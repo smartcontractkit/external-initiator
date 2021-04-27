@@ -1,7 +1,6 @@
 package ethereum
 
 import (
-	"github.com/smartcontractkit/external-initiator/blockchain/evm"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 )
@@ -17,7 +16,6 @@ type EthParams struct {
 // The manager implements the subscriber.JsonManager interface and allows
 // for interacting with ETH nodes over RPC or WS.
 type manager struct {
-	fq           *evm.FilterQuery
 	endpointName string
 	jobid        string
 
@@ -31,7 +29,6 @@ func createManager(sub store.Subscription) (*manager, error) {
 	}
 
 	return &manager{
-		fq:           evm.CreateEvmFilterQuery(sub.Job, sub.Ethereum.Addresses),
 		endpointName: sub.EndpointName,
 		jobid:        sub.Job,
 		subscriber:   conn,
