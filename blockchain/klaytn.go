@@ -2,6 +2,9 @@ package blockchain
 
 import (
 	"encoding/json"
+	"math/big"
+
+	"github.com/klaytn/klaytn/common/hexutil"
 
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store"
@@ -100,4 +103,97 @@ func (k klaytnManager) GetTestJson() []byte {
 	}
 
 	return nil
+}
+
+type klaytnLogResponse struct {
+	LogIndex         string   `json:"logIndex"`
+	BlockNumber      string   `json:"blockNumber"`
+	BlockHash        string   `json:"blockHash"`
+	TransactionHash  string   `json:"transactionHash"`
+	TransactionIndex string   `json:"transactionIndex"`
+	Address          string   `json:"address"`
+	Data             string   `json:"data"`
+	Topics           []string `json:"topics"`
+}
+
+// ParseResponse parses the response from the
+// Klaytn node, and returns a slice of subscriber.Events
+// and if the parsing was successful.
+//
+// If klaytnManager is using RPC:
+// If there are new events, update klaytnManager with
+// the latest block number it sees.
+func (k klaytnManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
+	logger.Debugw("Parsing response", "ExpectsMock", ExpectsMock)
+
+	var msg JsonrpcMessage
+	if err := json.Unmarshal(data, &msg); err != nil {
+		logger.Error("failed parsing msg: ", msg)
+		return nil, false
+	}
+
+	var events []subscriber.Event
+
+	switch k.p {
+	case subscriber.WS:
+		var res ethSubscribeResponse
+		if err := json.Unmarshal(msg.Params, &res); err != nil {
+			logger.Error("unmarshal:", err)
+			return nil, false
+		}
+
+		var evt klaytnLogResponse
+		if err := json.Unmarshal(res.Result, &evt); err != nil {
+			logger.Error("unmarshal:", err)
+			return nil, false
+		}
+
+		event, err := json.Marshal(evt)
+		if err != nil {
+			logger.Error("marshal:", err)
+			return nil, false
+		}
+		logger.Warnw("receive message from subscribe", "evt", evt, "message", event)
+		events = append(events, event)
+
+	case subscriber.RPC:
+		var rawEvents []klaytnLogResponse
+		if err := json.Unmarshal(msg.Result, &rawEvents); err != nil {
+			return nil, false
+		}
+
+		for _, evt := range rawEvents {
+			event, err := json.Marshal(evt)
+			if err != nil {
+				continue
+			}
+			events = append(events, event)
+
+			// Check if we can update the "fromBlock" in the query,
+			// so we only get new events from blocks we haven't queried yet
+			curBlkn, err := hexutil.DecodeBig(evt.BlockNumber)
+			if err != nil {
+				continue
+			}
+			// Increment the block number by 1, since we want events from *after* this block number
+			curBlkn.Add(curBlkn, big.NewInt(1))
+
+			fromBlkn, err := hexutil.DecodeBig(k.fq.FromBlock)
+			if err != nil && !(k.fq.FromBlock == "latest" || k.fq.FromBlock == "") {
+				continue
+			}
+
+			// If our query "fromBlock" is "latest", or our current "fromBlock" is in the past compared to
+			// the last event we received, we want to update the query
+			if k.fq.FromBlock == "latest" || k.fq.FromBlock == "" || curBlkn.Cmp(fromBlkn) > 0 {
+				k.fq.FromBlock = hexutil.EncodeBig(curBlkn)
+			}
+		}
+
+	default:
+		logger.Errorw(ErrSubscriberType.Error(), "type", k.p)
+		return nil, false
+	}
+
+	return events, true
 }
