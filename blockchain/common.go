@@ -45,6 +45,7 @@ var blockchains = []string{
 	Keeper,
 	BIRITA,
 	Agoric,
+	Klaytn,
 }
 
 type Params struct {
@@ -134,7 +135,7 @@ func ValidBlockchain(name string) bool {
 
 func GetValidations(t string, params Params) []int {
 	switch t {
-	case ETH, HMY, IOTX:
+	case ETH, HMY, IOTX, Klaytn:
 		return []int{
 			len(params.Addresses) + len(params.Topics),
 		}
