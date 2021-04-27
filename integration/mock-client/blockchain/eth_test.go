@@ -242,21 +242,21 @@ func Test_handleEthBlockNumber(t *testing.T) {
 		msg JsonrpcMessage
 	}
 	tests := []struct {
-		name   string
-		args   args
-		want   []JsonrpcMessage
-		wantOk bool
+		name    string
+		args    args
+		want    []JsonrpcMessage
+		wantErr bool
 	}{
 		{
 			"returns a block number with the correct ID",
 			args{
-				JsonrpcMessage{ID: []byte(`123`), Method: "eth_blockNumber"},
+				JsonrpcMessage{Version: "2.0", ID: []byte(`123`), Method: "eth_blockNumber"},
 			},
 			[]JsonrpcMessage{
 				{
 					Version: "2.0",
 					ID:      []byte(`123`),
-					Result:  []byte(`"0x0"`),
+					Result:  []byte(`"0x01"`),
 				},
 			},
 			true,
@@ -264,9 +264,9 @@ func Test_handleEthBlockNumber(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, ok := GetCannedResponse("binance-smart-chain", tt.args.msg)
-			if ok != tt.wantOk {
-				t.Errorf("handleEthBlockNumber() ok = %v, wantOk %v", ok, tt.wantOk)
+			got, err := handleBlockNumber(tt.args.msg)
+			if (err == nil) != tt.wantErr {
+				t.Errorf("handleEthBlockNumber() err = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
@@ -345,19 +345,22 @@ func Test_handleEthRequest(t *testing.T) {
 			args{
 				"ws",
 				JsonrpcMessage{
-					Method: "eth_subscribe",
-					Params: json.RawMessage(fmt.Sprintf(`["logs",{"topics":[null],"address":["%s"]}]`, ethAddress.String())),
+					Version: "2.0",
+					ID:      []byte(`1`),
+					Method:  "eth_subscribe",
+					Params:  json.RawMessage(fmt.Sprintf(`["logs",{"topics":[null],"address":["%s"]}]`, ethAddress.String())),
 				},
 			},
 			[]JsonrpcMessage{
 				{
 					Version: "2.0",
-					Method:  "eth_subscribe",
+					ID:      []byte(`1`),
+					Result:  []byte(`"test"`),
 				},
 				{
 					Version: "2.0",
-					Method:  "eth_subscribe",
-					Params:  json.RawMessage(fmt.Sprintf(`{"suethription":"test","result":%s}`, ethInterfaceToJson(getEthLogResponse(ethAddress.String(), nil)))),
+					Method:  "eth_subscription",
+					Params:  json.RawMessage(fmt.Sprintf(`{"subscription":"test","result":%s}`, ethInterfaceToJson(getEthLogResponse(ethAddress.String(), nil)))),
 				},
 			},
 			false,
@@ -406,7 +409,7 @@ func Test_handleEthRequest(t *testing.T) {
 	}
 }
 
-func Test_handleEthSuethribe(t *testing.T) {
+func Test_handleEthSubscribe(t *testing.T) {
 	type args struct {
 		msg JsonrpcMessage
 	}
@@ -420,6 +423,7 @@ func Test_handleEthSuethribe(t *testing.T) {
 			"handles correct subscribe",
 			args{
 				JsonrpcMessage{
+					ID:     []byte(`1`),
 					Method: "eth_subscribe",
 					Params: json.RawMessage(fmt.Sprintf(`["logs",{"topics":[null],"address":["%s"]}]`, ethAddress.String())),
 				},
@@ -427,12 +431,13 @@ func Test_handleEthSuethribe(t *testing.T) {
 			[]JsonrpcMessage{
 				{
 					Version: "2.0",
-					Method:  "eth_subscribe",
+					ID:      []byte(`1`),
+					Result:  []byte(`"test"`),
 				},
 				{
 					Version: "2.0",
-					Method:  "eth_subscribe",
-					Params:  json.RawMessage(fmt.Sprintf(`{"suethription":"test","result":%s}`, ethInterfaceToJson(getEthLogResponse(ethAddress.String(), nil)))),
+					Method:  "eth_subscription",
+					Params:  json.RawMessage(fmt.Sprintf(`{"subscription":"test","result":%s}`, ethInterfaceToJson(getEthLogResponse(ethAddress.String(), nil)))),
 				},
 			},
 			false,

@@ -124,7 +124,7 @@ func handleCfxSubscribe(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 		},
 		{
 			Version: "2.0",
-			Method:  "cfx_subscribe",
+			Method:  "cfx_subscription",
 			Params:  subBz,
 		},
 	}, nil

@@ -242,21 +242,21 @@ func Test_handleCfxEpochNumber(t *testing.T) {
 		msg JsonrpcMessage
 	}
 	tests := []struct {
-		name   string
-		args   args
-		want   []JsonrpcMessage
-		wantOk bool
+		name    string
+		args    args
+		want    []JsonrpcMessage
+		wantErr bool
 	}{
 		{
 			"returns a epoch number with the correct ID",
 			args{
-				JsonrpcMessage{ID: []byte(`123`), Method: "cfx_epochNumber"},
+				JsonrpcMessage{Version: "2.0", ID: []byte(`123`), Method: "cfx_epochNumber"},
 			},
 			[]JsonrpcMessage{
 				{
 					Version: "2.0",
 					ID:      []byte(`123`),
-					Result:  []byte(`"0x0"`),
+					Result:  []byte(`"0x01"`),
 				},
 			},
 			true,
@@ -264,9 +264,9 @@ func Test_handleCfxEpochNumber(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, ok := GetCannedResponse("cfx", tt.args.msg)
-			if ok != tt.wantOk {
-				t.Errorf("handleCfxEpochNumber() ok = %v, wantOk %v", ok, tt.wantOk)
+			got, err := handleCfxEpochNumber(tt.args.msg)
+			if (err == nil) != tt.wantErr {
+				t.Errorf("handleCfxEpochNumber() err = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
@@ -345,18 +345,21 @@ func Test_handleCfxRequest(t *testing.T) {
 			args{
 				"ws",
 				JsonrpcMessage{
-					Method: "cfx_subscribe",
-					Params: json.RawMessage(fmt.Sprintf(`["logs",{"topics":[null],"address":["%s"]}]`, cfxAddress.String())),
+					Version: "2.0",
+					ID:      []byte(`1`),
+					Method:  "cfx_subscribe",
+					Params:  json.RawMessage(fmt.Sprintf(`["logs",{"topics":[null],"address":["%s"]}]`, cfxAddress.String())),
 				},
 			},
 			[]JsonrpcMessage{
 				{
 					Version: "2.0",
-					Method:  "cfx_subscribe",
+					ID:      []byte(`1`),
+					Result:  []byte(`"test"`),
 				},
 				{
 					Version: "2.0",
-					Method:  "cfx_subscribe",
+					Method:  "cfx_subscription",
 					Params:  json.RawMessage(fmt.Sprintf(`{"subscription":"test","result":%s}`, cfxInterfaceToJson(getCfxLogResponse(cfxAddress.String(), nil)))),
 				},
 			},
@@ -367,8 +370,9 @@ func Test_handleCfxRequest(t *testing.T) {
 			args{
 				"rpc",
 				JsonrpcMessage{
-					Method: "cfx_subscribe",
-					Params: json.RawMessage(fmt.Sprintf(`["logs",{"topics":[null],"address":["%s"]}]`, cfxAddress.String())),
+					Version: "2.0",
+					Method:  "cfx_subscribe",
+					Params:  json.RawMessage(fmt.Sprintf(`["logs",{"topics":[null],"address":["%s"]}]`, cfxAddress.String())),
 				},
 			},
 			nil,
@@ -379,8 +383,9 @@ func Test_handleCfxRequest(t *testing.T) {
 			args{
 				"rpc",
 				JsonrpcMessage{
-					Method: "cfx_getLogs",
-					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[["%s"]],"address":["%s"]}]`, cfxHash.String(), cfxAddress.String())),
+					Version: "2.0",
+					Method:  "cfx_getLogs",
+					Params:  json.RawMessage(fmt.Sprintf(`[{"topics":[["%s"]],"address":["%s"]}]`, cfxHash.String(), cfxAddress.String())),
 				},
 			},
 			[]JsonrpcMessage{
@@ -427,11 +432,11 @@ func Test_handleCfxSubscribe(t *testing.T) {
 			[]JsonrpcMessage{
 				{
 					Version: "2.0",
-					Method:  "cfx_subscribe",
+					Result:  []byte(`"test"`),
 				},
 				{
 					Version: "2.0",
-					Method:  "cfx_subscribe",
+					Method:  "cfx_subscription",
 					Params:  json.RawMessage(fmt.Sprintf(`{"subscription":"test","result":%s}`, cfxInterfaceToJson(getCfxLogResponse(cfxAddress.String(), nil)))),
 				},
 			},
