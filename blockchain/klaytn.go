@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"math/big"
 
+	"github.com/smartcontractkit/chainlink/core/store/models"
+
 	"github.com/klaytn/klaytn/common/hexutil"
 
 	"github.com/smartcontractkit/chainlink/core/logger"
@@ -26,7 +28,10 @@ type klaytnManager struct {
 // connection type and store.EthSubscription config.
 func createKlaytnManager(p subscriber.Type, config store.Subscription) klaytnManager {
 	return klaytnManager{
-		createEthManager(p, config),
+		ethManager{
+			fq: createEvmFilterQuery(config.Job, config.Ethereum.Addresses),
+			p:  p,
+		},
 	}
 }
 
@@ -105,17 +110,6 @@ func (k klaytnManager) GetTestJson() []byte {
 	return nil
 }
 
-type klaytnLogResponse struct {
-	LogIndex         string   `json:"logIndex"`
-	BlockNumber      string   `json:"blockNumber"`
-	BlockHash        string   `json:"blockHash"`
-	TransactionHash  string   `json:"transactionHash"`
-	TransactionIndex string   `json:"transactionIndex"`
-	Address          string   `json:"address"`
-	Data             string   `json:"data"`
-	Topics           []string `json:"topics"`
-}
-
 // ParseResponse parses the response from the
 // Klaytn node, and returns a slice of subscriber.Events
 // and if the parsing was successful.
@@ -142,13 +136,19 @@ func (k klaytnManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 			return nil, false
 		}
 
-		var evt klaytnLogResponse
+		var evt models.Log
 		if err := json.Unmarshal(res.Result, &evt); err != nil {
 			logger.Error("unmarshal:", err)
 			return nil, false
 		}
 
-		event, err := json.Marshal(evt)
+		request, err := logEventToOracleRequest(evt)
+		if err != nil {
+			logger.Error("failed to get oracle request:", err)
+			return nil, false
+		}
+
+		event, err := json.Marshal(request)
 		if err != nil {
 			logger.Error("marshal:", err)
 			return nil, false
@@ -157,13 +157,20 @@ func (k klaytnManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 		events = append(events, event)
 
 	case subscriber.RPC:
-		var rawEvents []klaytnLogResponse
+		var rawEvents []models.Log
 		if err := json.Unmarshal(msg.Result, &rawEvents); err != nil {
+			logger.Error("unmarshal:", err)
 			return nil, false
 		}
 
 		for _, evt := range rawEvents {
-			event, err := json.Marshal(evt)
+			request, err := logEventToOracleRequest(evt)
+			if err != nil {
+				logger.Error("failed to get oracle request:", err, evt.Data, evt.Address)
+				return nil, false
+			}
+
+			event, err := json.Marshal(request)
 			if err != nil {
 				continue
 			}
@@ -171,15 +178,13 @@ func (k klaytnManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 
 			// Check if we can update the "fromBlock" in the query,
 			// so we only get new events from blocks we haven't queried yet
-			curBlkn, err := hexutil.DecodeBig(evt.BlockNumber)
-			if err != nil {
-				continue
-			}
 			// Increment the block number by 1, since we want events from *after* this block number
-			curBlkn.Add(curBlkn, big.NewInt(1))
+			curBlkn := &big.Int{}
+			curBlkn = curBlkn.Add(big.NewInt(int64(evt.BlockNumber)), big.NewInt(1))
 
 			fromBlkn, err := hexutil.DecodeBig(k.fq.FromBlock)
 			if err != nil && !(k.fq.FromBlock == "latest" || k.fq.FromBlock == "") {
+				logger.Error("Failed to get block number from event:", err)
 				continue
 			}
 
