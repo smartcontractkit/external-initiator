@@ -9,6 +9,7 @@ import (
 	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"github.com/smartcontractkit/external-initiator/blockchain/conflux"
 	"github.com/smartcontractkit/external-initiator/blockchain/ethereum"
+	"github.com/smartcontractkit/external-initiator/blockchain/harmony"
 	"github.com/smartcontractkit/external-initiator/blockchain/substrate"
 	"github.com/smartcontractkit/external-initiator/store"
 
@@ -50,6 +51,8 @@ func CreateRunlogManager(sub store.Subscription) (common.RunlogManager, error) {
 		return substrate.CreateRunlogManager(sub)
 	case conflux.Name:
 		return conflux.CreateRunlogManager(sub)
+	case harmony.Name:
+		return harmony.CreateRunlogManager(sub)
 	}
 	return nil, fmt.Errorf("unknown endpoint type: %s", sub.Endpoint.Type)
 }
@@ -58,6 +61,7 @@ var blockchains = []string{
 	ethereum.Name,
 	substrate.Name,
 	conflux.Name,
+	harmony.Name,
 }
 
 func ValidBlockchain(name string) bool {
@@ -71,7 +75,7 @@ func ValidBlockchain(name string) bool {
 
 func ValidateParams(t string, params Params) (missing []string) {
 	switch t {
-	case ethereum.Name, conflux.Name:
+	case ethereum.Name, conflux.Name, harmony.Name:
 		if len(params.Address)+len(params.Addresses) == 0 {
 			missing = append(missing, "address")
 		}
@@ -97,7 +101,7 @@ func CreateSubscription(sub store.Subscription, params Params) store.Subscriptio
 	}
 
 	switch sub.Endpoint.Type {
-	case ethereum.Name:
+	case ethereum.Name, harmony.Name:
 		sub.Ethereum = store.EthSubscription{
 			Addresses: addresses,
 		}

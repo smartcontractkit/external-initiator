@@ -8,6 +8,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+var hmyBlockNumberCounter = 0
+
 func handleHmyRequest(conn string, msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 	if conn == "ws" {
 		switch msg.Method {
@@ -18,10 +20,28 @@ func handleHmyRequest(conn string, msg JsonrpcMessage) ([]JsonrpcMessage, error)
 		switch msg.Method {
 		case "hmy_getLogs":
 			return handleHmyGetLogs(msg)
+		case "hmy_blockNumber":
+			return handleHmyBlockNumber(msg)
 		}
 	}
 
 	return nil, fmt.Errorf("unexpected method: %v", msg.Method)
+}
+
+func handleHmyBlockNumber(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
+	hmyBlockNumberCounter += 1
+	num, err := json.Marshal(fmt.Sprintf("0x%02x", hmyBlockNumberCounter))
+	if err != nil {
+		return nil, err
+	}
+
+	return []JsonrpcMessage{
+		{
+			Version: msg.Version,
+			ID:      msg.ID,
+			Result:  num,
+		},
+	}, nil
 }
 
 type hmySubscribeResponse struct {
@@ -102,12 +122,11 @@ func handleHmySubscribe(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 		{
 			Version: "2.0",
 			ID:      msg.ID,
-			Method:  "hmy_subscribe",
+			Result:  []byte(`"test"`),
 		},
 		{
 			Version: "2.0",
-			ID:      msg.ID,
-			Method:  "hmy_subscribe",
+			Method:  "hmy_subscription",
 			Params:  subBz,
 		},
 	}, nil
