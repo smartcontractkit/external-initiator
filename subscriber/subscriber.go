@@ -24,6 +24,9 @@ const (
 	// Client are connections encapsulated in its
 	// entirety by the blockchain implementation.
 	Client
+	// CoreWS are pure WS connections without
+	// any JSON-RPC support
+	CoreWS
 )
 
 // Event is the individual event that occurs during

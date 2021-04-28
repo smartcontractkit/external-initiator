@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/smartcontractkit/external-initiator/blockchain/agoric"
 	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"github.com/smartcontractkit/external-initiator/blockchain/conflux"
 	"github.com/smartcontractkit/external-initiator/blockchain/ethereum"
@@ -53,6 +54,8 @@ func CreateRunlogManager(sub store.Subscription) (common.RunlogManager, error) {
 		return conflux.CreateRunlogManager(sub)
 	case harmony.Name:
 		return harmony.CreateRunlogManager(sub)
+	case agoric.Name:
+		return agoric.CreateRunlogManager(sub)
 	}
 	return nil, fmt.Errorf("unknown endpoint type: %s", sub.Endpoint.Type)
 }
@@ -62,6 +65,7 @@ var blockchains = []string{
 	substrate.Name,
 	conflux.Name,
 	harmony.Name,
+	agoric.Name,
 }
 
 func ValidBlockchain(name string) bool {
@@ -115,6 +119,9 @@ func CreateSubscription(sub store.Subscription, params Params) store.Subscriptio
 		sub.Conflux = store.CfxSubscription{
 			Addresses: addresses,
 		}
+	case agoric.Name:
+		// TODO: No data stored here?
+		sub.Agoric = store.AgoricSubscription{}
 	}
 
 	return sub
