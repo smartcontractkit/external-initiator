@@ -99,11 +99,11 @@ func klaytnLogRequestToResponse(msg JsonrpcMessage) (klaytnLogResponse, error) {
 		return klaytnLogResponse{}, fmt.Errorf("expected exactly 1 filter in request, got %d", len(reqs))
 	}
 
-	if r, err := handleMapStringInterface(reqs[0]); err != nil {
+	r, err := handleMapStringInterface(reqs[0])
+	if err != nil {
 		return klaytnLogResponse{}, err
-	} else {
-		return klaytnLogResponse(r), nil
 	}
+	return klaytnLogResponse(r), nil
 }
 
 func handleKlaytnGetLogs(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
