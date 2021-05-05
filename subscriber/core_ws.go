@@ -1,11 +1,12 @@
 package subscriber
 
 import (
+	"sync"
+	"time"
+
 	"github.com/gorilla/websocket"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store"
-	"sync"
-	"time"
 )
 
 const (

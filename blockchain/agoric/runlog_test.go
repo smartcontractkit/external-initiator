@@ -1,9 +1,10 @@
 package agoric
 
 import (
-	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"reflect"
 	"testing"
+
+	"github.com/smartcontractkit/external-initiator/blockchain/common"
 )
 
 func TestRunlogManager_ParseRequests(t *testing.T) {
