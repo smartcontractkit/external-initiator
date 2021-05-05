@@ -1,4 +1,4 @@
-package ethereum
+package harmony
 
 import (
 	"encoding/json"
@@ -104,13 +104,13 @@ func Test_parseEthLogResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseEthLogResponse(tt.args.result)
+			got, err := parseHmyLogResponse(tt.args.result)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("parseEthLogResponse() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("parseHmyLogResponse() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if err == nil && !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("parseEthLogResponse() got = %v, want %v", got, tt.want)
+				t.Errorf("parseHmyLogResponse() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -182,13 +182,13 @@ func Test_parseEthLogsResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseEthLogsResponse(tt.args.result)
+			got, err := parseHmyLogsResponse(tt.args.result)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("parseEthLogsResponse() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("parseHmyLogsResponse() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("parseEthLogsResponse() got = %v, want %v", got, tt.want)
+				t.Errorf("parseHmyLogsResponse() got = %v, want %v", got, tt.want)
 			}
 		})
 	}

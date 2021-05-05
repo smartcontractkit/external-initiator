@@ -178,6 +178,10 @@ func (srv *Service) Run() error {
 
 func closeSubscription(sub *activeSubscription) {
 	sub.onStop.Do(func() {
+		if sub.Service == nil {
+			return
+		}
+
 		sub.Service.Stop()
 	})
 }
@@ -229,7 +233,7 @@ func (srv *Service) subscribe(sub store.Subscription) error {
 	var err error
 	triggerJobRun := make(chan subscriber.Event, 100)
 	js, err := srv.store.LoadJobSpec(sub.Job)
-	if err != nil || gjson.GetBytes(js.Spec, "fluxmonitor").Raw == "null" {
+	if err != nil || gjson.GetBytes(js.Spec, "fluxmonitor").Raw == "null" || gjson.GetBytes(js.Spec, "fluxmonitor").Raw == "" {
 		service, err = srv.subscribeRunlog(sub, triggerJobRun, js)
 	} else {
 		service, err = srv.subscribeFluxmonitor(sub, triggerJobRun, js)
@@ -289,7 +293,7 @@ func (srv *Service) LoadJobSpec(jobid string) (*store.JobSpec, error) {
 // provided.
 func (srv *Service) SaveSubscription(arg *store.Subscription) error {
 	if err := srv.store.SaveSubscription(arg); err != nil {
-		return err
+		return errors.Wrap(err, "unable to store subscription")
 	}
 
 	return srv.subscribe(*arg)
@@ -320,7 +324,7 @@ func (srv *Service) DeleteJob(jobid string) error {
 func (srv *Service) GetEndpoint(name string) (*store.Endpoint, error) {
 	endpoint, err := srv.store.LoadEndpoint(name)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "could not load endpoint")
 	}
 	if endpoint.Name != name {
 		return nil, errors.New("endpoint name mismatch")

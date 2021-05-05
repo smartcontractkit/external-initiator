@@ -1,17 +1,11 @@
-package ethereum
+package harmony
 
 import (
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
 )
 
-const Name = "ethereum"
-
-type EthParams struct {
-	Address   string   `json:"address"`
-	Addresses []string `json:"addresses"`
-	Topics    []string `json:"topics"`
-}
+const Name = "harmony"
 
 // The manager implements the subscriber.JsonManager interface and allows
 // for interacting with ETH nodes over RPC or WS.

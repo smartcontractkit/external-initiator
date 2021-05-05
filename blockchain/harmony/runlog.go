@@ -1,4 +1,4 @@
-package ethereum
+package harmony
 
 import (
 	"context"
@@ -97,7 +97,7 @@ func (rm runlogManager) getEventsRPC(ctx context.Context, ch chan<- common.Runlo
 }
 
 func (rm runlogManager) getRecentEventsRPC(ctx context.Context, fromBlock uint64) ([]common.RunlogRequest, error) {
-	method := "eth_getLogs"
+	method := "hmy_getLogs"
 	fq, err := rm.getFilterQuery(fmt.Sprintf("%d", fromBlock))
 	if err != nil {
 		return nil, err
@@ -116,10 +116,10 @@ func (rm runlogManager) getRecentEventsRPC(ctx context.Context, fromBlock uint64
 		return nil, err
 	}
 
-	return parseEthLogsResponse(resp)
+	return parseHmyLogsResponse(resp)
 }
 
-func parseEthLogsResponse(result json.RawMessage) ([]common.RunlogRequest, error) {
+func parseHmyLogsResponse(result json.RawMessage) ([]common.RunlogRequest, error) {
 	var events []models.Log
 	if err := json.Unmarshal(result, &events); err != nil {
 		return nil, err
@@ -142,7 +142,7 @@ func parseEthLogsResponse(result json.RawMessage) ([]common.RunlogRequest, error
 	return requests, nil
 }
 
-func parseEthLogResponse(result json.RawMessage) (common.RunlogRequest, error) {
+func parseHmyLogResponse(result json.RawMessage) (common.RunlogRequest, error) {
 	var event models.Log
 	if err := json.Unmarshal(result, &event); err != nil {
 		return nil, err
@@ -157,7 +157,7 @@ func parseEthLogResponse(result json.RawMessage) (common.RunlogRequest, error) {
 
 func (rm runlogManager) subscribeNewBlocks(ctx context.Context, ch chan<- uint64) error {
 	listener := make(chan json.RawMessage)
-	err := rm.subscriber.Subscribe(ctx, "eth_blockNumber", "", nil, listener)
+	err := rm.subscriber.Subscribe(ctx, "hmy_blockNumber", "", nil, listener)
 	if err != nil {
 		return err
 	}
@@ -219,7 +219,7 @@ func (rm runlogManager) getEventsWS(ctx context.Context, ch chan<- common.Runlog
 	}
 
 	responses := make(chan json.RawMessage)
-	err = rm.subscriber.Subscribe(ctx, "eth_subscribe", "eth_unsubscribe", params, responses)
+	err = rm.subscriber.Subscribe(ctx, "hmy_subscribe", "hmy_unsubscribe", params, responses)
 	if err != nil {
 		return err
 	}
@@ -228,7 +228,7 @@ func (rm runlogManager) getEventsWS(ctx context.Context, ch chan<- common.Runlog
 		for {
 			select {
 			case resp := <-responses:
-				request, err := parseEthLogResponse(resp)
+				request, err := parseHmyLogResponse(resp)
 				if err != nil {
 					logger.Error(err)
 					continue

@@ -1,4 +1,6 @@
 import * as ETH from './eth'
+import * as CFX from './cfx'
+import * as HMY from './hmy'
 import * as Substrate from './substrate'
 
 interface TestInterface {
@@ -8,12 +10,12 @@ interface TestInterface {
 
 const integrations: TestInterface[] = [
   ETH,
-  /*HMY,
-  XTZ,
+  CFX,
+  HMY,
+  /*XTZ,
   ONT,
   BSC,
   IOTX,
-  CFX,
   Keeper,
   BIRITA,
   NEAR,*/

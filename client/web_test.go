@@ -7,6 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/smartcontractkit/external-initiator/blockchain"
+	"github.com/smartcontractkit/external-initiator/blockchain/ethereum"
+	"github.com/smartcontractkit/external-initiator/blockchain/substrate"
 	"github.com/smartcontractkit/external-initiator/store"
 
 	"github.com/pkg/errors"
@@ -49,23 +52,16 @@ func (s storeFailer) LoadJobSpec(string) (*store.JobSpec, error) {
 }
 
 func generateCreateSubscriptionReq(id, endpoint string, addresses, topics, accountIds []string) CreateSubscriptionReq {
-	params := struct {
-		Endpoint    string          `json:"endpoint"`
-		Addresses   []string        `json:"addresses"`
-		Topics      []string        `json:"topics"`
-		AccountIds  []string        `json:"accountIds"`
-		Address     string          `json:"address"`
-		UpkeepID    string          `json:"upkeepId"`
-		ServiceName string          `json:"serviceName"`
-		From        string          `json:"from"`
-		FluxMonitor json.RawMessage `json:"fluxmonitor"`
-		FeedId      *uint32         `json:"feed_id"`
-		AccountId   string          `json:"account_id"`
-	}{
-		Endpoint:   endpoint,
-		Addresses:  addresses,
-		Topics:     topics,
-		AccountIds: accountIds,
+	params := blockchain.Params{
+		Endpoint:    endpoint,
+		FluxMonitor: nil,
+		EthParams: ethereum.EthParams{
+			Addresses: addresses,
+			Topics:    topics,
+		},
+		Params: substrate.Params{
+			AccountIds: accountIds,
+		},
 	}
 
 	return CreateSubscriptionReq{
