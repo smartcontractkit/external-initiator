@@ -20,37 +20,39 @@ var (
 )
 
 type jsonRpcWebsocketConnection struct {
-	endpoint string
+	// endpoint string
+	wsCore WebsocketConnection
 
 	requests              []*subscribeRequest
 	subscriptionListeners map[string]chan<- json.RawMessage
 	nonceListeners        map[uint64]chan<- json.RawMessage
 
-	conn *websocket.Conn
+	// conn *websocket.Conn
 
-	quitOnce sync.Once
+	// quitOnce sync.Once
 
-	writeMutex sync.Mutex
+	// writeMutex sync.Mutex
 	nonce      atomic.Uint64
 
 	chSubscriptionIds chan string
-	chClose           chan struct{}
-	stopped           bool
+	// chClose           chan struct{}
+	// stopped           bool
 }
 
 func NewWebsocketConnection(endpoint store.Endpoint) (*jsonRpcWebsocketConnection, error) {
-	conn, _, err := websocket.DefaultDialer.Dial(endpoint.Url, nil)
+	wsCore, err := NewCoreWebsocketConnection(endpoint)
 	if err != nil {
 		return nil, err
 	}
 
 	wsc := &jsonRpcWebsocketConnection{
-		endpoint:              endpoint.Url,
-		conn:                  conn,
+		wsCore: wsCore,
+		// endpoint:              endpoint.Url,
+		// conn:                  conn,
 		subscriptionListeners: make(map[string]chan<- json.RawMessage),
 		nonceListeners:        make(map[uint64]chan<- json.RawMessage),
 		chSubscriptionIds:     make(chan string),
-		chClose:               make(chan struct{}),
+		// chClose:               make(chan struct{}),
 	}
 
 	go wsc.read()
@@ -63,10 +65,7 @@ func (wsc *jsonRpcWebsocketConnection) Type() Type {
 }
 
 func (wsc *jsonRpcWebsocketConnection) Stop() {
-	wsc.quitOnce.Do(func() {
-		wsc.stopped = true
-		close(wsc.chClose)
-	})
+	wsc.wsCore.Stop()
 }
 
 func (wsc *jsonRpcWebsocketConnection) Subscribe(ctx context.Context, method, unsubscribeMethod string, params json.RawMessage, ch chan<- json.RawMessage) error {
@@ -107,7 +106,7 @@ func (wsc *jsonRpcWebsocketConnection) Request(ctx context.Context, method strin
 }
 
 func (wsc *jsonRpcWebsocketConnection) resetConnection() {
-	if wsc.stopped {
+	if wsc.wsCore.stopped {
 		return
 	}
 
@@ -115,30 +114,7 @@ func (wsc *jsonRpcWebsocketConnection) resetConnection() {
 	wsc.nonceListeners = make(map[uint64]chan<- json.RawMessage)
 	wsc.nonce.Store(0)
 
-	attempts := 0
-	for {
-		if wsc.stopped {
-			return
-		}
-
-		attempts++
-
-		conn, _, err := websocket.DefaultDialer.Dial(wsc.endpoint, nil)
-		if err != nil {
-			logger.Error(err)
-			var fac time.Duration
-			if attempts < 5 {
-				fac = time.Duration(attempts * 2)
-			} else {
-				fac = 10
-			}
-			time.Sleep(fac * time.Second)
-			continue
-		}
-
-		wsc.conn = conn
-		break
-	}
+	wsc.wsCore.resetConnection()
 
 	for _, request := range wsc.requests {
 		if request == nil || request.stopped {
@@ -149,18 +125,10 @@ func (wsc *jsonRpcWebsocketConnection) resetConnection() {
 }
 
 func (wsc *jsonRpcWebsocketConnection) read() {
-	defer wsc.resetConnection()
-
-	wsc.conn.SetReadLimit(maxMessageSize)
-	for {
-		_, message, err := wsc.conn.ReadMessage()
-		if err != nil {
-			// TODO: Reconnect
-			return
-		}
-
-		go wsc.processIncomingMessage(message)
-	}
+	messages := make(chan []byte)
+	wsc.wsCore.Read(messages)
+	message := <-messages
+	go wsc.processIncomingMessage(message)
 }
 
 func (wsc *jsonRpcWebsocketConnection) processIncomingMessage(payload json.RawMessage) {
@@ -232,7 +200,7 @@ func (wsc *jsonRpcWebsocketConnection) subscribe(req *subscribeRequest) error {
 				}
 				logger.ErrorIf(wsc.sendMessage(payload))
 				return
-			case <-wsc.chClose:
+			case <-wsc.wsCore.chClose:
 				return
 			}
 		}
@@ -274,14 +242,11 @@ func (wsc *jsonRpcWebsocketConnection) getSubscriptionId(req *subscribeRequest) 
 }
 
 func (wsc *jsonRpcWebsocketConnection) sendMessage(payload json.RawMessage) error {
-	wsc.writeMutex.Lock()
-	defer wsc.writeMutex.Unlock()
-
-	err := wsc.conn.SetWriteDeadline(time.Now().Add(writeWait))
+	payloadBytes, err := payload.MarshalJSON()
 	if err != nil {
 		return err
 	}
-	return wsc.conn.WriteMessage(websocket.TextMessage, payload)
+	return wsc.wsCore.SendMessage(payload)
 }
 
 type subscribeRequest struct {
