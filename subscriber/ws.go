@@ -24,7 +24,7 @@ type jsonRpcWebsocketConnection struct {
 	subscriptionListeners map[string]chan<- json.RawMessage
 	nonceListeners        map[uint64]chan<- json.RawMessage
 
-	nonce      atomic.Uint64
+	nonce atomic.Uint64
 
 	chSubscriptionIds chan string
 }
@@ -115,6 +115,8 @@ func (wsc *jsonRpcWebsocketConnection) resetConnection() {
 }
 
 func (wsc *jsonRpcWebsocketConnection) read() {
+	defer wsc.resetConnection()
+
 	messages := make(chan []byte)
 	wsc.wsCore.Read(messages)
 	message := <-messages
