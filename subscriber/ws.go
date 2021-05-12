@@ -5,12 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/smartcontractkit/external-initiator/store"
 
-	"github.com/gorilla/websocket"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"go.uber.org/atomic"
 )
@@ -20,23 +18,15 @@ var (
 )
 
 type jsonRpcWebsocketConnection struct {
-	// endpoint string
-	wsCore WebsocketConnection
+	wsCore *WebsocketConnection
 
 	requests              []*subscribeRequest
 	subscriptionListeners map[string]chan<- json.RawMessage
 	nonceListeners        map[uint64]chan<- json.RawMessage
 
-	// conn *websocket.Conn
-
-	// quitOnce sync.Once
-
-	// writeMutex sync.Mutex
 	nonce      atomic.Uint64
 
 	chSubscriptionIds chan string
-	// chClose           chan struct{}
-	// stopped           bool
 }
 
 func NewWebsocketConnection(endpoint store.Endpoint) (*jsonRpcWebsocketConnection, error) {
@@ -246,7 +236,7 @@ func (wsc *jsonRpcWebsocketConnection) sendMessage(payload json.RawMessage) erro
 	if err != nil {
 		return err
 	}
-	return wsc.wsCore.SendMessage(payload)
+	return wsc.wsCore.SendMessage(payloadBytes)
 }
 
 type subscribeRequest struct {
