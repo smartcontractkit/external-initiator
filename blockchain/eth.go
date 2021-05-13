@@ -207,7 +207,6 @@ func (e ethManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 			logger.Error("marshal:", err)
 			return nil, false
 		}
-		logger.Warnw("receive message from subscribe", "evt", evt, "message", event)
 		events = append(events, event)
 
 	case subscriber.RPC:

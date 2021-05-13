@@ -7,6 +7,7 @@ import (
 	"github.com/smartcontractkit/chainlink/core/store/models"
 
 	"github.com/klaytn/klaytn/common/hexutil"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store"
@@ -31,6 +32,8 @@ func createKlaytnManager(p subscriber.Type, config store.Subscription) klaytnMan
 		ethManager{
 			fq: createEvmFilterQuery(config.Job, config.Ethereum.Addresses),
 			p:  p,
+			endpointName: config.EndpointName,
+			jobid: config.Job,
 		},
 	}
 }
@@ -110,6 +113,20 @@ func (k klaytnManager) GetTestJson() []byte {
 	return nil
 }
 
+// ParseTestResponse parses the response from the
+// Klaytn node after sending GetTestJson(), and returns
+// the error from parsing, if any.
+//
+// If klaytnManager is using WebSocket:
+// Returns nil.
+//
+// If klaytnManager is using RPC:
+// Attempts to parse the block number in the response.
+// If successful, stores the block number in klaytnManager.
+func (k klaytnManager) ParseTestResponse(data []byte) error {
+	return k.ethManager.ParseTestResponse(data)
+}
+
 // ParseResponse parses the response from the
 // Klaytn node, and returns a slice of subscriber.Events
 // and if the parsing was successful.
@@ -118,6 +135,7 @@ func (k klaytnManager) GetTestJson() []byte {
 // If there are new events, update klaytnManager with
 // the latest block number it sees.
 func (k klaytnManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
+	promLastSourcePing.With(prometheus.Labels{"endpoint": k.endpointName, "jobid": k.jobid}).SetToCurrentTime()
 	logger.Debugw("Parsing response", "ExpectsMock", ExpectsMock)
 
 	var msg JsonrpcMessage
