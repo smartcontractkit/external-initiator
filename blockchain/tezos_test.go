@@ -9,9 +9,9 @@ import (
 	"github.com/smartcontractkit/external-initiator/eitest"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tidwall/gjson"
 )
 
 func TestCreateTezosSubscriber(t *testing.T) {
@@ -118,8 +118,8 @@ func Test_extractEventsFromBlock(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, events, 1)
 			assert.IsType(t, []subscriber.Event{}, events)
-			assert.Equal(t, "XTZ", gjson.GetBytes(events[0], "from").Str)
-			assert.Equal(t, "USD", gjson.GetBytes(events[0], "to").Str)
-			assert.Equal(t, "9", gjson.GetBytes(events[0], "request_id").Str)
+			assert.Equal(t, "XTZ", events[0]["from"])
+			assert.Equal(t, "USD", events[0]["to"])
+			assert.Equal(t, "9", events[0]["request_id"])
 		})
 }

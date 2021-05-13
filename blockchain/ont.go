@@ -1,17 +1,7 @@
 package blockchain
 
 import (
-	"encoding/hex"
-	"fmt"
 	"time"
-
-	ontology_go_sdk "github.com/ontio/ontology-go-sdk"
-	"github.com/ontio/ontology-go-sdk/common"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/smartcontractkit/chainlink/core/logger"
-	"github.com/smartcontractkit/chainlink/core/store/models"
-	"github.com/smartcontractkit/external-initiator/store"
-	"github.com/smartcontractkit/external-initiator/subscriber"
 )
 
 const (
@@ -19,7 +9,7 @@ const (
 	scanInterval = 5 * time.Second
 )
 
-func createOntSubscriber(sub store.Subscription) *ontSubscriber {
+/*func createOntSubscriber(sub store.Subscription) *ontSubscriber {
 	sdk := ontology_go_sdk.NewOntologySdk()
 	sdk.NewRpcClient().SetAddress(sub.Endpoint.Url)
 	return &ontSubscriber{
@@ -114,9 +104,9 @@ func (ots *ontSubscription) parseOntEvent(height uint32) error {
 
 	for _, e := range ontEvents {
 		for _, notify := range e.Notify {
-			event, ok := ots.notifyTrigger(notify)
+			_, ok := ots.notifyTrigger(notify)
 			if ok {
-				ots.events <- event
+				// ots.events <- event
 			}
 		}
 	}
@@ -199,4 +189,4 @@ func (ots *ontSubscription) notifyTrigger(notify *common.NotifyEventInfo) ([]byt
 		return event, true
 	}
 	return nil, false
-}
+}*/

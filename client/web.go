@@ -7,15 +7,18 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
+
+	"github.com/smartcontractkit/external-initiator/blockchain"
+	"github.com/smartcontractkit/external-initiator/services"
+	"github.com/smartcontractkit/external-initiator/store"
 
 	"github.com/Depado/ginprom"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink/core/logger"
-	"github.com/smartcontractkit/external-initiator/blockchain"
-	"github.com/smartcontractkit/external-initiator/store"
 )
 
 var ginPrometheus *ginprom.Prometheus
@@ -30,6 +33,8 @@ type subscriptionStorer interface {
 	DeleteJob(jobid string) error
 	GetEndpoint(name string) (*store.Endpoint, error)
 	SaveEndpoint(endpoint *store.Endpoint) error
+	SaveJobSpec(arg *store.JobSpec) error
+	LoadJobSpec(jobid string) (*store.JobSpec, error)
 }
 
 func init() {
@@ -133,14 +138,29 @@ type CreateSubscriptionReq struct {
 }
 
 func validateRequest(t *CreateSubscriptionReq, endpointType string) error {
-	validations := append([]int{
-		len(t.JobID),
-	}, blockchain.GetValidations(endpointType, t.Params)...)
 
-	for _, v := range validations {
-		if v < 1 {
-			return errors.New("missing required field(s)")
-		}
+	if len(t.JobID) == 0 {
+		return errors.New("missing Job ID")
+	}
+
+	missing := blockchain.ValidateParams(endpointType, t.Params)
+	if len(missing) > 1 {
+		return errors.New("missing required fields: " + strings.Join(missing, ", "))
+	}
+
+	if t.Params.FluxMonitor == nil {
+		return nil
+	}
+
+	spec, err := json.Marshal(t.Params)
+	if err != nil {
+		return err
+	}
+
+	// RuntimeConfig is not relevant here, just checking if job spec is valid. Passing empty
+	_, err = services.ParseFMSpec(spec, store.RuntimeConfig{})
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -173,22 +193,39 @@ func (srv *HttpService) CreateSubscription(c *gin.Context) {
 		return
 	}
 
-	if err := validateRequest(&req, endpoint.Type); err != nil {
+	if err = validateRequest(&req, endpoint.Type); err != nil {
 		logger.Error(err)
 		c.JSON(http.StatusBadRequest, nil)
 		return
 	}
 
-	sub := &store.Subscription{
+	spec, err := json.Marshal(req.Params)
+	if err != nil {
+		logger.Error(err)
+		c.JSON(http.StatusInternalServerError, nil)
+		return
+	}
+
+	js := &store.JobSpec{
+		Job:  req.JobID,
+		Spec: spec,
+	}
+
+	if err := srv.Store.SaveJobSpec(js); err != nil {
+		logger.Error(err)
+		c.JSON(http.StatusInternalServerError, nil)
+		return
+	}
+
+	sub := store.Subscription{
 		ReferenceId:  uuid.New().String(),
 		Job:          req.JobID,
 		EndpointName: req.Params.Endpoint,
 		Endpoint:     *endpoint,
 	}
 
-	blockchain.CreateSubscription(sub, req.Params)
-
-	if err := srv.Store.SaveSubscription(sub); err != nil {
+	sub = blockchain.CreateSubscription(sub, req.Params)
+	if err := srv.Store.SaveSubscription(&sub); err != nil {
 		logger.Error(err)
 		c.JSON(http.StatusInternalServerError, nil)
 		return

@@ -8,6 +8,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+var epochNumberCounter = 0
+
 func handleCfxRequest(conn string, msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 	if conn == "ws" {
 		switch msg.Method {
@@ -18,10 +20,28 @@ func handleCfxRequest(conn string, msg JsonrpcMessage) ([]JsonrpcMessage, error)
 		switch msg.Method {
 		case "cfx_getLogs":
 			return handleCfxGetLogs(msg)
+		case "cfx_epochNumber":
+			return handleCfxEpochNumber(msg)
 		}
 	}
 
 	return nil, fmt.Errorf("unexpected method: %v", msg.Method)
+}
+
+func handleCfxEpochNumber(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
+	epochNumberCounter += 1
+	num, err := json.Marshal(fmt.Sprintf("0x%02x", epochNumberCounter))
+	if err != nil {
+		return nil, err
+	}
+
+	return []JsonrpcMessage{
+		{
+			Version: msg.Version,
+			ID:      msg.ID,
+			Result:  num,
+		},
+	}, nil
 }
 
 type cfxSubscribeResponse struct {
@@ -97,17 +117,14 @@ func handleCfxSubscribe(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 	}
 
 	return []JsonrpcMessage{
-		// Send a confirmation message first
-		// This is currently ignored, so don't fill
 		{
 			Version: "2.0",
 			ID:      msg.ID,
-			Method:  "cfx_subscribe",
+			Result:  []byte(`"test"`),
 		},
 		{
 			Version: "2.0",
-			ID:      msg.ID,
-			Method:  "cfx_subscribe",
+			Method:  "cfx_subscription",
 			Params:  subBz,
 		},
 	}, nil

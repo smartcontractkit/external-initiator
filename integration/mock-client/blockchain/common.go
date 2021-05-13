@@ -3,12 +3,13 @@ package blockchain
 import (
 	"fmt"
 
+	"github.com/smartcontractkit/external-initiator/blockchain/common"
+
 	"github.com/gin-gonic/gin"
-	"github.com/smartcontractkit/external-initiator/blockchain"
 )
 
 // JsonrpcMessage declares JSON-RPC message type
-type JsonrpcMessage = blockchain.JsonrpcMessage
+type JsonrpcMessage = common.JsonrpcMessage
 
 func HandleRequest(conn, platform string, msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 	cannedResponse, ok := GetCannedResponse(platform, msg)
@@ -23,14 +24,14 @@ func HandleRequest(conn, platform string, msg JsonrpcMessage) ([]JsonrpcMessage,
 		return handleHmyRequest(conn, msg)
 	case "ont":
 		return handleOntRequest(msg)
-	case "binance-smart-chain":
-		return handleBscRequest(conn, msg)
 	case "near":
 		return handleNEARRequest(conn, msg)
 	case "cfx":
 		return handleCfxRequest(conn, msg)
 	case "keeper":
 		return handleKeeperRequest(conn, msg)
+	case "substrate":
+		return handleSubstrateRequest(conn, msg)
 	default:
 		return nil, fmt.Errorf("unexpected platform: %v", platform)
 	}

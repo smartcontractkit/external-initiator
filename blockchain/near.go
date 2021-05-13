@@ -8,10 +8,12 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/smartcontractkit/chainlink/core/logger"
+	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/smartcontractkit/chainlink/core/logger"
 )
 
 const (
@@ -173,7 +175,7 @@ func (m nearManager) GetTriggerJson() []byte {
 		return nil
 	}
 
-	msg := JsonrpcMessage{
+	msg := common.JsonrpcMessage{
 		Version: "2.0",
 		ID:      json.RawMessage(`1`),
 	}
@@ -198,9 +200,9 @@ func (m nearManager) GetTriggerJson() []byte {
 // ParseResponse generates []subscriber.Event from JSON-RPC response, requested using the GetTriggerJson message
 func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	promLastSourcePing.With(prometheus.Labels{"endpoint": m.endpointName, "jobid": m.filter.JobID}).SetToCurrentTime()
-	logger.Debugw("Parsing NEAR response", "ExpectsMock", ExpectsMock)
+	logger.Debugw("Parsing NEAR response", "ExpectsMock", common.ExpectsMock)
 
-	var msg JsonrpcMessage
+	var msg common.JsonrpcMessage
 	if err := json.Unmarshal(data, &msg); err != nil {
 		logger.Error("Failed parsing JSON-RPC message: ", err)
 		return nil, false
@@ -262,7 +264,7 @@ func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 			requestSpec := fmt.Sprintf("%s", requestSpecBytes)
 
 			// Check if our jobID matches
-			if !matchesJobID(m.filter.JobID, requestSpec) {
+			if !common.MatchesJobID(m.filter.JobID, requestSpec) {
 				continue
 			}
 
@@ -292,12 +294,12 @@ func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 				return nil, false
 			}
 
-			event, err := json.Marshal(eventData)
+			_, err = json.Marshal(eventData)
 			if err != nil {
 				logger.Error("Failed marshaling fulfillment arguments:", err)
 				continue
 			}
-			events = append(events, event)
+			// events = append(events, event)
 		}
 	}
 
@@ -348,7 +350,7 @@ func (m nearManager) GetTestJson() []byte {
 			return nil
 		}
 
-		msg := JsonrpcMessage{
+		msg := common.JsonrpcMessage{
 			Version: "2.0",
 			ID:      json.RawMessage(`1`),
 			Method:  "query",
@@ -378,9 +380,9 @@ func (m nearManager) GetTestJson() []byte {
 // Attempts to parse the status in the response.
 // If successful, stores the status in nearManager.
 func (m nearManager) ParseTestResponse(data []byte) error {
-	logger.Debugw("Parsing NEAR test response", "ExpectsMock", ExpectsMock)
+	logger.Debugw("Parsing NEAR test response", "ExpectsMock", common.ExpectsMock)
 	if m.connectionType == subscriber.RPC {
-		var msg JsonrpcMessage
+		var msg common.JsonrpcMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
 			return err
 		}
@@ -398,7 +400,7 @@ func (m nearManager) ParseTestResponse(data []byte) error {
 }
 
 // ParseNEARQueryResult will unmarshal JsonrpcMessage as a NEAR standard NEARQueryResult
-func ParseNEARQueryResult(msg JsonrpcMessage) (*NEARQueryResult, error) {
+func ParseNEARQueryResult(msg common.JsonrpcMessage) (*NEARQueryResult, error) {
 	var queryResult NEARQueryResult
 	if err := json.Unmarshal(msg.Result, &queryResult); err != nil {
 		return nil, err
@@ -407,7 +409,7 @@ func ParseNEARQueryResult(msg JsonrpcMessage) (*NEARQueryResult, error) {
 }
 
 // ParseNEARNEAROracleNonces will unmarshal JsonrpcMessage result.result as NEAROracleNonces map
-func ParseNEARNEAROracleNonces(msg JsonrpcMessage) (NEAROracleNonces, error) {
+func ParseNEARNEAROracleNonces(msg common.JsonrpcMessage) (NEAROracleNonces, error) {
 	queryResult, err := ParseNEARQueryResult(msg)
 	if err != nil {
 		return nil, err
@@ -422,7 +424,7 @@ func ParseNEARNEAROracleNonces(msg JsonrpcMessage) (NEAROracleNonces, error) {
 }
 
 // ParseNEAROracleRequestsMap will unmarshal JsonrpcMessage result.result as map[string][]NEAROracleRequest
-func ParseNEAROracleRequestsMap(msg JsonrpcMessage) (map[string][]NEAROracleRequest, error) {
+func ParseNEAROracleRequestsMap(msg common.JsonrpcMessage) (map[string][]NEAROracleRequest, error) {
 	queryResult, err := ParseNEARQueryResult(msg)
 	if err != nil {
 		return nil, err

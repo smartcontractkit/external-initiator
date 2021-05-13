@@ -5,6 +5,7 @@ package chainlink
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/smartcontractkit/chainlink/core/logger"
+	"github.com/smartcontractkit/external-initiator/subscriber"
 )
 
 var (
@@ -54,10 +56,15 @@ type Node struct {
 
 // TriggerJob wil send a job run trigger for the
 // provided jobId.
-func (cl Node) TriggerJob(jobId string, data []byte) error {
+func (cl Node) TriggerJob(jobId string, data subscriber.Event) error {
 	logger.Infof("Sending a job run trigger to %s for job %s\n", cl.Endpoint.String(), jobId)
 
-	err := cl.sendJobrunTrigger(jobId, data)
+	payload, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+
+	err = cl.sendJobrunTrigger(jobId, payload)
 	if err != nil {
 		promJobrunsFailed.With(prometheus.Labels{"jobid": jobId}).Inc()
 		return err

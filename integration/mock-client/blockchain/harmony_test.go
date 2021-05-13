@@ -45,20 +45,20 @@ func Test_hmyLogRequestToResponse(t *testing.T) {
 			"correct hmy_log request",
 			args{
 				JsonrpcMessage{
-					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[["%s"]],"address":["%s"]}]`, hash.String(), address.String())),
+					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[["%s"]],"address":["%s"]}]`, hmyHash.String(), hmyAddress.String())),
 				},
 			},
-			getHmyLogResponse(address.String(), []string{hash.String()}),
+			getHmyLogResponse(hmyAddress.String(), []string{hmyHash.String()}),
 			false,
 		},
 		{
 			"hmy_log request with empty topics",
 			args{
 				JsonrpcMessage{
-					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[null],"address":["%s"]}]`, address.String())),
+					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[null],"address":["%s"]}]`, hmyAddress.String())),
 				},
 			},
-			getHmyLogResponse(address.String(), nil),
+			getHmyLogResponse(hmyAddress.String(), nil),
 			false,
 		},
 		{
@@ -114,7 +114,7 @@ func Test_getHmyAddressesFromMap(t *testing.T) {
 					"address": json.RawMessage(fmt.Sprintf(`["%s"]`, hmyAddress.String())),
 				},
 			},
-			[]common.Address{address},
+			[]common.Address{hmyAddress},
 			false,
 		},
 		{
@@ -124,7 +124,7 @@ func Test_getHmyAddressesFromMap(t *testing.T) {
 					"address": json.RawMessage(fmt.Sprintf(`["%s", "%s", "%s"]`, hmyAddress.String(), hmyAddress.String(), hmyAddress.String())),
 				},
 			},
-			[]common.Address{address, address, address},
+			[]common.Address{hmyAddress, hmyAddress, hmyAddress},
 			false,
 		},
 		{
@@ -242,21 +242,21 @@ func Test_handleHmyBlockNumber(t *testing.T) {
 		msg JsonrpcMessage
 	}
 	tests := []struct {
-		name   string
-		args   args
-		want   []JsonrpcMessage
-		wantOk bool
+		name    string
+		args    args
+		want    []JsonrpcMessage
+		wantErr bool
 	}{
 		{
 			"returns a block number with the correct ID",
 			args{
-				JsonrpcMessage{ID: []byte(`123`), Method: "hmy_blockNumber"},
+				JsonrpcMessage{Version: "2.0", ID: []byte(`123`), Method: "hmy_blockNumber"},
 			},
 			[]JsonrpcMessage{
 				{
 					Version: "2.0",
 					ID:      []byte(`123`),
-					Result:  []byte(`"0x0"`),
+					Result:  []byte(`"0x01"`),
 				},
 			},
 			true,
@@ -264,9 +264,9 @@ func Test_handleHmyBlockNumber(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, ok := GetCannedResponse("hmy", tt.args.msg)
-			if ok != tt.wantOk {
-				t.Errorf("handleHmyBlockNumber() ok = %v, wantOk %v", ok, tt.wantOk)
+			got, err := handleHmyBlockNumber(tt.args.msg)
+			if (err == nil) != tt.wantErr {
+				t.Errorf("handleHmyBlockNumber() err = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
@@ -291,14 +291,14 @@ func Test_handleHmyGetLogs(t *testing.T) {
 			args{
 				JsonrpcMessage{
 					ID:     []byte(`123`),
-					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[["%s"]],"address":["%s"]}]`, hash.String(), address.String())),
+					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[["%s"]],"address":["%s"]}]`, hmyHash.String(), hmyAddress.String())),
 				},
 			},
 			[]JsonrpcMessage{
 				{
 					Version: "2.0",
 					ID:      []byte(`123`),
-					Result:  hmyInterfaceToJson([]hmyLogResponse{getHmyLogResponse(address.String(), []string{hash.String()})}),
+					Result:  hmyInterfaceToJson([]hmyLogResponse{getHmyLogResponse(hmyAddress.String(), []string{hmyHash.String()})}),
 				},
 			},
 			false,
@@ -308,7 +308,7 @@ func Test_handleHmyGetLogs(t *testing.T) {
 			args{
 				JsonrpcMessage{
 					ID:     []byte(`123`),
-					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[["%s"]],"address":[]}]`, hash.String())),
+					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[["%s"]],"address":[]}]`, hmyHash.String())),
 				},
 			},
 			nil,
@@ -345,18 +345,21 @@ func Test_handleHmyRequest(t *testing.T) {
 			args{
 				"ws",
 				JsonrpcMessage{
-					Method: "hmy_subscribe",
-					Params: json.RawMessage(fmt.Sprintf(`["logs",{"topics":[null],"address":["%s"]}]`, hmyAddress.String())),
+					Version: "2.0",
+					ID:      []byte(`1`),
+					Method:  "hmy_subscribe",
+					Params:  json.RawMessage(fmt.Sprintf(`["logs",{"topics":[null],"address":["%s"]}]`, hmyAddress.String())),
 				},
 			},
 			[]JsonrpcMessage{
 				{
 					Version: "2.0",
-					Method:  "hmy_subscribe",
+					ID:      []byte(`1`),
+					Result:  []byte(`"test"`),
 				},
 				{
 					Version: "2.0",
-					Method:  "hmy_subscribe",
+					Method:  "hmy_subscription",
 					Params:  json.RawMessage(fmt.Sprintf(`{"subscription":"test","result":%s}`, hmyInterfaceToJson(getHmyLogResponse(hmyAddress.String(), nil)))),
 				},
 			},
@@ -420,18 +423,21 @@ func Test_handleHmySubscribe(t *testing.T) {
 			"handles correct subscribe",
 			args{
 				JsonrpcMessage{
-					Method: "hmy_subscribe",
-					Params: json.RawMessage(fmt.Sprintf(`["logs",{"topics":[null],"address":["%s"]}]`, hmyAddress.String())),
+					Version: "2.0",
+					ID:      []byte(`1`),
+					Method:  "hmy_subscribe",
+					Params:  json.RawMessage(fmt.Sprintf(`["logs",{"topics":[null],"address":["%s"]}]`, hmyAddress.String())),
 				},
 			},
 			[]JsonrpcMessage{
 				{
 					Version: "2.0",
-					Method:  "hmy_subscribe",
+					ID:      []byte(`1`),
+					Result:  []byte(`"test"`),
 				},
 				{
 					Version: "2.0",
-					Method:  "hmy_subscribe",
+					Method:  "hmy_subscription",
 					Params:  json.RawMessage(fmt.Sprintf(`{"subscription":"test","result":%s}`, hmyInterfaceToJson(getHmyLogResponse(hmyAddress.String(), nil)))),
 				},
 			},
@@ -531,7 +537,7 @@ func Test_handleHmyMapStringInterface(t *testing.T) {
 			"fails on no addresses",
 			args{
 				map[string]json.RawMessage{
-					"topics":  json.RawMessage(fmt.Sprintf(`[["%s"]]`, hash.String())),
+					"topics":  json.RawMessage(fmt.Sprintf(`[["%s"]]`, hmyHash.String())),
 					"address": json.RawMessage(`[]`),
 				},
 			},

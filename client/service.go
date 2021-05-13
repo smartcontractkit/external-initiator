@@ -2,21 +2,25 @@ package client
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/url"
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/smartcontractkit/external-initiator/blockchain"
+	"github.com/smartcontractkit/external-initiator/blockchain/common"
+	"github.com/smartcontractkit/external-initiator/chainlink"
+	"github.com/smartcontractkit/external-initiator/services"
+	"github.com/smartcontractkit/external-initiator/store"
+	"github.com/smartcontractkit/external-initiator/subscriber"
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/smartcontractkit/chainlink/core/logger"
-	"github.com/smartcontractkit/external-initiator/blockchain"
-	"github.com/smartcontractkit/external-initiator/chainlink"
-	"github.com/smartcontractkit/external-initiator/store"
-	"github.com/smartcontractkit/external-initiator/subscriber"
+	"github.com/tidwall/gjson"
 )
 
 var (
@@ -35,6 +39,8 @@ type storeInterface interface {
 	SaveSubscription(arg *store.Subscription) error
 	DeleteSubscription(subscription *store.Subscription) error
 	SaveEndpoint(e *store.Endpoint) error
+	SaveJobSpec(arg *store.JobSpec) error
+	LoadJobSpec(jobid string) (*store.JobSpec, error)
 }
 
 // startService runs the Service in the background and gracefully stops when a
@@ -47,7 +53,7 @@ func startService(
 	logger.Info("Starting External Initiator")
 
 	// Set the mocking status before we start anything else
-	blockchain.ExpectsMock = config.ExpectsMock
+	common.ExpectsMock = config.ExpectsMock
 
 	clUrl, err := url.Parse(normalizeLocalhost(config.ChainlinkURL))
 	if err != nil {
@@ -64,7 +70,10 @@ func startService(
 			Delay:    config.ChainlinkRetryDelay,
 		},
 	}, store.RuntimeConfig{
-		KeeperBlockCooldown: config.KeeperBlockCooldown,
+		KeeperBlockCooldown:    config.KeeperBlockCooldown,
+		FMAdapterTimeout:       config.FMAdapterTimeout,
+		FMAdapterRetryAttempts: config.FMAdapterRetryAttempts,
+		FMAdapterRetryDelay:    config.FMAdapterRetryDelay,
 	})
 
 	var names []string
@@ -151,19 +160,14 @@ func NewService(
 
 // Run loads subscriptions, validates and subscribes to them.
 func (srv *Service) Run() error {
+
 	subs, err := srv.store.LoadSubscriptions()
 	if err != nil {
 		return err
 	}
 
 	for _, sub := range subs {
-		iSubscriber, err := srv.getAndTestSubscription(&sub)
-		if err != nil {
-			logger.Error(err)
-			continue
-		}
-
-		err = srv.subscribe(&sub, iSubscriber)
+		err = srv.subscribe(sub)
 		if err != nil {
 			logger.Error(err)
 		}
@@ -172,32 +176,14 @@ func (srv *Service) Run() error {
 	return nil
 }
 
-func (srv *Service) getAndTestSubscription(sub *store.Subscription) (subscriber.ISubscriber, error) {
-	endpoint, err := srv.store.LoadEndpoint(sub.EndpointName)
-	if err != nil {
-		return nil, errors.Wrap(err, "Failed loading endpoint")
-	}
-	sub.Endpoint = endpoint
-
-	iSubscriber, err := getSubscriber(*sub)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := iSubscriber.Test(); err != nil {
-		return nil, errors.Wrap(err, "Failed testing subscriber")
-	}
-
-	return iSubscriber, nil
-}
-
 func closeSubscription(sub *activeSubscription) {
-	if sub.Interface != nil {
-		sub.Interface.Unsubscribe()
-	}
-	if sub.Events != nil {
-		close(sub.Events)
-	}
+	sub.onStop.Do(func() {
+		if sub.Service == nil {
+			return
+		}
+
+		sub.Service.Stop()
+	})
 }
 
 // Close shuts down any open subscriptions and closes
@@ -217,71 +203,100 @@ func (srv *Service) Close() {
 
 type activeSubscription struct {
 	Subscription *store.Subscription
-	Interface    subscriber.ISubscription
-	Events       chan subscriber.Event
-	Node         chainlink.Node
+	Service      services.Service
+
+	onStop sync.Once
 }
 
-func (srv *Service) subscribe(sub *store.Subscription, iSubscriber subscriber.ISubscriber) error {
+func (srv Service) jobTriggerListener(job string, ch <-chan subscriber.Event) {
+	// Add a second of delay to let services (Chainlink core)
+	// sync up before sending the first job run trigger.
+	time.Sleep(1 * time.Second)
+
+	for {
+		trigger := <-ch
+		go func() {
+			err := srv.clNode.TriggerJob(job, trigger)
+			if err != nil {
+				logger.Errorw("Failed sending job run trigger: ", err, "job", job)
+			}
+		}()
+	}
+}
+
+func (srv *Service) subscribe(sub store.Subscription) error {
 	if _, ok := srv.subscriptions[sub.Job]; ok {
 		return errors.New("already subscribed to this jobid")
 	}
 
-	events := make(chan subscriber.Event)
-
-	subscription, err := iSubscriber.SubscribeToEvents(events, srv.runtimeConfig)
+	var service services.Service
+	var err error
+	triggerJobRun := make(chan subscriber.Event, 100)
+	js, err := srv.store.LoadJobSpec(sub.Job)
+	if err != nil || gjson.GetBytes(js.Spec, "fluxmonitor").Raw == "null" || gjson.GetBytes(js.Spec, "fluxmonitor").Raw == "" {
+		service, err = srv.subscribeRunlog(sub, triggerJobRun, js)
+	} else {
+		service, err = srv.subscribeFluxmonitor(sub, triggerJobRun, js)
+	}
 	if err != nil {
 		return err
 	}
 
-	as := &activeSubscription{
-		Subscription: sub,
-		Interface:    subscription,
-		Events:       events,
-		Node:         srv.clNode,
+	srv.subscriptions[sub.Job] = &activeSubscription{
+		Subscription: &sub,
+		Service:      service,
 	}
-	srv.subscriptions[sub.Job] = as
 
-	counter := promActiveSubscriptions.With(prometheus.Labels{"endpoint": sub.EndpointName})
-	counter.Inc()
-
-	go func() {
-		defer counter.Dec()
-
-		// Add a second of delay to let services (Chainlink core)
-		// sync up before sending the first job run trigger.
-		time.Sleep(1 * time.Second)
-
-		for {
-			event, ok := <-as.Events
-			if !ok {
-				return
-			}
-			go func() {
-				err := as.Node.TriggerJob(as.Subscription.Job, event)
-				if err != nil {
-					logger.Error("Failed sending job run trigger: ", err)
-				}
-			}()
-		}
-	}()
+	go srv.jobTriggerListener(sub.Job, triggerJobRun)
 
 	return nil
+}
+
+func (srv Service) subscribeRunlog(sub store.Subscription, ch chan subscriber.Event, _ *store.JobSpec) (services.Service, error) {
+	blockchainManager, err := blockchain.CreateRunlogManager(sub)
+	if err != nil {
+		return nil, err
+	}
+
+	return services.NewRunlog(sub.Job, ch, blockchainManager)
+}
+
+func (srv *Service) subscribeFluxmonitor(sub store.Subscription, ch chan subscriber.Event, js *store.JobSpec) (services.Service, error) {
+	logger.Info("Starting FluxMonitor for Job: ", js.Job)
+
+	fmConfig, err := services.ParseFMSpec(js.Spec, srv.runtimeConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	blockchainManager, err := blockchain.CreateFluxMonitorManager(sub)
+	if err != nil {
+		return nil, err
+	}
+
+	return services.NewFluxMonitor(js.Job, fmConfig, ch, blockchainManager)
+}
+
+func (srv *Service) SaveJobSpec(arg *store.JobSpec) error {
+	return srv.store.SaveJobSpec(arg)
+}
+
+func (srv *Service) LoadJobSpec(jobid string) (*store.JobSpec, error) {
+	jobspec, err := srv.store.LoadJobSpec(jobid)
+	if err != nil {
+		return nil, err
+	}
+	return jobspec, nil
 }
 
 // SaveSubscription tests, stores and subscribes to the store.Subscription
 // provided.
 func (srv *Service) SaveSubscription(arg *store.Subscription) error {
-	sub, err := srv.getAndTestSubscription(arg)
-	if err != nil {
-		return err
-	}
-
 	if err := srv.store.SaveSubscription(arg); err != nil {
-		return err
+		return errors.Wrap(err, "unable to store subscription")
 	}
 
-	return srv.subscribe(arg, sub)
+	return srv.subscribe(*arg)
 }
 
 // DeleteJob unsubscribes (if applicable) and deletes
@@ -309,7 +324,7 @@ func (srv *Service) DeleteJob(jobid string) error {
 func (srv *Service) GetEndpoint(name string) (*store.Endpoint, error) {
 	endpoint, err := srv.store.LoadEndpoint(name)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "could not load endpoint")
 	}
 	if endpoint.Name != name {
 		return nil, errors.New("endpoint name mismatch")
@@ -323,31 +338,6 @@ func (srv *Service) SaveEndpoint(e *store.Endpoint) error {
 		return err
 	}
 	return srv.store.SaveEndpoint(e)
-}
-
-func getSubscriber(sub store.Subscription) (subscriber.ISubscriber, error) {
-	connType, err := blockchain.GetConnectionType(sub.Endpoint)
-	if err != nil {
-		return nil, err
-	}
-
-	if connType == subscriber.Client {
-		return blockchain.CreateClientManager(sub)
-	}
-
-	manager, err := blockchain.CreateJsonManager(connType, sub)
-	if err != nil {
-		return nil, err
-	}
-
-	switch connType {
-	case subscriber.WS:
-		return subscriber.WebsocketSubscriber{Endpoint: sub.Endpoint.Url, Manager: manager}, nil
-	case subscriber.RPC:
-		return subscriber.RpcSubscriber{Endpoint: sub.Endpoint.Url, Interval: time.Duration(sub.Endpoint.RefreshInt) * time.Second, Manager: manager}, nil
-	default:
-		return nil, fmt.Errorf("unknown subscriber type: %v", connType)
-	}
 }
 
 func normalizeLocalhost(endpoint string) string {

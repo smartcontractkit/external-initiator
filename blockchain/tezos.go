@@ -11,10 +11,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/smartcontractkit/chainlink/core/logger"
+	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/tidwall/gjson"
 )
 
@@ -49,7 +51,7 @@ type tezosSubscription struct {
 	jobid        string
 }
 
-func (tz tezosSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ store.RuntimeConfig) (subscriber.ISubscription, error) {
+/*func (tz tezosSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ store.RuntimeConfig) (subscriber.ISubscription, error) {
 	logger.Infof("Using Tezos RPC endpoint: %s\nListening for events on addresses: %v", tz.Endpoint, tz.Addresses)
 
 	tzs := tezosSubscription{
@@ -63,7 +65,7 @@ func (tz tezosSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ s
 	go tzs.readMessagesWithRetry()
 
 	return tzs, nil
-}
+}*/
 
 func (tz tezosSubscriber) Test() error {
 	resp, err := monitor(tz.Endpoint)
@@ -266,11 +268,11 @@ func extractEventsFromBlock(data []byte, addresses []string, jobID string) ([]su
 				return nil, err
 			}
 
-			event, err := json.Marshal(params)
+			_, err = json.Marshal(params)
 			if err != nil {
 				return nil, err
 			}
-			events = append(events, event)
+			// events = append(events, event)
 		}
 	}
 	return events, nil
@@ -283,7 +285,7 @@ func matchesXtzJobid(values []string, expected string) bool {
 	}
 
 	jobID := values[3]
-	return matchesJobID(expected, jobID)
+	return common.MatchesJobID(expected, jobID)
 }
 
 func getSuccessfulRequestCall(content xtzTransactionContent, oracleAddresses []string) (xtzInternalOperationResult, bool) {
@@ -436,7 +438,7 @@ type xtzInternalOperationParameters struct {
 	Value      json.RawMessage `json:"value"`
 }
 
-func getXtzKeyValues(vals []string) (map[string]string, error) {
+func getXtzKeyValues(vals []string) (map[string]interface{}, error) {
 	if len(vals) < 7 {
 		return nil, errors.New("not enough values provided")
 	}
@@ -445,7 +447,7 @@ func getXtzKeyValues(vals []string) (map[string]string, error) {
 	// The last two values are target and timeout.
 	// We ignore these when converting to key-value arrays,
 	// then we add the necessary values with correct keys.
-	kv := convertStringArrayToKV(vals[4 : len(vals)-2])
+	kv := common.ConvertStringArrayToKV(vals[4 : len(vals)-2])
 	kv["payment"] = vals[1]
 	kv["request_id"] = vals[2]
 	return kv, nil

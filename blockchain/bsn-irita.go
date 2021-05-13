@@ -88,7 +88,7 @@ func createBSNIritaSubscriber(sub store.Subscription) (*biritaSubscriber, error)
 	}, nil
 }
 
-func (bs *biritaSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ store.RuntimeConfig) (subscriber.ISubscription, error) {
+/* func (bs *biritaSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ store.RuntimeConfig) (subscriber.ISubscription, error) {
 	logger.Infof("Subscribe to BSN-IRITA service requests, provider addresses: %v, service name: %s\n", bs.Addresses, bs.ServiceName)
 
 	addressMap := make(map[string]bool)
@@ -109,7 +109,7 @@ func (bs *biritaSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _
 	go biritaSubscription.start()
 
 	return biritaSubscription, nil
-}
+}*/
 
 func (bs *biritaSubscriber) Test() error {
 	_, err := bs.Client.Status(context.Background())
@@ -285,12 +285,13 @@ func (bs *biritaSubscription) buildTriggerEvent(request BIritaServiceRequest) (s
 	triggerEvent.RequestID = request.ID
 	triggerEvent.RequestBody = requestBody
 
-	event, err := json.Marshal(triggerEvent)
+	_, err = json.Marshal(triggerEvent)
 	if err != nil {
 		return nil, err
 	}
 
-	return event, nil
+	// return event, nil
+	return nil, nil
 }
 
 func (bs *biritaSubscription) checkServiceRequest(request BIritaServiceRequest) error {

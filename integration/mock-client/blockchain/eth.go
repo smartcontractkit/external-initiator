@@ -8,6 +8,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+var blockNumberCounter = 0
+
 func handleEthRequest(conn string, msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 	if conn == "ws" {
 		switch msg.Method {
@@ -18,10 +20,28 @@ func handleEthRequest(conn string, msg JsonrpcMessage) ([]JsonrpcMessage, error)
 		switch msg.Method {
 		case "eth_getLogs":
 			return handleEthGetLogs(msg)
+		case "eth_blockNumber":
+			return handleBlockNumber(msg)
 		}
 	}
 
 	return nil, fmt.Errorf("unexpected method: %v", msg.Method)
+}
+
+func handleBlockNumber(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
+	blockNumberCounter += 1
+	num, err := json.Marshal(fmt.Sprintf("0x%02x", blockNumberCounter))
+	if err != nil {
+		return nil, err
+	}
+
+	return []JsonrpcMessage{
+		{
+			Version: msg.Version,
+			ID:      msg.ID,
+			Result:  num,
+		},
+	}, nil
 }
 
 type ethSubscribeResponse struct {
@@ -29,8 +49,8 @@ type ethSubscribeResponse struct {
 	Result       json.RawMessage `json:"result"`
 }
 
-func handleMapStringInterface(in map[string]json.RawMessage) (ethLogResponse, error) {
-	topics, err := getTopicsFromMap(in)
+func handleEthMapStringInterface(in map[string]json.RawMessage) (ethLogResponse, error) {
+	topics, err := getEthTopicsFromMap(in)
 	if err != nil {
 		return ethLogResponse{}, err
 	}
@@ -42,19 +62,19 @@ func handleMapStringInterface(in map[string]json.RawMessage) (ethLogResponse, er
 		}
 	}
 
-	addresses, err := getAddressesFromMap(in)
+	addresses, err := getEthAddressesFromMap(in)
 	if err != nil {
 		return ethLogResponse{}, err
 	}
 
 	return ethLogResponse{
 		LogIndex:         "0x0",
-		BlockNumber:      "0x1",
-		BlockHash:        "0x0",
-		TransactionHash:  "0x0",
+		BlockNumber:      "0x2",
+		BlockHash:        "0xabc0000000000000000000000000000000000000000000000000000000000000",
+		TransactionHash:  "0xabc0000000000000000000000000000000000000000000000000000000000000",
 		TransactionIndex: "0x0",
 		Address:          addresses[0].String(),
-		Data:             "0x0",
+		Data:             "0x0000000000000000000000007d0965224facd7156df0c9a1adf3a94118026eeb354f99e2ac319d0d1ff8975c41c72bf347fb69a4874e2641bd19c32e09eb88b80000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000007d0965224facd7156df0c9a1adf3a94118026eeb92cdaaf300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005ef1cd6b00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000005663676574783f68747470733a2f2f6d696e2d6170692e63727970746f636f6d706172652e636f6d2f646174612f70726963653f6673796d3d455448267473796d733d5553446470617468635553446574696d65731864",
 		Topics:           topicsStr,
 	}, nil
 }
@@ -76,7 +96,7 @@ func handleEthSubscribe(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 		return nil, err
 	}
 
-	log, err := handleMapStringInterface(filter)
+	log, err := handleEthMapStringInterface(filter)
 	if err != nil {
 		return nil, err
 	}
@@ -97,17 +117,14 @@ func handleEthSubscribe(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 	}
 
 	return []JsonrpcMessage{
-		// Send a confirmation message first
-		// This is currently ignored, so don't fill
 		{
 			Version: "2.0",
 			ID:      msg.ID,
-			Method:  "eth_subscribe",
+			Result:  []byte(`"test"`),
 		},
 		{
 			Version: "2.0",
-			ID:      msg.ID,
-			Method:  "eth_subscribe",
+			Method:  "eth_subscription",
 			Params:  subBz,
 		},
 	}, nil
@@ -124,7 +141,7 @@ type ethLogResponse struct {
 	Topics           []string `json:"topics"`
 }
 
-func getTopicsFromMap(req map[string]json.RawMessage) ([][]common.Hash, error) {
+func getEthTopicsFromMap(req map[string]json.RawMessage) ([][]common.Hash, error) {
 	topicsInterface, ok := req["topics"]
 	if !ok {
 		return nil, errors.New("no topics included")
@@ -153,7 +170,7 @@ func getTopicsFromMap(req map[string]json.RawMessage) ([][]common.Hash, error) {
 	return finalTopics, nil
 }
 
-func getAddressesFromMap(req map[string]json.RawMessage) ([]common.Address, error) {
+func getEthAddressesFromMap(req map[string]json.RawMessage) ([]common.Address, error) {
 	addressesInterface, ok := req["address"]
 	if !ok {
 		return nil, errors.New("no addresses included")
@@ -183,7 +200,7 @@ func ethLogRequestToResponse(msg JsonrpcMessage) (ethLogResponse, error) {
 		return ethLogResponse{}, fmt.Errorf("expected exactly 1 filter in request, got %d", len(reqs))
 	}
 
-	return handleMapStringInterface(reqs[0])
+	return handleEthMapStringInterface(reqs[0])
 }
 
 func handleEthGetLogs(msg JsonrpcMessage) ([]JsonrpcMessage, error) {

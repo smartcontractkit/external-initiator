@@ -8,8 +8,10 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"github.com/smartcontractkit/external-initiator/eitest"
 	"github.com/smartcontractkit/external-initiator/subscriber"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -157,13 +159,13 @@ func readTestGetAllRequestsResult() ([]byte, error) {
 	return resultJSON, nil
 }
 
-func readTestJSONRPCMessage() (*JsonrpcMessage, error) {
+func readTestJSONRPCMessage() (*common.JsonrpcMessage, error) {
 	resultRaw, err := readTestGetAllRequestsResult()
 	if err != nil {
 		return nil, err
 	}
 
-	var msg JsonrpcMessage
+	var msg common.JsonrpcMessage
 	err = json.Unmarshal(resultRaw, &msg)
 	if err != nil {
 		return nil, err
@@ -248,17 +250,15 @@ func testParseResponse(t *testing.T, filter nearFilter, n int) {
 
 				for _, e := range events {
 					// check that we are able to unmarshal these bytes
-					var data map[string]interface{}
-					err = json.Unmarshal(e, &data)
 					require.NoError(t, err)
-					assert.NotNil(t, data)
+					assert.NotNil(t, e)
 					// check that every event holds five arguments
-					assert.Equal(t, 5, len(data))
-					assert.Contains(t, data, "account")
-					assert.Contains(t, data, "nonce")
-					assert.Contains(t, data, "get")
-					assert.Contains(t, data, "path")
-					assert.Contains(t, data, "times")
+					assert.Equal(t, 5, len(e))
+					assert.Contains(t, e, "account")
+					assert.Contains(t, e, "nonce")
+					assert.Contains(t, e, "get")
+					assert.Contains(t, e, "path")
+					assert.Contains(t, e, "times")
 				}
 			}
 		})

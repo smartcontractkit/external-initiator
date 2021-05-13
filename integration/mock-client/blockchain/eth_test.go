@@ -12,24 +12,24 @@ import (
 func getEthLogResponse(address string, topics []string) ethLogResponse {
 	return ethLogResponse{
 		LogIndex:         "0x0",
-		BlockNumber:      "0x1",
-		BlockHash:        "0x0",
-		TransactionHash:  "0x0",
+		BlockNumber:      "0x2",
+		BlockHash:        "0xabc0000000000000000000000000000000000000000000000000000000000000",
+		TransactionHash:  "0xabc0000000000000000000000000000000000000000000000000000000000000",
 		TransactionIndex: "0x0",
 		Address:          address,
-		Data:             "0x0",
+		Data:             "0x0000000000000000000000007d0965224facd7156df0c9a1adf3a94118026eeb354f99e2ac319d0d1ff8975c41c72bf347fb69a4874e2641bd19c32e09eb88b80000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000007d0965224facd7156df0c9a1adf3a94118026eeb92cdaaf300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005ef1cd6b00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000005663676574783f68747470733a2f2f6d696e2d6170692e63727970746f636f6d706172652e636f6d2f646174612f70726963653f6673796d3d455448267473796d733d5553446470617468635553446574696d65731864",
 		Topics:           topics,
 	}
 }
 
-func interfaceToJson(in interface{}) json.RawMessage {
+func ethInterfaceToJson(in interface{}) json.RawMessage {
 	bz, _ := json.Marshal(in)
 	return bz
 }
 
-var address = common.HexToAddress("0x0")
-var address2 = common.HexToAddress("0x1")
-var hash = common.HexToHash("0x123")
+var ethAddress = common.HexToAddress("0x0")
+var ethAddress2 = common.HexToAddress("0x1")
+var ethHash = common.HexToHash("0x123")
 
 func Test_ethLogRequestToResponse(t *testing.T) {
 	type args struct {
@@ -45,20 +45,20 @@ func Test_ethLogRequestToResponse(t *testing.T) {
 			"correct eth_log request",
 			args{
 				JsonrpcMessage{
-					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[["%s"]],"address":["%s"]}]`, hash.String(), address.String())),
+					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[["%s"]],"address":["%s"]}]`, ethHash.String(), ethAddress.String())),
 				},
 			},
-			getEthLogResponse(address.String(), []string{hash.String()}),
+			getEthLogResponse(ethAddress.String(), []string{ethHash.String()}),
 			false,
 		},
 		{
 			"eth_log request with empty topics",
 			args{
 				JsonrpcMessage{
-					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[null],"address":["%s"]}]`, address.String())),
+					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[null],"address":["%s"]}]`, ethAddress.String())),
 				},
 			},
-			getEthLogResponse(address.String(), nil),
+			getEthLogResponse(ethAddress.String(), nil),
 			false,
 		},
 		{
@@ -97,7 +97,7 @@ func Test_ethLogRequestToResponse(t *testing.T) {
 	}
 }
 
-func Test_getAddressesFromMap(t *testing.T) {
+func Test_getEthAddressesFromMap(t *testing.T) {
 	type args struct {
 		req map[string]json.RawMessage
 	}
@@ -111,20 +111,20 @@ func Test_getAddressesFromMap(t *testing.T) {
 			"correct payload",
 			args{
 				map[string]json.RawMessage{
-					"address": json.RawMessage(fmt.Sprintf(`["%s"]`, address.String())),
+					"address": json.RawMessage(fmt.Sprintf(`["%s"]`, ethAddress.String())),
 				},
 			},
-			[]common.Address{address},
+			[]common.Address{ethAddress},
 			false,
 		},
 		{
 			"multiple addresses",
 			args{
 				map[string]json.RawMessage{
-					"address": json.RawMessage(fmt.Sprintf(`["%s", "%s", "%s"]`, address.String(), address.String(), address.String())),
+					"address": json.RawMessage(fmt.Sprintf(`["%s", "%s", "%s"]`, ethAddress.String(), ethAddress.String(), ethAddress.String())),
 				},
 			},
-			[]common.Address{address, address, address},
+			[]common.Address{ethAddress, ethAddress, ethAddress},
 			false,
 		},
 		{
@@ -141,7 +141,7 @@ func Test_getAddressesFromMap(t *testing.T) {
 			"missing address key",
 			args{
 				map[string]json.RawMessage{
-					"something_else": json.RawMessage(fmt.Sprintf(`["%s"]`, address.String())),
+					"something_else": json.RawMessage(fmt.Sprintf(`["%s"]`, ethAddress.String())),
 				},
 			},
 			nil,
@@ -150,7 +150,7 @@ func Test_getAddressesFromMap(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getAddressesFromMap(tt.args.req)
+			got, err := getEthAddressesFromMap(tt.args.req)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getAddressesFromMap() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -162,7 +162,7 @@ func Test_getAddressesFromMap(t *testing.T) {
 	}
 }
 
-func Test_getTopicsFromMap(t *testing.T) {
+func Test_getEthTopicsFromMap(t *testing.T) {
 	type args struct {
 		req map[string]json.RawMessage
 	}
@@ -176,30 +176,30 @@ func Test_getTopicsFromMap(t *testing.T) {
 			"correct payload",
 			args{
 				map[string]json.RawMessage{
-					"topics": json.RawMessage(fmt.Sprintf(`[["%s"]]`, hash.String())),
+					"topics": json.RawMessage(fmt.Sprintf(`[["%s"]]`, ethHash.String())),
 				},
 			},
-			[][]common.Hash{{hash}},
+			[][]common.Hash{{ethHash}},
 			false,
 		},
 		{
 			"multiple topics",
 			args{
 				map[string]json.RawMessage{
-					"topics": json.RawMessage(fmt.Sprintf(`[["%s","%s"],["%s"]]`, hash.String(), hash.String(), hash.String())),
+					"topics": json.RawMessage(fmt.Sprintf(`[["%s","%s"],["%s"]]`, ethHash.String(), ethHash.String(), ethHash.String())),
 				},
 			},
-			[][]common.Hash{{hash, hash}, {hash}},
+			[][]common.Hash{{ethHash, ethHash}, {ethHash}},
 			false,
 		},
 		{
 			"nil in topics",
 			args{
 				map[string]json.RawMessage{
-					"topics": json.RawMessage(fmt.Sprintf(`[null,["%s"]]`, hash.String())),
+					"topics": json.RawMessage(fmt.Sprintf(`[null,["%s"]]`, ethHash.String())),
 				},
 			},
-			[][]common.Hash{{hash}},
+			[][]common.Hash{{ethHash}},
 			false,
 		},
 		{
@@ -225,13 +225,13 @@ func Test_getTopicsFromMap(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getTopicsFromMap(tt.args.req)
+			got, err := getEthTopicsFromMap(tt.args.req)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("getTopicsFromMap() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("getEthTopicsFromMap() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("getTopicsFromMap() got = %v, want %v", got, tt.want)
+				t.Errorf("getEthTopicsFromMap() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -242,21 +242,21 @@ func Test_handleEthBlockNumber(t *testing.T) {
 		msg JsonrpcMessage
 	}
 	tests := []struct {
-		name   string
-		args   args
-		want   []JsonrpcMessage
-		wantOk bool
+		name    string
+		args    args
+		want    []JsonrpcMessage
+		wantErr bool
 	}{
 		{
 			"returns a block number with the correct ID",
 			args{
-				JsonrpcMessage{ID: []byte(`123`), Method: "eth_blockNumber"},
+				JsonrpcMessage{Version: "2.0", ID: []byte(`123`), Method: "eth_blockNumber"},
 			},
 			[]JsonrpcMessage{
 				{
 					Version: "2.0",
 					ID:      []byte(`123`),
-					Result:  []byte(`"0x0"`),
+					Result:  []byte(`"0x01"`),
 				},
 			},
 			true,
@@ -264,9 +264,9 @@ func Test_handleEthBlockNumber(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, ok := GetCannedResponse("eth", tt.args.msg)
-			if ok != tt.wantOk {
-				t.Errorf("handleEthBlockNumber() ok = %v, wantOk %v", ok, tt.wantOk)
+			got, err := handleBlockNumber(tt.args.msg)
+			if (err == nil) != tt.wantErr {
+				t.Errorf("handleEthBlockNumber() err = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
@@ -291,14 +291,14 @@ func Test_handleEthGetLogs(t *testing.T) {
 			args{
 				JsonrpcMessage{
 					ID:     []byte(`123`),
-					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[["%s"]],"address":["%s"]}]`, hash.String(), address.String())),
+					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[["%s"]],"address":["%s"]}]`, ethHash.String(), ethAddress.String())),
 				},
 			},
 			[]JsonrpcMessage{
 				{
 					Version: "2.0",
 					ID:      []byte(`123`),
-					Result:  interfaceToJson([]ethLogResponse{getEthLogResponse(address.String(), []string{hash.String()})}),
+					Result:  ethInterfaceToJson([]ethLogResponse{getEthLogResponse(ethAddress.String(), []string{ethHash.String()})}),
 				},
 			},
 			false,
@@ -308,7 +308,7 @@ func Test_handleEthGetLogs(t *testing.T) {
 			args{
 				JsonrpcMessage{
 					ID:     []byte(`123`),
-					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[["%s"]],"address":[]}]`, hash.String())),
+					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[["%s"]],"address":[]}]`, ethHash.String())),
 				},
 			},
 			nil,
@@ -345,19 +345,22 @@ func Test_handleEthRequest(t *testing.T) {
 			args{
 				"ws",
 				JsonrpcMessage{
-					Method: "eth_subscribe",
-					Params: json.RawMessage(fmt.Sprintf(`["logs",{"topics":[null],"address":["%s"]}]`, address.String())),
+					Version: "2.0",
+					ID:      []byte(`1`),
+					Method:  "eth_subscribe",
+					Params:  json.RawMessage(fmt.Sprintf(`["logs",{"topics":[null],"address":["%s"]}]`, ethAddress.String())),
 				},
 			},
 			[]JsonrpcMessage{
 				{
 					Version: "2.0",
-					Method:  "eth_subscribe",
+					ID:      []byte(`1`),
+					Result:  []byte(`"test"`),
 				},
 				{
 					Version: "2.0",
-					Method:  "eth_subscribe",
-					Params:  json.RawMessage(fmt.Sprintf(`{"subscription":"test","result":%s}`, interfaceToJson(getEthLogResponse(address.String(), nil)))),
+					Method:  "eth_subscription",
+					Params:  json.RawMessage(fmt.Sprintf(`{"subscription":"test","result":%s}`, ethInterfaceToJson(getEthLogResponse(ethAddress.String(), nil)))),
 				},
 			},
 			false,
@@ -368,7 +371,7 @@ func Test_handleEthRequest(t *testing.T) {
 				"rpc",
 				JsonrpcMessage{
 					Method: "eth_subscribe",
-					Params: json.RawMessage(fmt.Sprintf(`["logs",{"topics":[null],"address":["%s"]}]`, address.String())),
+					Params: json.RawMessage(fmt.Sprintf(`["logs",{"topics":[null],"address":["%s"]}]`, ethAddress.String())),
 				},
 			},
 			nil,
@@ -380,13 +383,13 @@ func Test_handleEthRequest(t *testing.T) {
 				"rpc",
 				JsonrpcMessage{
 					Method: "eth_getLogs",
-					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[["%s"]],"address":["%s"]}]`, hash.String(), address.String())),
+					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[["%s"]],"address":["%s"]}]`, ethHash.String(), ethAddress.String())),
 				},
 			},
 			[]JsonrpcMessage{
 				{
 					Version: "2.0",
-					Result:  interfaceToJson([]ethLogResponse{getEthLogResponse(address.String(), []string{hash.String()})}),
+					Result:  ethInterfaceToJson([]ethLogResponse{getEthLogResponse(ethAddress.String(), []string{ethHash.String()})}),
 				},
 			},
 			false,
@@ -420,19 +423,21 @@ func Test_handleEthSubscribe(t *testing.T) {
 			"handles correct subscribe",
 			args{
 				JsonrpcMessage{
+					ID:     []byte(`1`),
 					Method: "eth_subscribe",
-					Params: json.RawMessage(fmt.Sprintf(`["logs",{"topics":[null],"address":["%s"]}]`, address.String())),
+					Params: json.RawMessage(fmt.Sprintf(`["logs",{"topics":[null],"address":["%s"]}]`, ethAddress.String())),
 				},
 			},
 			[]JsonrpcMessage{
 				{
 					Version: "2.0",
-					Method:  "eth_subscribe",
+					ID:      []byte(`1`),
+					Result:  []byte(`"test"`),
 				},
 				{
 					Version: "2.0",
-					Method:  "eth_subscribe",
-					Params:  json.RawMessage(fmt.Sprintf(`{"subscription":"test","result":%s}`, interfaceToJson(getEthLogResponse(address.String(), nil)))),
+					Method:  "eth_subscription",
+					Params:  json.RawMessage(fmt.Sprintf(`{"subscription":"test","result":%s}`, ethInterfaceToJson(getEthLogResponse(ethAddress.String(), nil)))),
 				},
 			},
 			false,
@@ -442,7 +447,7 @@ func Test_handleEthSubscribe(t *testing.T) {
 			args{
 				JsonrpcMessage{
 					Method: "eth_subscribe",
-					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[null],"address":["%s"]}]`, address.String())),
+					Params: json.RawMessage(fmt.Sprintf(`[{"topics":[null],"address":["%s"]}]`, ethAddress.String())),
 				},
 			},
 			nil,
@@ -453,7 +458,7 @@ func Test_handleEthSubscribe(t *testing.T) {
 			args{
 				JsonrpcMessage{
 					Method: "eth_subscribe",
-					Params: json.RawMessage(fmt.Sprintf(`["logs",{"address":["%s"]}]`, address.String())),
+					Params: json.RawMessage(fmt.Sprintf(`["logs",{"address":["%s"]}]`, ethAddress.String())),
 				},
 			},
 			nil,
@@ -464,17 +469,17 @@ func Test_handleEthSubscribe(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := handleEthSubscribe(tt.args.msg)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("handleEthSubscribe() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("handleEthSuethribe() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("handleEthSubscribe() got = %v, want %v", got, tt.want)
+				t.Errorf("handleEthSuethribe() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test_handleMapStringInterface(t *testing.T) {
+func Test_handleEthMapStringInterface(t *testing.T) {
 	type args struct {
 		in map[string]json.RawMessage
 	}
@@ -488,11 +493,11 @@ func Test_handleMapStringInterface(t *testing.T) {
 			"correct eth_log request",
 			args{
 				map[string]json.RawMessage{
-					"topics":  json.RawMessage(fmt.Sprintf(`[["%s"]]`, hash.String())),
-					"address": json.RawMessage(fmt.Sprintf(`["%s"]`, address.String())),
+					"topics":  json.RawMessage(fmt.Sprintf(`[["%s"]]`, ethHash.String())),
+					"address": json.RawMessage(fmt.Sprintf(`["%s"]`, ethAddress.String())),
 				},
 			},
-			getEthLogResponse(address.String(), []string{hash.String()}),
+			getEthLogResponse(ethAddress.String(), []string{ethHash.String()}),
 			false,
 		},
 		{
@@ -500,17 +505,17 @@ func Test_handleMapStringInterface(t *testing.T) {
 			args{
 				map[string]json.RawMessage{
 					"topics":  json.RawMessage(`[]`),
-					"address": json.RawMessage(fmt.Sprintf(`["%s"]`, address.String())),
+					"address": json.RawMessage(fmt.Sprintf(`["%s"]`, ethAddress.String())),
 				},
 			},
-			getEthLogResponse(address.String(), nil),
+			getEthLogResponse(ethAddress.String(), nil),
 			false,
 		},
 		{
 			"eth_log request with no topics",
 			args{
 				map[string]json.RawMessage{
-					"address": json.RawMessage(fmt.Sprintf(`["%s"]`, address.String())),
+					"address": json.RawMessage(fmt.Sprintf(`["%s"]`, ethAddress.String())),
 				},
 			},
 			ethLogResponse{},
@@ -520,18 +525,18 @@ func Test_handleMapStringInterface(t *testing.T) {
 			"uses first address",
 			args{
 				map[string]json.RawMessage{
-					"topics":  json.RawMessage(fmt.Sprintf(`[["%s"]]`, hash.String())),
-					"address": json.RawMessage(fmt.Sprintf(`["%s", "%s"]`, address.String(), address2.String())),
+					"topics":  json.RawMessage(fmt.Sprintf(`[["%s"]]`, ethHash.String())),
+					"address": json.RawMessage(fmt.Sprintf(`["%s", "%s"]`, ethAddress.String(), ethAddress2.String())),
 				},
 			},
-			getEthLogResponse(address.String(), []string{hash.String()}),
+			getEthLogResponse(ethAddress.String(), []string{ethHash.String()}),
 			false,
 		},
 		{
 			"fails on no addresses",
 			args{
 				map[string]json.RawMessage{
-					"topics":  json.RawMessage(fmt.Sprintf(`[["%s"]]`, hash.String())),
+					"topics":  json.RawMessage(fmt.Sprintf(`[["%s"]]`, ethHash.String())),
 					"address": json.RawMessage(`[]`),
 				},
 			},
@@ -541,13 +546,13 @@ func Test_handleMapStringInterface(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := handleMapStringInterface(tt.args.in)
+			got, err := handleEthMapStringInterface(tt.args.in)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("handleMapStringInterface() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("handleEthMapStringInterface() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("handleMapStringInterface() got = %v, want %v", got, tt.want)
+				t.Errorf("handleEthMapStringInterface() got = %v, want %v", got, tt.want)
 			}
 		})
 	}

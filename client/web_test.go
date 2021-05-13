@@ -7,8 +7,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/pkg/errors"
+	"github.com/smartcontractkit/external-initiator/blockchain"
+	"github.com/smartcontractkit/external-initiator/blockchain/ethereum"
+	"github.com/smartcontractkit/external-initiator/blockchain/substrate"
 	"github.com/smartcontractkit/external-initiator/store"
+
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,29 +31,37 @@ func (s storeFailer) DeleteJob(string) error {
 	return s.error
 }
 
-func (s storeFailer) GetEndpoint(string) (*store.Endpoint, error) {
-	return s.endpoint, s.endpointError
+func (s storeFailer) GetEndpoint(name string) (*store.Endpoint, error) {
+	if s.endpoint != nil && name == s.endpoint.Name {
+		return s.endpoint, nil
+	}
+
+	return nil, s.endpointError
 }
 
 func (s storeFailer) SaveEndpoint(*store.Endpoint) error {
 	return s.error
 }
 
+func (s storeFailer) SaveJobSpec(*store.JobSpec) error {
+	return s.error
+}
+
+func (s storeFailer) LoadJobSpec(string) (*store.JobSpec, error) {
+	return nil, s.error
+}
+
 func generateCreateSubscriptionReq(id, endpoint string, addresses, topics, accountIds []string) CreateSubscriptionReq {
-	params := struct {
-		Endpoint    string   `json:"endpoint"`
-		Addresses   []string `json:"addresses"`
-		Topics      []string `json:"topics"`
-		AccountIds  []string `json:"accountIds"`
-		Address     string   `json:"address"`
-		UpkeepID    string   `json:"upkeepId"`
-		ServiceName string   `json:"serviceName"`
-		From        string   `json:"from"`
-	}{
-		Endpoint:   endpoint,
-		Addresses:  addresses,
-		Topics:     topics,
-		AccountIds: accountIds,
+	params := blockchain.Params{
+		Endpoint:    endpoint,
+		FluxMonitor: nil,
+		EthParams: ethereum.EthParams{
+			Addresses: addresses,
+			Topics:    topics,
+		},
+		Params: substrate.Params{
+			AccountIds: accountIds,
+		},
 	}
 
 	return CreateSubscriptionReq{

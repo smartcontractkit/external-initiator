@@ -5,21 +5,22 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/big"
 	"net/url"
 	"strings"
 	"time"
 
+	common2 "github.com/smartcontractkit/external-initiator/blockchain/common"
+	"github.com/smartcontractkit/external-initiator/blockchain/evm"
+	"github.com/smartcontractkit/external-initiator/store"
+	"github.com/smartcontractkit/external-initiator/subscriber"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/smartcontractkit/chainlink/core/logger"
-	"github.com/smartcontractkit/external-initiator/store"
-	"github.com/smartcontractkit/external-initiator/subscriber"
 )
 
 const (
@@ -160,7 +161,7 @@ type keeperSubscription struct {
 	blockHeight      *big.Int
 }
 
-func (keeper keeperSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, runtimeConfig store.RuntimeConfig) (subscriber.ISubscription, error) {
+/*func (keeper keeperSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, runtimeConfig store.RuntimeConfig) (subscriber.ISubscription, error) {
 	sub := keeperSubscription{
 		endpoint:         keeper.Endpoint,
 		endpointName:     keeper.EndpointName,
@@ -185,7 +186,7 @@ func (keeper keeperSubscriber) SubscribeToEvents(channel chan<- subscriber.Event
 	}
 
 	return &sub, nil
-}
+}*/
 
 func (keeper keeperSubscriber) Test() error {
 	switch keeper.Connection {
@@ -194,16 +195,17 @@ func (keeper keeperSubscriber) Test() error {
 	case subscriber.WS:
 		return keeper.TestWS()
 	default:
-		return ErrConnectionType
+		return common2.ErrConnectionType
 	}
 }
 
 func (keeper keeperSubscriber) TestRPC() error {
-	resp, err := sendEthNodePost(keeper.Endpoint, keeper.GetTestJson())
+	/*resp, err := evm.sendEthNodePost(keeper.Endpoint, keeper.GetTestJson())
 	if err != nil {
 		return err
 	}
-	return resp.Body.Close()
+	return resp.Body.Close()*/
+	return nil
 }
 
 func (keeper keeperSubscriber) TestWS() error {
@@ -245,7 +247,7 @@ func (keeper keeperSubscriber) TestWS() error {
 }
 
 func (keeper keeperSubscriber) GetTestJson() []byte {
-	msg := JsonrpcMessage{
+	msg := common2.JsonrpcMessage{
 		Version: "2.0",
 		ID:      json.RawMessage(`1`),
 		Method:  "eth_blockNumber",
@@ -279,7 +281,7 @@ func (keeper keeperSubscription) getCallPayload() ([]byte, error) {
 
 	call := ethCallMessage{
 		To:   keeper.address.Hex(),
-		Data: bytesToHex(data),
+		Data: evm.BytesToHex(data),
 	}
 
 	var params []interface{}
@@ -290,7 +292,7 @@ func (keeper keeperSubscription) getCallPayload() ([]byte, error) {
 		return nil, err
 	}
 
-	msg := JsonrpcMessage{
+	msg := common2.JsonrpcMessage{
 		Version: "2.0",
 		ID:      json.RawMessage(`1`),
 		Method:  "eth_call",
@@ -300,7 +302,7 @@ func (keeper keeperSubscription) getCallPayload() ([]byte, error) {
 }
 
 func (keeper keeperSubscription) getSubscribePayload() ([]byte, error) {
-	msg := JsonrpcMessage{
+	msg := common2.JsonrpcMessage{
 		Version: "2.0",
 		ID:      json.RawMessage(`2`),
 		Method:  "eth_subscribe",
@@ -320,12 +322,12 @@ func (keeper keeperSubscription) queryUntilDone(interval time.Duration) {
 }
 
 func (keeper keeperSubscription) getBlockHeightPost() (*big.Int, error) {
-	payload, err := GetBlockNumberPayload()
+	/*payload, err := evm.GetBlockNumberPayload()
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := sendEthNodePost(keeper.endpoint, payload)
+	resp, err := evm.sendEthNodePost(keeper.endpoint, payload)
 	if err != nil {
 		return nil, err
 	}
@@ -336,7 +338,7 @@ func (keeper keeperSubscription) getBlockHeightPost() (*big.Int, error) {
 		return nil, err
 	}
 
-	var response JsonrpcMessage
+	var response common2.JsonrpcMessage
 	err = json.Unmarshal(body, &response)
 	if err != nil {
 		return nil, err
@@ -348,7 +350,8 @@ func (keeper keeperSubscription) getBlockHeightPost() (*big.Int, error) {
 		return nil, err
 	}
 
-	return hexutil.DecodeBig(blockNum)
+	return hexutil.DecodeBig(blockNum)*/
+	return nil, nil
 }
 
 func (keeper *keeperSubscription) updateLastInitiatedRun() {
@@ -357,7 +360,7 @@ func (keeper *keeperSubscription) updateLastInitiatedRun() {
 }
 
 func (keeper *keeperSubscription) query() {
-	blockHeight, err := keeper.getBlockHeightPost()
+	/*blockHeight, err := keeper.getBlockHeightPost()
 	if err != nil {
 		logger.Error("Unable to get the current block height:", err)
 		return
@@ -381,7 +384,7 @@ func (keeper *keeperSubscription) query() {
 		return
 	}
 
-	resp, err := sendEthNodePost(keeper.endpoint, payload)
+	resp, err := evm.sendEthNodePost(keeper.endpoint, payload)
 	if err != nil {
 		logger.Error(err)
 		return
@@ -394,7 +397,7 @@ func (keeper *keeperSubscription) query() {
 		return
 	}
 
-	var response JsonrpcMessage
+	var response common2.JsonrpcMessage
 	err = json.Unmarshal(body, &response)
 	if err != nil {
 		logger.Error(err)
@@ -413,7 +416,7 @@ func (keeper *keeperSubscription) query() {
 
 	for _, event := range events {
 		keeper.events <- event
-	}
+	}*/
 }
 
 func (keeper keeperSubscription) isCooldownDone() bool {
@@ -428,8 +431,8 @@ func (keeper keeperSubscription) isCooldownDone() bool {
 	return true
 }
 
-func (keeper *keeperSubscription) handleWsSubscriptionMessage(msg JsonrpcMessage) (bool, error) {
-	blockNum, err := ParseBlocknumberFromNewHeads(msg)
+func (keeper *keeperSubscription) handleWsSubscriptionMessage(msg common2.JsonrpcMessage) (bool, error) {
+	blockNum, err := evm.ParseBlocknumberFromNewHeads(msg)
 	if err != nil {
 		return false, err
 	}
@@ -443,7 +446,7 @@ func (keeper *keeperSubscription) handleWsSubscriptionMessage(msg JsonrpcMessage
 	return true, nil
 }
 
-func (keeper *keeperSubscription) handleWsMessage(msg JsonrpcMessage) error {
+func (keeper *keeperSubscription) handleWsMessage(msg common2.JsonrpcMessage) error {
 	events, err := keeper.parseResponse(msg)
 	if err != nil {
 		return err
@@ -505,7 +508,7 @@ func (keeper keeperSubscription) subscribeToNewHeads() {
 		}
 		promLastSourcePing.With(prometheus.Labels{"endpoint": keeper.endpointName, "jobid": keeper.jobID}).SetToCurrentTime()
 
-		var msg JsonrpcMessage
+		var msg common2.JsonrpcMessage
 		err = json.Unmarshal(rawMsg, &msg)
 		if err != nil {
 			logger.Error("error unmarshalling Keeper WS message:", err)
@@ -561,7 +564,7 @@ func (keeper *keeperSubscription) Unsubscribe() {
 	keeper.isDone = true
 }
 
-func (keeper keeperSubscription) parseResponse(response JsonrpcMessage) ([]subscriber.Event, error) {
+func (keeper keeperSubscription) parseResponse(response common2.JsonrpcMessage) ([]subscriber.Event, error) {
 	if response.Error != nil {
 		respErr, ok1 := (*response.Error).(map[string]interface{})
 		message := "unknown EVM error"
@@ -606,15 +609,16 @@ func (keeper keeperSubscription) parseResponse(response JsonrpcMessage) ([]subsc
 	event := map[string]interface{}{
 		"format":           "preformatted",
 		"address":          keeper.address.String(),
-		"functionSelector": bytesToHex(executeData[:4]),
-		"result":           bytesToHex(executeData[4:]),
+		"functionSelector": evm.BytesToHex(executeData[:4]),
+		"result":           evm.BytesToHex(executeData[4:]),
 		"fromAddresses":    []string{keeper.from.Hex()},
 	}
 
-	eventBz, err := json.Marshal(event)
+	_, err = json.Marshal(event)
 	if err != nil {
 		return nil, err
 	}
 
-	return []subscriber.Event{eventBz}, nil
+	// return []subscriber.Event{eventBz}, nil
+	return nil, nil
 }

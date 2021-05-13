@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/smartcontractkit/external-initiator/blockchain/substrate"
+
 	"github.com/centrifuge/go-substrate-rpc-client/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/smartcontractkit/external-initiator/blockchain"
 )
 
 const expectedStorageKey = "0x26aa394eea5630e07c48ae0c9558cef780d41e5e16056765bc8461851072c9d7"
@@ -58,21 +58,27 @@ type subscribeResponseParams struct {
 }
 
 func TestSubstrateMock_state_subscribeStorage(t *testing.T) {
+	params, err := json.Marshal([][]string{
+		{"0x1ae70894dea2956c24d9c19ac4d15d33c14583c03f87d922a243137f267f4ce0b4def25cfda6ef3a"},
+	})
+	require.NoError(t, err)
+
 	req := JsonrpcMessage{
 		Version: "2.0",
 		ID:      json.RawMessage("1"),
 		Method:  "state_subscribeStorage",
+		Params:  params,
 	}
 
-	resp, ok := GetCannedResponse("substrate", req)
-	require.True(t, ok)
+	resp, err := handleSubstrateSubscribeStorage(req)
+	require.NoError(t, err)
 
 	// assert 2+ responses (subscription confirmation is the first one)
 	assert.GreaterOrEqual(t, len(resp), 2)
 
 	// get the subscription id number from the first response (subscription confirmation)
 	var subscriptionNum string
-	err := json.Unmarshal(resp[0].Result, &subscriptionNum)
+	err = json.Unmarshal(resp[0].Result, &subscriptionNum)
 	require.NoError(t, err)
 
 	// require metadata for decoding
@@ -93,27 +99,17 @@ func TestSubstrateMock_state_subscribeStorage(t *testing.T) {
 			err = json.Unmarshal(params.Result, &changeSet)
 			require.NoError(t, err)
 			assert.GreaterOrEqual(t, len(changeSet.Changes), 1)
-			assert.True(t, includesKeyInChanges(expectedStorageKey, changeSet.Changes))
 
 			testEventRecordsDecoding(t, metadata, changeSet.Changes)
 		})
 	}
 }
 
-func includesKeyInChanges(expectedKey string, changes []types.KeyValueOption) bool {
-	for _, change := range changes {
-		if change.StorageKey.Hex() == expectedKey {
-			return true
-		}
-	}
-	return false
-}
-
 func testEventRecordsDecoding(t *testing.T, metadata *types.Metadata, changes []types.KeyValueOption) {
 	for _, change := range changes {
 		testName := fmt.Sprintf("Test decoding storage change %x", change.StorageKey)
 		t.Run(testName, func(t *testing.T) {
-			events := blockchain.EventRecords{}
+			events := substrate.EventRecords{}
 			err := types.EventRecordsRaw(change.StorageData).DecodeEventRecords(metadata, &events)
 			require.NoError(t, err)
 			assert.NotNil(t, events)
