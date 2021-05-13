@@ -23,6 +23,36 @@ func handleKlaytnRequest(conn string, msg JsonrpcMessage) ([]JsonrpcMessage, err
 	return nil, fmt.Errorf("unexpected method: %v", msg.Method)
 }
 
+func handleKlaytnMapStringInterface(in map[string]json.RawMessage) (klaytnLogResponse, error) {
+	topics, err := getTopicsFromMap(in)
+	if err != nil {
+		return klaytnLogResponse{}, err
+	}
+
+	var topicsStr []string
+	if len(topics) > 0 {
+		for _, t := range topics[0] {
+			topicsStr = append(topicsStr, t.String())
+		}
+	}
+
+	addresses, err := getAddressesFromMap(in)
+	if err != nil {
+		return klaytnLogResponse{}, err
+	}
+
+	return klaytnLogResponse{
+		LogIndex:         "0x0",
+		BlockNumber:      "0x2",
+		BlockHash:        "0xabc0000000000000000000000000000000000000000000000000000000000000",
+		TransactionHash:  "0xabc0000000000000000000000000000000000000000000000000000000000000",
+		TransactionIndex: "0x0",
+		Address:          addresses[0].String(),
+		Data:             "0x0000000000000000000000007d0965224facd7156df0c9a1adf3a94118026eeb354f99e2ac319d0d1ff8975c41c72bf347fb69a4874e2641bd19c32e09eb88b80000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000007d0965224facd7156df0c9a1adf3a94118026eeb92cdaaf300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005ef1cd6b00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000005663676574783f68747470733a2f2f6d696e2d6170692e63727970746f636f6d706172652e636f6d2f646174612f70726963653f6673796d3d455448267473796d733d5553446470617468635553446574696d65731864",
+		Topics:           topicsStr,
+	}, nil
+}
+
 func handleKlaytnSubscribe(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 	var contents []json.RawMessage
 	err := json.Unmarshal(msg.Params, &contents)
@@ -40,7 +70,7 @@ func handleKlaytnSubscribe(msg JsonrpcMessage) ([]JsonrpcMessage, error) {
 		return nil, err
 	}
 
-	log, err := handleMapStringInterface(filter)
+	log, err := handleKlaytnMapStringInterface(filter)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +129,7 @@ func klaytnLogRequestToResponse(msg JsonrpcMessage) (klaytnLogResponse, error) {
 		return klaytnLogResponse{}, fmt.Errorf("expected exactly 1 filter in request, got %d", len(reqs))
 	}
 
-	r, err := handleMapStringInterface(reqs[0])
+	r, err := handleKlaytnMapStringInterface(reqs[0])
 	if err != nil {
 		return klaytnLogResponse{}, err
 	}
