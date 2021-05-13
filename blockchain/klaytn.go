@@ -30,10 +30,10 @@ type klaytnManager struct {
 func createKlaytnManager(p subscriber.Type, config store.Subscription) klaytnManager {
 	return klaytnManager{
 		ethManager{
-			fq: createEvmFilterQuery(config.Job, config.Ethereum.Addresses),
-			p:  p,
+			fq:           createEvmFilterQuery(config.Job, config.Ethereum.Addresses),
+			p:            p,
 			endpointName: config.EndpointName,
-			jobid: config.Job,
+			jobid:        config.Job,
 		},
 	}
 }
