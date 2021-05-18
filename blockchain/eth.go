@@ -207,7 +207,6 @@ func (e ethManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 			logger.Error("marshal:", err)
 			return nil, false
 		}
-
 		events = append(events, event)
 
 	case subscriber.RPC:

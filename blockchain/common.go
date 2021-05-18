@@ -45,6 +45,7 @@ var blockchains = []string{
 	Keeper,
 	BIRITA,
 	Agoric,
+	Klaytn,
 }
 
 type Params struct {
@@ -76,6 +77,8 @@ func CreateJsonManager(t subscriber.Type, sub store.Subscription) (subscriber.Js
 		return createCfxManager(t, sub), nil
 	case Agoric:
 		return createAgoricManager(t, sub)
+	case Klaytn:
+		return createKlaytnManager(t, sub), nil
 	}
 
 	return nil, fmt.Errorf("unknown blockchain type %v for JSON manager", sub.Endpoint.Type)
@@ -132,7 +135,7 @@ func ValidBlockchain(name string) bool {
 
 func GetValidations(t string, params Params) []int {
 	switch t {
-	case ETH, HMY, IOTX:
+	case ETH, HMY, IOTX, Klaytn:
 		return []int{
 			len(params.Addresses) + len(params.Topics),
 		}
@@ -181,7 +184,7 @@ func GetValidations(t string, params Params) []int {
 
 func CreateSubscription(sub *store.Subscription, params Params) {
 	switch sub.Endpoint.Type {
-	case ETH, HMY, IOTX:
+	case ETH, HMY, IOTX, Klaytn:
 		sub.Ethereum = store.EthSubscription{
 			Addresses: params.Addresses,
 			Topics:    params.Topics,
