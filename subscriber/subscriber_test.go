@@ -18,6 +18,10 @@ import (
 var rpcMockUrl *url.URL
 var wsMockUrl *url.URL
 
+func getEndpoint(u url.URL) store.Endpoint {
+	return store.Endpoint{Url: u.String()}
+}
+
 func TestMain(m *testing.M) {
 	responses := make(map[string]int)
 
@@ -41,7 +45,7 @@ func TestMain(m *testing.M) {
 
 	ws := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var c *websocket.Conn
-		c, err := upgrader.Upgrade(w, r, nil)
+		c, err = upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			log.Print("upgrade:", err)
 			return
