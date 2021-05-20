@@ -11,7 +11,7 @@ import (
 )
 
 var interval = 2
-var testMethod = "test"
+var testMethod = "true"
 var emptyBytes = []byte("{}")
 
 func getRPC(u url.URL) (*RpcSubscriber, error) {
@@ -39,7 +39,7 @@ func TestNewRPCSubscriber(t *testing.T) {
 	})
 }
 
-func TestRequest(t *testing.T) {
+func TestRPCRequest(t *testing.T) {
 	t.Run("succeeds with normal request", func(t *testing.T) {
 		u := *rpcMockUrl
 
@@ -94,7 +94,7 @@ func TestRequest(t *testing.T) {
 	})
 }
 
-func TestSubscribe(t *testing.T) {
+func TestRPCSubscribe(t *testing.T) {
 	t.Run("subscribes to rpc endpoint", func(t *testing.T) {
 		u := *rpcMockUrl
 		u.Path = "test/subscribe"

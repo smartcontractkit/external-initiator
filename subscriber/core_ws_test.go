@@ -9,7 +9,6 @@ import (
 
 func getWSCore(u url.URL) (*WebsocketConnection, error) {
 	endpoint := getEndpoint(u)
-	endpoint.RefreshInt = interval
 	return NewCoreWebsocketConnection(endpoint)
 }
 
@@ -70,9 +69,7 @@ func TestRead(t *testing.T) {
 		defer ws.Stop()
 
 		listener := make(chan []byte)
-		go func() {
-			ws.Read(listener) //blocking call with for loop
-		}()
+		go ws.Read(listener) //blocking call with for loop
 
 		ws.SendMessage([]byte("true")) // trigger message
 

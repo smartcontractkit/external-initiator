@@ -2,7 +2,6 @@ package subscriber
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -17,9 +16,27 @@ import (
 
 var rpcMockUrl *url.URL
 var wsMockUrl *url.URL
+var upgrader = websocket.Upgrader{} // use default options
 
 func getEndpoint(u url.URL) store.Endpoint {
 	return store.Endpoint{Url: u.String()}
+}
+
+func wrapJsonRPC(s interface{}, id json.RawMessage, wrap bool) []byte {
+	// handle RPC + WS cases
+	if wrap {
+		sBytes, _ := json.Marshal(s)
+		msg, _ := json.Marshal(JsonrpcMessage{Result: sBytes, ID: id})
+		return msg
+	}
+
+	// handle WS Core case
+	if str, ok := s.(string); ok {
+		return []byte(str)
+	}
+
+	log.Fatal("wrapJsonRPC: invalid type")
+	return []byte{}
 }
 
 func TestMain(m *testing.M) {
@@ -33,7 +50,7 @@ func TestMain(m *testing.M) {
 
 		responses[r.URL.Path] = responses[r.URL.Path] + 1
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(fmt.Sprintf("{\"result\":%d}", responses[r.URL.Path])))
+		_, _ = w.Write(wrapJsonRPC(responses[r.URL.Path], nil, true))
 	}))
 	defer ts.Close()
 
@@ -61,10 +78,21 @@ func TestMain(m *testing.M) {
 			}
 			log.Printf("recv: %s", message)
 
+			// check if json message (will wrap response if necessary)
+			var jsonMsg JsonrpcMessage
+			var jsonCheck bool
+			var id json.RawMessage
+			err = json.Unmarshal(message, &jsonMsg)
+			if err == nil {
+				message = []byte(jsonMsg.Method)
+				jsonCheck = true
+				id = jsonMsg.ID
+			}
+
 			switch string(message) {
 			case "true":
 				// Send confirmation message
-				err = c.WriteMessage(mt, []byte("confirmation"))
+				err = c.WriteMessage(mt, wrapJsonRPC("confirmation", id, jsonCheck))
 				if err != nil {
 					log.Println("write:", err)
 					return
@@ -75,7 +103,7 @@ func TestMain(m *testing.M) {
 			}
 
 			// Send event message
-			err = c.WriteMessage(mt, []byte("event"))
+			err = c.WriteMessage(mt, wrapJsonRPC("event", id, jsonCheck))
 			if err != nil {
 				log.Println("write:", err)
 				return

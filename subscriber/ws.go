@@ -118,7 +118,7 @@ func (wsc *jsonRpcWebsocketConnection) read() {
 	defer wsc.resetConnection()
 
 	messages := make(chan []byte)
-	wsc.wsCore.Read(messages)
+	go wsc.wsCore.Read(messages)
 	message := <-messages
 	go wsc.processIncomingMessage(message)
 }
@@ -130,11 +130,12 @@ func (wsc *jsonRpcWebsocketConnection) processIncomingMessage(payload json.RawMe
 		logger.Errorf("Unable to unmarshal payload: %s", payload)
 		return
 	}
-
 	var nonce uint64
 	err = json.Unmarshal(msg.ID, &nonce)
+	fmt.Println("here")
 	if err == nil && nonce > 0 {
 		ch, ok := wsc.nonceListeners[nonce]
+		fmt.Println(err, nonce, ok)
 		if !ok {
 			return
 		}
@@ -160,12 +161,12 @@ func (wsc *jsonRpcWebsocketConnection) processIncomingMessage(payload json.RawMe
 			return
 		}
 	}
-
 	ch <- params.Result
 }
 
 func (wsc *jsonRpcWebsocketConnection) subscribe(req *subscribeRequest) error {
 	subscriptionId, err := wsc.getSubscriptionId(req)
+	fmt.Println("here", subscriptionId)
 	if err != nil {
 		return err
 	}
@@ -223,14 +224,18 @@ func (wsc *jsonRpcWebsocketConnection) getSubscriptionId(req *subscribeRequest) 
 	timer := time.NewTimer(5 * time.Second)
 	defer timer.Stop()
 
-	select {
-	case result := <-listener:
-		var subscriptionId string
-		err = json.Unmarshal(result, &subscriptionId)
-		return subscriptionId, err
-	case <-timer.C:
-		return "", errorRequestTimeout
-	}
+	var subscriptionId string
+	go func() {
+		select {
+		case result := <-listener:
+			err = json.Unmarshal(result, &subscriptionId)
+			fmt.Println("subID: here", result, err)
+		case <-timer.C:
+			err = errorRequestTimeout
+		}
+	}()
+
+	return subscriptionId, err
 }
 
 func (wsc *jsonRpcWebsocketConnection) sendMessage(payload json.RawMessage) error {
