@@ -1,0 +1,105 @@
+{
+    "prim": "big_map",
+    "args": [
+        {
+            "prim": "bytes"
+        },
+        {
+            "prim": "pair",
+            "args": [
+                {
+                    "prim": "nat",
+                    "annots": [
+                        "%payment"
+                    ]
+                },
+                {
+                    "prim": "pair",
+                    "args": [
+                        {
+                            "prim": "address",
+                            "annots": [
+                                "%callbackAddress"
+                            ]
+                        },
+                        {
+                            "prim": "timestamp",
+                            "annots": [
+                                "%cancelTimeout"
+                            ]
+                        },
+                        {
+                            "prim": "address",
+                            "annots": [
+                                "%clientAddress"
+                            ]
+                        },
+                        {
+                            "prim": "nat",
+                            "annots": [
+                                "%id"
+                            ]
+                        },
+                        {
+                            "prim": "string",
+                            "annots": [
+                                "%jobId"
+                            ]
+                        },
+                        {
+                            "prim": "address",
+                            "annots": [
+                                "%oracleAddress"
+                            ]
+                        },
+                        {
+                            "prim": "map",
+                            "args": [
+                                {
+                                    "prim": "string"
+                                },
+                                {
+                                    "prim": "or",
+                                    "args": [
+                                        {
+                                            "prim": "bytes",
+                                            "annots": [
+                                                "%bytes"
+                                            ]
+                                        },
+                                        {
+                                            "prim": "or",
+                                            "args": [
+                                                {
+                                                    "prim": "int",
+                                                    "annots": [
+                                                        "%int"
+                                                    ]
+                                                },
+                                                {
+                                                    "prim": "string",
+                                                    "annots": [
+                                                        "%string"
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ],
+                            "annots": [
+                                "%parameters"
+                            ]
+                        }
+                    ],
+                    "annots": [
+                        "%request"
+                    ]
+                }
+            ]
+        }
+    ],
+    "annots": [
+        "%requests"
+    ]
+}
