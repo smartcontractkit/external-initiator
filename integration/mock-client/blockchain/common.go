@@ -31,6 +31,8 @@ func HandleRequest(conn, platform string, msg JsonrpcMessage) ([]JsonrpcMessage,
 		return handleCfxRequest(conn, msg)
 	case "keeper":
 		return handleKeeperRequest(conn, msg)
+	case "klaytn":
+		return handleKlaytnRequest(conn, msg)
 	default:
 		return nil, fmt.Errorf("unexpected platform: %v", platform)
 	}

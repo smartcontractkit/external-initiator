@@ -9,6 +9,7 @@ import * as Keeper from './keeper'
 import * as BIRITA from './birita'
 import * as NEAR from './near'
 import * as Substrate from './substrate'
+import * as Klaytn from './klaytn'
 
 interface TestInterface {
   name: string
@@ -27,6 +28,7 @@ const integrations: TestInterface[] = [
   BIRITA,
   NEAR,
   Substrate,
+  Klaytn,
 ]
 
 export const defaultEvmAddress = '0x2aD9B7b9386c2f45223dDFc4A4d81C2957bAE19A'

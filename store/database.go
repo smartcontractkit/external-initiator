@@ -121,7 +121,7 @@ func (client Client) prepareSubscription(rawSub *Subscription) (*Subscription, e
 	}
 
 	switch endpoint.Type {
-	case "ethereum", "iotex":
+	case "ethereum", "iotex", "klaytn":
 		if err := client.db.Model(&sub).Related(&sub.Ethereum).Error; err != nil {
 			return nil, err
 		}
