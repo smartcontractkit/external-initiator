@@ -139,6 +139,7 @@ func attributesToEvent(attributes []types.EventAttribute) (*EventRecords, error)
 		return nil, err
 	}
 
+	// TODO! improve event extraction
 	switch action {
 	case "new_round":
 		roundIdStr, err := getAttributeValue(attributes, "round_id")
@@ -190,7 +191,43 @@ func attributesToEvent(attributes []types.EventAttribute) (*EventRecords, error)
 			},
 		}, nil
 	case "oracle_permissions_updated":
-		// TODO!
+		var permissionChanges []EventOraclePermissionsUpdated
+
+		addedStr, err := getAttributeValue(attributes, "added")
+		if err != nil {
+			return nil, err
+		}
+		var added []string
+		err = json.Unmarshal([]byte(addedStr), &added)
+		if err != nil {
+			return nil, err
+		}
+		for _, oracle := range added {
+			permissionChanges = append(permissionChanges, EventOraclePermissionsUpdated{
+				Oracle: Addr(oracle),
+				Bool:   true,
+			})
+		}
+
+		removedStr, err := getAttributeValue(attributes, "removed")
+		if err != nil {
+			return nil, err
+		}
+		var removed []string
+		err = json.Unmarshal([]byte(removedStr), &removed)
+		if err != nil {
+			return nil, err
+		}
+		for _, oracle := range removed {
+			permissionChanges = append(permissionChanges, EventOraclePermissionsUpdated{
+				Oracle: Addr(oracle),
+				Bool:   false,
+			})
+		}
+
+		return &EventRecords{
+			OraclePermissionsUpdated: permissionChanges,
+		}, nil
 	}
 
 	return nil, nil

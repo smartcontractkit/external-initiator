@@ -88,8 +88,8 @@ type EventRoundDetailsUpdated struct {
 }
 
 type EventOraclePermissionsUpdated struct {
-	// TODO!
-	bool
+	Oracle Addr
+	Bool   bool
 }
 
 type EventAnswerUpdated struct {

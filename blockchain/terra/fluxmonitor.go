@@ -25,13 +25,13 @@ func CreateFluxMonitorManager(sub store.Subscription) (*fluxMonitorManager, erro
 
 func (fm fluxMonitorManager) GetState(ctx context.Context) (*common.FluxAggregatorState, error) {
 	var config FluxAggregatorConfig
-	err := fm.query(ctx, fm.contractAddress, "{\"get_aggregator_config\":{}}", &config)
+	err := fm.query(ctx, fm.contractAddress, `{"get_aggregator_config":{}}`, &config)
 	if err != nil {
 		return nil, err
 	}
 
 	var round RoundData
-	err = fm.query(ctx, fm.contractAddress, "{\"get_latest_round_data\":{}}", &round)
+	err = fm.query(ctx, fm.contractAddress, `{"get_latest_round_data":{}}`, &round)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func (fm fluxMonitorManager) GetState(ctx context.Context) (*common.FluxAggregat
 
 func (fm fluxMonitorManager) oracleIsEligibleToSubmit(ctx context.Context) bool {
 	var status OracleStatus
-	query := fmt.Sprintf("{\"get_oracle_status\":{\"oracle\":%s}}", fm.accountAddress)
+	query := fmt.Sprintf(`{"get_oracle_status":{"oracle":%s}}`, fm.accountAddress)
 	err := fm.query(ctx, fm.contractAddress, query, &status)
 	if err != nil {
 		logger.Error(err)
@@ -91,8 +91,11 @@ func (fm fluxMonitorManager) SubscribeEvents(ctx context.Context, ch chan<- inte
 			}
 		}
 		for _, update := range event.OraclePermissionsUpdated {
+			if update.Oracle != Addr(fm.accountAddress) {
+				continue
+			}
 			ch <- common.FMEventPermissionsUpdated{
-				CanSubmit: update.bool,
+				CanSubmit: update.Bool,
 			}
 		}
 		// for _, update := range event.RoundDetailsUpdated {
