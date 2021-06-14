@@ -105,8 +105,8 @@ func (fm fluxMonitorManager) SubscribeEvents(ctx context.Context, ch chan<- inte
 
 func (fm fluxMonitorManager) CreateJobRun(roundId uint32) map[string]interface{} {
 	return map[string]interface{}{
-		"request_type": "fluxmonitor",
-		"address":      fm.contractAddress,
-		"round_id":     fmt.Sprintf("%d", roundId),
+		"endpoint": "fluxmonitor",
+		"address":  fm.contractAddress,
+		"round_id": fmt.Sprintf("%d", roundId),
 	}
 }
