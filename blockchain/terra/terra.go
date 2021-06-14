@@ -6,7 +6,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"net/http"
+	"strconv"
 
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store"
@@ -17,11 +19,18 @@ import (
 
 const Name = "terra"
 
+type TerraParams struct {
+	ContractAddress string `json:"contract_address"`
+	AccountAddress  string `json:"account_address"`
+	// FcdUrl          string
+}
+
 type manager struct {
 	endpointName    string
 	contractAddress string
-	accountId       string // TODO! accountAddress should be a more appropriate name
-	subscriber      subscriber.ISubscriber
+	accountAddress  string
+	// fcdUrl          string
+	subscriber subscriber.ISubscriber
 }
 
 func createManager(sub store.Subscription) (*manager, error) {
@@ -33,7 +42,7 @@ func createManager(sub store.Subscription) (*manager, error) {
 	return &manager{
 		endpointName:    sub.EndpointName,
 		contractAddress: sub.Terra.ContractAddress,
-		accountId:       sub.Terra.AccountId,
+		accountAddress:  sub.Terra.AccountAddress,
 		subscriber:      conn,
 	}, nil
 }
@@ -75,29 +84,26 @@ func (tm *manager) subscribe(ctx context.Context, queryFilter string, handler fu
 		return err
 	}
 
-	// TODO!
 	go func() {
 		for {
-			select {
-			case resp, ok := <-responses:
-				if !ok {
-					return
-				}
+			resp, ok := <-responses
+			if !ok {
+				return
+			}
 
-				events, err := extractEvents(resp)
-				if err != nil {
-					logger.Error(err)
-					continue
-				}
-				attributes := extractCustomAttributes(events)
-				event, err := attributesToEvent(attributes)
-				if err != nil {
-					logger.Error(err)
-					continue
-				}
-				if event != nil {
-					handler(*event)
-				}
+			events, err := extractEvents(resp)
+			if err != nil {
+				logger.Error(err)
+				continue
+			}
+			attributes := extractCustomAttributes(events)
+			event, err := attributesToEvent(attributes)
+			if err != nil {
+				logger.Error(err)
+				continue
+			}
+			if event != nil {
+				handler(*event)
 			}
 		}
 	}()
@@ -135,27 +141,56 @@ func attributesToEvent(attributes []types.EventAttribute) (*EventRecords, error)
 
 	switch action {
 	case "new_round":
-		// TODO!
-		// roundId, err := getAttributeValue(attributes, "round_id")
-		// if err != nil {
-		// 	return nil, err
-		// }
-		// startedBy, err := getAttributeValue(attributes, "started_by")
-		// if err != nil {
-		// 	return nil, err
-		// }
-		// startedAt, err := getAttributeValue(attributes, "started_at")
-		// if err != nil {
-		// 	return nil, err
-		// }
-		// return &EventRecords{
-		// 	NewRound: []EventNewRound{
-		// 		{RoundId: roundId},
-		// 	},
-		// }, nil
+		roundIdStr, err := getAttributeValue(attributes, "round_id")
+		if err != nil {
+			return nil, err
+		}
+		roundId, _ := strconv.Atoi(roundIdStr)
+		startedBy, err := getAttributeValue(attributes, "started_by")
+		if err != nil {
+			return nil, err
+		}
+		var startedAt OptionU64
+		startedAtStr, err := getAttributeValue(attributes, "started_at")
+		if err == nil {
+			value, err := strconv.Atoi(startedAtStr)
+			if err != nil {
+				return nil, err
+			}
+			startedAt.hasValue = true
+			startedAt.uint64 = uint64(value)
+		}
+		return &EventRecords{
+			NewRound: []EventNewRound{
+				{
+					RoundId:   uint32(roundId),
+					StartedBy: Addr(startedBy),
+					StartedAt: startedAt,
+				},
+			},
+		}, nil
 	case "answer_updated":
-
+		roundIdStr, err := getAttributeValue(attributes, "round_id")
+		if err != nil {
+			return nil, err
+		}
+		roundId, _ := strconv.Atoi(roundIdStr)
+		valueStr, err := getAttributeValue(attributes, "current")
+		if err != nil {
+			return nil, err
+		}
+		var value *big.Int
+		value, _ = value.SetString(valueStr, 10)
+		return &EventRecords{
+			AnswerUpdated: []EventAnswerUpdated{
+				{
+					Value:   *value,
+					RoundId: uint32(roundId),
+				},
+			},
+		}, nil
 	case "oracle_permissions_updated":
+		// TODO!
 	}
 
 	return nil, nil

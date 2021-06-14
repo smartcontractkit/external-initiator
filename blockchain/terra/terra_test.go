@@ -4,33 +4,24 @@ import (
 	"testing"
 )
 
-// TODO! remove sanity check test
-// func Test_GetState(t *testing.T) {
-// 	manager := &fluxMonitorManager{&manager{
-// 		endpointName:    "asdf",
-// 		contractAddress: "terra1tjlvjxdg55z5dvq5jv8nnuwrsjpwfdlydumhtt",
-// 		jobId:           "1",
-// 		subscriber:      nil,
-// 	},
-// 	}
-// 	res, err := manager.GetState(context.TODO())
-// 	t.Log(res)
-// 	t.Log(err)
-// 	if err != nil {
-// 		t.Error("Fail")
-// 	}
-// }
-
-func Test_parseData(t *testing.T) {
+func Test_extractEvents(t *testing.T) {
 	result, err := extractEvents(testData)
 	if err != nil {
 		t.Errorf("Failed with %s", err.Error())
-		t.Failed()
 	} else {
 		count := len(result)
 		if count != 8 {
 			t.Errorf("Incorrect events count %d", count)
 		}
+	}
+}
+
+func Test_extractCustomAttributes(t *testing.T) {
+	events, _ := extractEvents(testData)
+	attributes := extractCustomAttributes(events)
+
+	if len(attributes) != 4 {
+		t.Errorf("Incorrect attributes %v", attributes)
 	}
 }
 

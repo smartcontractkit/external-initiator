@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/blockchain/common"
 	"github.com/smartcontractkit/external-initiator/store"
 )
@@ -64,8 +65,15 @@ func (fm fluxMonitorManager) GetState(ctx context.Context) (*common.FluxAggregat
 }
 
 func (fm fluxMonitorManager) oracleIsEligibleToSubmit(ctx context.Context) bool {
-	// TODO!
-	return true
+	var status OracleStatus
+	query := fmt.Sprintf("{\"get_oracle_status\":{\"oracle\":%s}}", fm.accountAddress)
+	err := fm.query(ctx, fm.contractAddress, query, &status)
+	if err != nil {
+		logger.Error(err)
+		return false
+	}
+
+	return status.EndingRound > 0
 }
 
 func (fm fluxMonitorManager) SubscribeEvents(ctx context.Context, ch chan<- interface{}) error {
@@ -74,7 +82,7 @@ func (fm fluxMonitorManager) SubscribeEvents(ctx context.Context, ch chan<- inte
 		for _, round := range event.NewRound {
 			ch <- common.FMEventNewRound{
 				RoundID:         uint32(round.RoundId),
-				OracleInitiated: string(round.StartedBy) == fm.accountId,
+				OracleInitiated: string(round.StartedBy) == fm.accountAddress,
 			}
 		}
 		for _, update := range event.AnswerUpdated {

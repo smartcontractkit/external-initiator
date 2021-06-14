@@ -23,9 +23,19 @@ type OptionBigInt struct {
 	big.Int
 }
 
+type OptionU32 struct {
+	option
+	uint32
+}
+
 type OptionU64 struct {
 	option
 	uint64
+}
+
+type OptionAddr struct {
+	option
+	Addr
 }
 
 type FluxAggregatorConfig struct {
@@ -48,6 +58,18 @@ type RoundData struct {
 	StartedAt       OptionU64
 	UpdatedAt       OptionU64
 	AnsweredInRound uint32
+}
+
+type OracleStatus struct {
+	Withdrawable      big.Int      `json:"withdrawable"`
+	StartingRound     uint32       `json:"starting_round"`
+	EndingRound       uint32       `json:"ending_round"`
+	LastReportedRound OptionU32    `json:"last_reported_round,omitempty"`
+	LastStartedRound  OptionU32    `json:"last_started_round,omitempty"`
+	LatestSubmission  OptionBigInt `json:"latest_submission,omitempty"`
+	Index             uint16       `json:"index"`
+	Admin             Addr         `json:"admin"`
+	PendingAdmin      OptionAddr   `json:"pending_admin,omitempty"`
 }
 
 // Events

@@ -399,8 +399,7 @@ type AgoricSubscription struct {
 type TerraSubscription struct {
 	gorm.Model
 	ContractAddress string
-	AccountId       string
-	// TODO!
+	AccountAddress  string
 }
 
 type JobSpec struct {

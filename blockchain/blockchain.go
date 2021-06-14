@@ -34,6 +34,7 @@ type Params struct {
 
 	ethereum.EthParams
 	substrate.Params
+	terra.TerraParams
 }
 
 func CreateFluxMonitorManager(sub store.Subscription) (common.FluxMonitorManager, error) {
@@ -120,7 +121,8 @@ func CreateSubscription(sub store.Subscription, params Params) store.Subscriptio
 		}
 	case terra.Name:
 		sub.Terra = store.TerraSubscription{
-			// TODO!
+			ContractAddress: params.ContractAddress,
+			AccountAddress:  params.AccountAddress,
 		}
 	}
 
