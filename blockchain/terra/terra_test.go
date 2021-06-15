@@ -1,8 +1,24 @@
 package terra
 
 import (
+	"encoding/json"
+	"math/big"
 	"testing"
 )
+
+func Test_UnmarshalJSONValue(t *testing.T) {
+	var i big.Int
+	err := json.Unmarshal([]byte("10000"), &i)
+	if err != nil {
+		t.Errorf("Errored: %s", err.Error())
+	} else {
+		var expected big.Int
+		expected.SetUint64(10000)
+		if i.String() != expected.String() {
+			t.Errorf("Incorrect value: %s", i.String())
+		}
+	}
+}
 
 func Test_extractEvents(t *testing.T) {
 	result, err := extractEvents(testData)

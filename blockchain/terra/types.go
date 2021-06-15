@@ -4,6 +4,15 @@ import (
 	"math/big"
 )
 
+type Value big.Int
+
+func (v *Value) UnmarshalJSON(data []byte) error {
+	var i big.Int
+	*v = Value(*i.SetBytes(data))
+
+	return nil
+}
+
 type Addr string
 
 type option struct {
@@ -20,7 +29,7 @@ func (o option) IsSome() bool {
 
 type OptionBigInt struct {
 	option
-	big.Int
+	Value
 }
 
 type OptionU32 struct {
@@ -41,15 +50,15 @@ type OptionAddr struct {
 type FluxAggregatorConfig struct {
 	Link               Addr   `json:"link"`
 	Validator          Addr   `json:"validator"`
-	PaymentAmount      string `json:"payment_amount"`
+	PaymentAmount      Value  `json:"payment_amount"`
 	MaxSubmissionCount uint32 `json:"max_submission_count"`
 	MinSubmissionCount uint32 `json:"min_submission_count"`
 	RestartDelay       uint32 `json:"restart_delay"`
 	Timeout            uint32 `json:"timeout"`
 	Decimals           uint8  `json:"decimals"`
 	Description        string `json:"description"`
-	MaxSubmissionValue string `json:"max_submission_value"`
-	MinSubmissionValue string `json:"min_submission_value"`
+	MaxSubmissionValue Value  `json:"max_submission_value"`
+	MinSubmissionValue Value  `json:"min_submission_value"`
 }
 
 type RoundData struct {
@@ -61,7 +70,7 @@ type RoundData struct {
 }
 
 type OracleStatus struct {
-	Withdrawable      big.Int      `json:"withdrawable"`
+	Withdrawable      Value        `json:"withdrawable"`
 	StartingRound     uint32       `json:"starting_round"`
 	EndingRound       uint32       `json:"ending_round"`
 	LastReportedRound OptionU32    `json:"last_reported_round,omitempty"`
@@ -80,7 +89,7 @@ type EventNewRound struct {
 }
 
 type EventRoundDetailsUpdated struct {
-	PaymentAmount  big.Int
+	PaymentAmount  Value
 	MinSubmissions uint32
 	MaxSubmissions uint32
 	RestartDelay   uint32
@@ -93,12 +102,12 @@ type EventOraclePermissionsUpdated struct {
 }
 
 type EventAnswerUpdated struct {
-	Value   big.Int
+	Value   Value
 	RoundId uint32
 }
 
 type EventSubmissionReceived struct {
-	Submission big.Int
+	Submission Value
 	RoundId    uint32
 	Oracle     Addr
 }

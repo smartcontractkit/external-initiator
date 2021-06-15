@@ -38,26 +38,19 @@ func (fm fluxMonitorManager) GetState(ctx context.Context) (*common.FluxAggregat
 
 	var latestAnswer big.Int
 	if round.Answer.IsSome() {
-		latestAnswer = round.Answer.Int
+		latestAnswer = big.Int(round.Answer.Value)
 	} else {
 		latestAnswer = *big.NewInt(0)
 	}
 
-	// TODO! move out parsing logic from here
-	payment := new(big.Int)
-	payment, _ = payment.SetString(config.PaymentAmount, 10)
-	min := new(big.Int)
-	min, _ = min.SetString(config.MinSubmissionValue, 10)
-	max := new(big.Int)
-	max, _ = max.SetString(config.MaxSubmissionValue, 10)
 	state := &common.FluxAggregatorState{
 		RoundID:       round.RoundId,
 		LatestAnswer:  latestAnswer,
-		Payment:       *payment,
+		Payment:       big.Int(config.PaymentAmount),
 		Timeout:       config.Timeout,
 		RestartDelay:  int32(config.RestartDelay),
-		MinSubmission: *min,
-		MaxSubmission: *max,
+		MinSubmission: big.Int(config.MinSubmissionValue),
+		MaxSubmission: big.Int(config.MaxSubmissionValue),
 		CanSubmit:     fm.oracleIsEligibleToSubmit(ctx),
 	}
 
@@ -87,7 +80,7 @@ func (fm fluxMonitorManager) SubscribeEvents(ctx context.Context, ch chan<- inte
 		}
 		for _, update := range event.AnswerUpdated {
 			ch <- common.FMEventAnswerUpdated{
-				LatestAnswer: update.Value,
+				LatestAnswer: big.Int(update.Value),
 			}
 		}
 		for _, update := range event.OraclePermissionsUpdated {

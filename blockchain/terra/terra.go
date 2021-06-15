@@ -176,17 +176,21 @@ func attributesToEvent(attributes []types.EventAttribute) (*EventRecords, error)
 		if err != nil {
 			return nil, err
 		}
-		roundId, _ := strconv.Atoi(roundIdStr)
+		roundId, err := strconv.Atoi(roundIdStr)
+		if err != nil {
+			return nil, err
+		}
 		valueStr, err := getAttributeValue(attributes, "current")
 		if err != nil {
 			return nil, err
 		}
 		var value *big.Int
 		value, _ = value.SetString(valueStr, 10)
+
 		return &EventRecords{
 			AnswerUpdated: []EventAnswerUpdated{
 				{
-					Value:   *value,
+					Value:   Value(*value),
 					RoundId: uint32(roundId),
 				},
 			},
