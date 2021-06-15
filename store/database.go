@@ -319,6 +319,7 @@ type Subscription struct {
 	Endpoint          Endpoint `gorm:"-"`
 	Ethereum          EthSubscription
 	Tezos             TezosSubscription
+	Terra             TerraSubscription
 	Substrate         SubstrateSubscription
 	Ontology          OntSubscription
 	BinanceSmartChain BinanceSmartChainSubscription
@@ -327,7 +328,6 @@ type Subscription struct {
 	Keeper            KeeperSubscription
 	BSNIrita          BSNIritaSubscription
 	Agoric            AgoricSubscription
-	Terra             TerraSubscription
 }
 
 type EthSubscription struct {
