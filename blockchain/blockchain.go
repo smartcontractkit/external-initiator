@@ -66,6 +66,7 @@ var blockchains = []string{
 	substrate.Name,
 	conflux.Name,
 	harmony.Name,
+	terra.Name,
 }
 
 func ValidBlockchain(name string) bool {

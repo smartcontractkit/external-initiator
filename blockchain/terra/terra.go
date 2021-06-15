@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"net/url"
+	"os"
 	"strconv"
 
 	"github.com/smartcontractkit/chainlink/core/logger"
@@ -53,7 +55,7 @@ func (tm *manager) Stop() {
 
 func (tm *manager) query(ctx context.Context, address, query string, t interface{}) error {
 	// TODO! remove hardcoded url; potentially use Tendermint http client
-	url := fmt.Sprintf("http://localhost:1317/wasm/contracts/%s/store?query_msg=%s", address, query)
+	url := fmt.Sprintf("%s/wasm/contracts/%s/store?query_msg=%s", os.Getenv("TERRA_URL"), address, url.QueryEscape(query))
 	resp, err := http.Get(url)
 	if err != nil {
 		return err

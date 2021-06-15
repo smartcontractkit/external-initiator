@@ -66,7 +66,7 @@ func (fm fluxMonitorManager) GetState(ctx context.Context) (*common.FluxAggregat
 
 func (fm fluxMonitorManager) oracleIsEligibleToSubmit(ctx context.Context) bool {
 	var status OracleStatus
-	query := fmt.Sprintf(`{"get_oracle_status":{"oracle":%s}}`, fm.accountAddress)
+	query := fmt.Sprintf(`{"get_oracle_status":{"oracle":"%s"}}`, fm.accountAddress)
 	err := fm.query(ctx, fm.contractAddress, query, &status)
 	if err != nil {
 		logger.Error(err)
