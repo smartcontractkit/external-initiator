@@ -187,12 +187,13 @@ func (sm *manager) getMetadata() (*types.Metadata, error) {
 // - Oracle is no longer eligible to submit
 
 func getStorageKey(meta *types.Metadata, prefix, method string, args ...interface{}) (types.StorageKey, error) {
-	if len(args) > 2 {
-		return types.StorageKey{}, errors.New("too many arguments given")
+	var encodedSize = len(args)
+	if encodedSize == 0 {
+		// for not passing empty byte array in CreateStorageKey
+		encodedSize = 1
 	}
-
 	var err error
-	encoded := make([][]byte, 2)
+	encoded := make([][]byte, encodedSize)
 	for i, arg := range args {
 		encoded[i], err = types.EncodeToBytes(arg)
 		if err != nil {
@@ -200,7 +201,7 @@ func getStorageKey(meta *types.Metadata, prefix, method string, args ...interfac
 		}
 	}
 
-	return types.CreateStorageKey(meta, prefix, method, encoded[0], encoded[1])
+	return types.CreateStorageKey(meta, prefix, method, encoded...)
 }
 
 func subscribeToStorage(meta *types.Metadata, prefix, method string, args ...interface{}) (key types.StorageKey, m, um string, params json.RawMessage, err error) {
