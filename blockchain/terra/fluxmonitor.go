@@ -70,7 +70,7 @@ func (fm fluxMonitorManager) oracleIsEligibleToSubmit(ctx context.Context) bool 
 }
 
 func (fm fluxMonitorManager) SubscribeEvents(ctx context.Context, ch chan<- interface{}) error {
-	filter := fmt.Sprintf("tm.event='Tx' AND execute_contract.contract_address='%s'", fm.contractAddress)
+	filter := fmt.Sprintf(`["tm.event='Tx' AND execute_contract.contract_address='%s'"]`, fm.contractAddress)
 	return fm.subscribe(ctx, filter, func(event EventRecords) {
 		for _, round := range event.NewRound {
 			ch <- common.FMEventNewRound{

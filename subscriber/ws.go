@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/smartcontractkit/external-initiator/store"
 
 	"github.com/gorilla/websocket"
@@ -272,9 +273,11 @@ func (wsc *websocketConnection) getSubscriptionId(req *subscribeRequest) (string
 	defer timer.Stop()
 
 	select {
-	case result := <-listener:
+	// WIP part
+	case <-listener:
 		var subscriptionId string
-		err = json.Unmarshal(result, &subscriptionId)
+		// err = json.Unmarshal(result, &subscriptionId)
+		subscriptionId = uuid.New().String()
 		return subscriptionId, err
 	case <-timer.C:
 		return "", errorRequestTimeout

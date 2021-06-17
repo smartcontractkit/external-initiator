@@ -398,6 +398,7 @@ type AgoricSubscription struct {
 
 type TerraSubscription struct {
 	gorm.Model
+	SubscriptionId  uint
 	ContractAddress string
 	AccountAddress  string
 }
