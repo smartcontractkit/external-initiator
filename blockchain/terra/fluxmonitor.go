@@ -103,6 +103,6 @@ func (fm fluxMonitorManager) CreateJobRun(roundId uint32) map[string]interface{}
 	return map[string]interface{}{
 		"endpoint": "fluxmonitor",
 		"address":  fm.contractAddress,
-		"round_id": fmt.Sprintf("%d", roundId),
+		"round_id": roundId,
 	}
 }
