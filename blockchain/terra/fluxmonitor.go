@@ -37,8 +37,8 @@ func (fm fluxMonitorManager) GetState(ctx context.Context) (*common.FluxAggregat
 	}
 
 	var latestAnswer big.Int
-	if round.Answer.IsSome() {
-		latestAnswer = big.Int(round.Answer.Value)
+	if round.Answer.String() != big.NewInt(0).String() {
+		latestAnswer = round.Answer.Int
 	} else {
 		latestAnswer = *big.NewInt(0)
 	}
@@ -46,11 +46,11 @@ func (fm fluxMonitorManager) GetState(ctx context.Context) (*common.FluxAggregat
 	state := &common.FluxAggregatorState{
 		RoundID:       round.RoundId,
 		LatestAnswer:  latestAnswer,
-		Payment:       big.Int(config.PaymentAmount),
+		Payment:       config.PaymentAmount.Int,
 		Timeout:       config.Timeout,
 		RestartDelay:  int32(config.RestartDelay),
-		MinSubmission: big.Int(config.MinSubmissionValue),
-		MaxSubmission: big.Int(config.MaxSubmissionValue),
+		MinSubmission: config.MinSubmissionValue.Int,
+		MaxSubmission: config.MaxSubmissionValue.Int,
 		CanSubmit:     fm.oracleIsEligibleToSubmit(ctx),
 	}
 
@@ -70,7 +70,7 @@ func (fm fluxMonitorManager) oracleIsEligibleToSubmit(ctx context.Context) bool 
 }
 
 func (fm fluxMonitorManager) SubscribeEvents(ctx context.Context, ch chan<- interface{}) error {
-	filter := fmt.Sprintf(`["tm.event='Tx' AND execute_contract.contract_address='%s'"]`, fm.contractAddress)
+	filter := fmt.Sprintf(`tm.event='Tx' AND execute_contract.contract_address='%s'`, fm.contractAddress)
 	return fm.subscribe(ctx, filter, func(event EventRecords) {
 		for _, round := range event.NewRound {
 			ch <- common.FMEventNewRound{
@@ -80,7 +80,7 @@ func (fm fluxMonitorManager) SubscribeEvents(ctx context.Context, ch chan<- inte
 		}
 		for _, update := range event.AnswerUpdated {
 			ch <- common.FMEventAnswerUpdated{
-				LatestAnswer: big.Int(update.Value),
+				LatestAnswer: update.Value.Int,
 			}
 		}
 		for _, update := range event.OraclePermissionsUpdated {

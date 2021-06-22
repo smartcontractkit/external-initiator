@@ -75,7 +75,8 @@ func (tm *manager) query(ctx context.Context, address, query string, t interface
 
 func (tm *manager) subscribe(ctx context.Context, queryFilter string, handler func(event EventRecords)) error {
 	responses := make(chan json.RawMessage)
-	params, err := json.Marshal(queryFilter)
+	filter := []string{queryFilter}
+	params, err := json.Marshal(filter)
 	if err != nil {
 		return err
 	}
@@ -113,7 +114,7 @@ func (tm *manager) subscribe(ctx context.Context, queryFilter string, handler fu
 }
 
 func extractEvents(data json.RawMessage) ([]types.Event, error) {
-	value := gjson.Get(string(data), "result.data.value.TxResult.result.events") // TODO! this parsing should be improved
+	value := gjson.Get(string(data), "data.value.TxResult.result.events") // TODO! this parsing should be improved
 
 	var events []types.Event
 	err := json.Unmarshal([]byte(value.Raw), &events)
@@ -152,15 +153,16 @@ func attributesToEvent(attributes []types.EventAttribute) (*EventRecords, error)
 		if err != nil {
 			return nil, err
 		}
-		var startedAt OptionU64
+		var startedAt uint64
 		startedAtStr, err := getAttributeValue(attributes, "started_at")
 		if err == nil {
 			value, err := strconv.Atoi(startedAtStr)
 			if err != nil {
 				return nil, err
 			}
-			startedAt.hasValue = true
-			startedAt.uint64 = uint64(value)
+			// startedAt.hasValue = true
+			// startedAt.uint64 = uint64(value)
+			startedAt = uint64(value)
 		}
 		return &EventRecords{
 			NewRound: []EventNewRound{
@@ -184,13 +186,13 @@ func attributesToEvent(attributes []types.EventAttribute) (*EventRecords, error)
 		if err != nil {
 			return nil, err
 		}
-		var value *big.Int
+		value := new(big.Int)
 		value, _ = value.SetString(valueStr, 10)
 
 		return &EventRecords{
 			AnswerUpdated: []EventAnswerUpdated{
 				{
-					Value:   Value(*value),
+					Value:   Value{*value},
 					RoundId: uint32(roundId),
 				},
 			},

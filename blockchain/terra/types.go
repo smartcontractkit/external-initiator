@@ -4,11 +4,13 @@ import (
 	"math/big"
 )
 
-type Value big.Int
+type Value struct {
+	big.Int
+}
 
 func (v *Value) UnmarshalJSON(data []byte) error {
 	var i big.Int
-	*v = Value(*i.SetBytes(data))
+	*v = Value{*i.SetBytes(data)}
 
 	return nil
 }
@@ -63,29 +65,29 @@ type FluxAggregatorConfig struct {
 
 type RoundData struct {
 	RoundId         uint32
-	Answer          OptionBigInt
-	StartedAt       OptionU64
-	UpdatedAt       OptionU64
+	Answer          Value
+	StartedAt       uint64
+	UpdatedAt       uint64
 	AnsweredInRound uint32
 }
 
 type OracleStatus struct {
-	Withdrawable      Value        `json:"withdrawable"`
-	StartingRound     uint32       `json:"starting_round"`
-	EndingRound       uint32       `json:"ending_round"`
-	LastReportedRound OptionU32    `json:"last_reported_round,omitempty"`
-	LastStartedRound  OptionU32    `json:"last_started_round,omitempty"`
-	LatestSubmission  OptionBigInt `json:"latest_submission,omitempty"`
-	Index             uint16       `json:"index"`
-	Admin             Addr         `json:"admin"`
-	PendingAdmin      OptionAddr   `json:"pending_admin,omitempty"`
+	Withdrawable      Value  `json:"withdrawable"`
+	StartingRound     uint32 `json:"starting_round"`
+	EndingRound       uint32 `json:"ending_round"`
+	LastReportedRound uint32 `json:"last_reported_round,omitempty"`
+	LastStartedRound  uint32 `json:"last_started_round,omitempty"`
+	LatestSubmission  Value  `json:"latest_submission,omitempty"`
+	Index             uint16 `json:"index"`
+	Admin             Addr   `json:"admin"`
+	PendingAdmin      Addr   `json:"pending_admin,omitempty"`
 }
 
 // Events
 type EventNewRound struct {
 	RoundId   uint32
 	StartedBy Addr
-	StartedAt OptionU64
+	StartedAt uint64
 }
 
 type EventRoundDetailsUpdated struct {
