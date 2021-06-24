@@ -20,6 +20,10 @@ type FMEventNewRound struct {
 	OracleInitiated bool
 }
 
+type FMSubmissionReceived struct {
+	RoundID uint32
+}
+
 type FMEventAnswerUpdated struct {
 	LatestAnswer big.Int
 }

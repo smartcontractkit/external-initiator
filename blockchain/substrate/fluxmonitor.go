@@ -89,6 +89,15 @@ func (fm fluxMonitorManager) SubscribeEvents(ctx context.Context, ch chan<- inte
 				OracleInitiated: round.AccountId == fm.accountId && !common.ExpectsMock,
 			}
 		}
+		for _, round := range event.ChainlinkFeed_SubmissionReceived {
+			if round.FeedId != fm.feedId || round.AccountId != fm.accountId {
+				continue
+			}
+			ch <- common.FMSubmissionReceived{
+				RoundID: uint32(round.RoundId),
+			}
+		}
+
 		for _, update := range event.ChainlinkFeed_AnswerUpdated {
 			if update.FeedId != fm.feedId {
 				continue

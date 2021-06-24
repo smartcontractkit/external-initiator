@@ -258,7 +258,7 @@ func TestNewFluxMonitor(t *testing.T) {
 
 			fmt.Println("Answer updated without deviation: ", fm.state.RoundID+1)
 			FAEvents <- common.FMEventAnswerUpdated{
-				LatestAnswer: fm.state.LatestAnswer,
+				LatestAnswer: *big.NewInt(fm.latestResult.IntPart()),
 			}
 			waitForTrigger(t, triggerJobRun, "no_job", CommonJobTriggerTimeout)
 		})
