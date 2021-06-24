@@ -46,6 +46,7 @@ var blockchains = []string{
 	BIRITA,
 	Agoric,
 	Klaytn,
+	HEDERA,
 }
 
 type Params struct {
@@ -98,6 +99,8 @@ func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error)
 		return createKeeperSubscriber(sub)
 	case BIRITA:
 		return createBSNIritaSubscriber(sub)
+	case HEDERA:
+		return createHederaSubscriber(sub), nil
 	}
 
 	return nil, errors.New("unknown blockchain type for Client subscription")
@@ -106,7 +109,7 @@ func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error)
 func GetConnectionType(endpoint store.Endpoint) (subscriber.Type, error) {
 	switch endpoint.Type {
 	// Add blockchain implementations that encapsulate entire connection here
-	case XTZ, ONT, IOTX, Keeper, BIRITA:
+	case XTZ, ONT, IOTX, Keeper, BIRITA, HEDERA:
 		return subscriber.Client, nil
 	default:
 		u, err := url.Parse(endpoint.Url)
@@ -177,6 +180,10 @@ func GetValidations(t string, params Params) []int {
 		return []int{
 			1,
 		}
+	case HEDERA:
+		return []int{
+			len(params.AccountIds),
+		}
 	}
 
 	return nil
@@ -228,6 +235,10 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 		}
 	case Agoric:
 		sub.Agoric = store.AgoricSubscription{}
+	case HEDERA:
+		sub.Hedera = store.HederaSubscription{
+			AccountIds: params.AccountIds,
+		}
 	}
 }
 
