@@ -15,19 +15,11 @@ import (
 	"go.uber.org/atomic"
 )
 
-const (
-	// Time allowed to write a message to the peer.
-	writeWait = 10 * time.Second
-
-	// Maximum message size allowed from peer.
-	maxMessageSize = 15 * 1024 * 1024
-)
-
 var (
 	errorRequestTimeout = errors.New("request timed out")
 )
 
-type websocketConnection struct {
+type jsonRpcWebsocketConnection struct {
 	endpoint string
 
 	requests              []*subscribeRequest
@@ -46,13 +38,13 @@ type websocketConnection struct {
 	stopped           bool
 }
 
-func NewWebsocketConnection(endpoint store.Endpoint) (*websocketConnection, error) {
+func NewWebsocketConnection(endpoint store.Endpoint) (*jsonRpcWebsocketConnection, error) {
 	conn, _, err := websocket.DefaultDialer.Dial(endpoint.Url, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	wsc := &websocketConnection{
+	wsc := &jsonRpcWebsocketConnection{
 		endpoint:              endpoint.Url,
 		conn:                  conn,
 		subscriptionListeners: make(map[string]chan<- json.RawMessage),
@@ -66,18 +58,18 @@ func NewWebsocketConnection(endpoint store.Endpoint) (*websocketConnection, erro
 	return wsc, nil
 }
 
-func (wsc *websocketConnection) Type() Type {
+func (wsc *jsonRpcWebsocketConnection) Type() Type {
 	return WS
 }
 
-func (wsc *websocketConnection) Stop() {
+func (wsc *jsonRpcWebsocketConnection) Stop() {
 	wsc.quitOnce.Do(func() {
 		wsc.stopped = true
 		close(wsc.chClose)
 	})
 }
 
-func (wsc *websocketConnection) Subscribe(ctx context.Context, method, unsubscribeMethod string, params json.RawMessage, ch chan<- json.RawMessage) error {
+func (wsc *jsonRpcWebsocketConnection) Subscribe(ctx context.Context, method, unsubscribeMethod string, params json.RawMessage, ch chan<- json.RawMessage) error {
 	req := wsc.newSubscribeRequest(ctx, method, unsubscribeMethod, params, ch)
 	err := wsc.subscribe(req)
 	if err != nil {
@@ -87,7 +79,7 @@ func (wsc *websocketConnection) Subscribe(ctx context.Context, method, unsubscri
 	return nil
 }
 
-func (wsc *websocketConnection) Request(ctx context.Context, method string, params json.RawMessage) (result json.RawMessage, err error) {
+func (wsc *jsonRpcWebsocketConnection) Request(ctx context.Context, method string, params json.RawMessage) (result json.RawMessage, err error) {
 	listener := make(chan json.RawMessage, 1)
 	nonce := wsc.nonce.Inc()
 	wsc.nonceListeners[nonce] = listener
@@ -114,7 +106,7 @@ func (wsc *websocketConnection) Request(ctx context.Context, method string, para
 	}
 }
 
-func (wsc *websocketConnection) resetConnection() {
+func (wsc *jsonRpcWebsocketConnection) resetConnection() {
 	if wsc.stopped {
 		return
 	}
@@ -156,7 +148,7 @@ func (wsc *websocketConnection) resetConnection() {
 	}
 }
 
-func (wsc *websocketConnection) read() {
+func (wsc *jsonRpcWebsocketConnection) read() {
 	defer wsc.resetConnection()
 
 	wsc.conn.SetReadLimit(maxMessageSize)
@@ -171,7 +163,7 @@ func (wsc *websocketConnection) read() {
 	}
 }
 
-func (wsc *websocketConnection) processIncomingMessage(payload json.RawMessage) {
+func (wsc *jsonRpcWebsocketConnection) processIncomingMessage(payload json.RawMessage) {
 	var msg JsonrpcMessage
 	err := json.Unmarshal(payload, &msg)
 	if err != nil {
@@ -212,7 +204,7 @@ func (wsc *websocketConnection) processIncomingMessage(payload json.RawMessage) 
 	ch <- params.Result
 }
 
-func (wsc *websocketConnection) subscribe(req *subscribeRequest) error {
+func (wsc *jsonRpcWebsocketConnection) subscribe(req *subscribeRequest) error {
 	subscriptionId, err := wsc.getSubscriptionId(req)
 	if err != nil {
 		return err
@@ -249,7 +241,7 @@ func (wsc *websocketConnection) subscribe(req *subscribeRequest) error {
 	return nil
 }
 
-func (wsc *websocketConnection) getSubscriptionId(req *subscribeRequest) (string, error) {
+func (wsc *jsonRpcWebsocketConnection) getSubscriptionId(req *subscribeRequest) (string, error) {
 	nonce := wsc.nonce.Inc()
 	payload, err := NewJsonrpcMessage(nonce, req.method, req.params)
 	if err != nil {
@@ -281,7 +273,7 @@ func (wsc *websocketConnection) getSubscriptionId(req *subscribeRequest) (string
 	}
 }
 
-func (wsc *websocketConnection) sendMessage(payload json.RawMessage) error {
+func (wsc *jsonRpcWebsocketConnection) sendMessage(payload json.RawMessage) error {
 	wsc.writeMutex.Lock()
 	defer wsc.writeMutex.Unlock()
 
@@ -302,7 +294,7 @@ type subscribeRequest struct {
 	stopped           bool
 }
 
-func (wsc *websocketConnection) newSubscribeRequest(ctx context.Context, method, unsubscribeMethod string, params json.RawMessage, ch chan<- json.RawMessage) *subscribeRequest {
+func (wsc *jsonRpcWebsocketConnection) newSubscribeRequest(ctx context.Context, method, unsubscribeMethod string, params json.RawMessage, ch chan<- json.RawMessage) *subscribeRequest {
 	req := &subscribeRequest{
 		ctx:               ctx,
 		method:            method,
