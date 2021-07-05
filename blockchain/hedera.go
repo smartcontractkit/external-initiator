@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -50,6 +51,8 @@ func (hSubscr hederaSubscriber) SubscribeToEvents(channel chan<- subscriber.Even
 		jobid:      hSubscr.JobID,
 	}
 
+
+
 	//todo implement logic to poll hedera mirror node - interval and accountid needed
 	//todo see how to use timestamps to request transaction for period after our last request
 	//todo parse result, extract info from memo
@@ -58,20 +61,20 @@ func (hSubscr hederaSubscriber) SubscribeToEvents(channel chan<- subscriber.Even
 	//todo check if payment was okay
 	//todo create tests - hedera_test.go & also elsewhere where we changed the code + db migration
 
-	//todo see where we lose the /
+	//todo see where we lose the / - we losing the / on row 22 the "strings.TrimSuffix(sub.Endpoint.Url, "/")" operation removes last / from the string.
+
+
 	var url = hederaSubscription.endpoint + "/"
-
-
-	//go tzs.readMessagesWithRetry()
 
 	var client = NewClient(url, 5)
 
-	client.GetAccountCreditTransactionsAfterTimestamp("0.0.1943014", 324324234234)
+	hederaSubscription = client.WaitForTransaction("0.0.1943014", hederaSubscription)
 
 	return hederaSubscription, nil
 }
 
 func (hSubscr hederaSubscriber) Test() error {
+	//hSubscr.SubscribeToEvents()
 	return nil
 }
 
@@ -141,11 +144,60 @@ func NewClient(mirrorNodeAPIAddress string, pollingInterval time.Duration) *Clie
 }
 
 func (c Client) GetAccountCreditTransactionsAfterTimestamp(accountID string, from int64) (*Response, error) {
-	transactionsDownloadQuery := fmt.Sprintf("?account.id=%s&type=credit&result=success&timestamp=gt:%s&order=asc&transactiontype=cryptotransfer",
+	transactionsDownloadQuery := fmt.Sprintf("?account.id=%s&type=credit&result=success&timestamp=gt:%d&order=asc&transactiontype=cryptotransfer",
 		accountID,
-		String(from))
+		from)
 	return c.getTransactionsByQuery(transactionsDownloadQuery)
 }
+
+func DecodeTransactionMemo(transactionMemo string) ([]byte, error) {
+	return base64.StdEncoding.DecodeString(transactionMemo)
+}
+
+// WaitForTransaction Polls the transaction at intervals.
+func (c Client) WaitForTransaction(accoutId string, hs hederaSubscription) hederaSubscription {
+	go func() {
+		for {
+			response, err := c.GetAccountCreditTransactionsAfterTimestamp(accoutId, time.Now().Unix() - 10)
+
+			if err != nil {
+				logger.Errorf("Error while trying to get account. Error: [%s].", err.Error())
+				return
+			}
+
+			if response != nil {
+				for i, transaction := range response.Transactions {
+					logger.Infof("Index: %d Transaction ID: %s, Memo: %s", i, transaction.TransactionID, transaction.MemoBase64)
+
+					// This request is targeting a specific jobID
+					decodedMemo, err := DecodeMemo(transaction.MemoBase64)
+					if err != nil {
+						logger.Error("Failed decoding base64 NEAROracleRequestArgs.RequestSpec:", err)
+					}
+					logger.Infof("Decoded Memo: %s", decodedMemo)
+
+					if !matchesJobID(hs.jobid, decodedMemo) {
+						continue
+					}
+
+
+					in := "{}"
+
+					bytes, err:= json.Marshal(in)
+					if err != nil {
+						logger.Errorf("error!")
+					}
+					hs.events <- bytes
+				}
+			}
+
+			time.Sleep(c.pollingInterval * time.Second)
+		}
+	}()
+	return hs
+}
+
+
 
 const (
 	nanosInSecond = 1000000000
@@ -179,6 +231,15 @@ func String(timestamp int64) string {
 func ToHumanReadable(timestampNanos int64) string {
 	parsed := time.Unix(timestampNanos/nanosInSecond, timestampNanos&nanosInSecond)
 	return parsed.Format(time.RFC3339Nano)
+}
+
+func DecodeMemo(base64Memo string) (string, error) {
+	decodedMemo, err := base64.StdEncoding.DecodeString(base64Memo)
+	if err != nil {
+		return "", err
+	}
+
+	return string(decodedMemo), nil
 }
 
 func (c Client) getTransactionsByQuery(query string) (*Response, error) {
