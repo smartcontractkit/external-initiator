@@ -20,34 +20,34 @@ const HEDERA = "hedera"
 func createHederaSubscriber(sub store.Subscription) hederaSubscriber {
 	return hederaSubscriber{
 		Endpoint:  strings.TrimSuffix(sub.Endpoint.Url, "/"),
-		AccountIds: sub.Hedera.AccountIds,
+		AccountId: sub.Hedera.AccountId,
 		JobID:     sub.Job,
 	}
 }
 
 type hederaSubscriber struct {
 	Endpoint  string
-	AccountIds []string
+	AccountId string
 	JobID     string
 }
 
 type hederaSubscription struct {
 	endpoint    string
-	events      chan<- subscriber.Event
-	accountIds   []string
-	monitorResp *http.Response
-	isDone      bool
+	events		chan<- subscriber.Event
+	accountId	string
+	monitorResp	*http.Response
+	isDone		bool
 	jobid       string
 }
 
 func (hSubscr hederaSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ store.RuntimeConfig) (subscriber.ISubscription, error) {
 
-	logger.Infof("Using Hedera Mirror endpoint: %s\nListening for events on account ids: %v", hSubscr.Endpoint, hSubscr.AccountIds)
+	logger.Infof("Using Hedera Mirror endpoint: %s\nListening for events on account id: %v", hSubscr.Endpoint, hSubscr.AccountId)
 
 	hederaSubscription := hederaSubscription{
 		endpoint:   hSubscr.Endpoint,
 		events:     channel,
-		accountIds: hSubscr.AccountIds,
+		accountId: 	hSubscr.AccountId,
 		jobid:      hSubscr.JobID,
 	}
 

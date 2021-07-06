@@ -17,8 +17,9 @@ import (
 
 type HederaSubscription struct {
 	gorm.Model
-	SubscriptionId uint
-	AccountIds      string
+	SubscriptionId 			 uint
+	AccountId      			 string
+	LastTransactionTimestamp int64
 }
 
 type Subscription struct {
