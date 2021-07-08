@@ -16,6 +16,11 @@ import (
 )
 
 const HEDERA = "hedera"
+var hederaSubscribersMap = make(map[string][]string)
+
+func addHederaSubscriber (key string, value string) {
+	hederaSubscribersMap[key] = append(hederaSubscribersMap[key], value)
+}
 
 func createHederaSubscriber(sub store.Subscription) hederaSubscriber {
 	return hederaSubscriber{
@@ -40,11 +45,11 @@ type hederaSubscription struct {
 	jobid       string
 }
 
+
+
 func (hSubscr hederaSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ store.RuntimeConfig) (subscriber.ISubscription, error) {
 
-	logger.Infof("Using Hedera Mirror endpoint: %s\nListening for events on account id: %v", hSubscr.Endpoint, hSubscr.AccountId)
-
-	hederaSubscription := hederaSubscription{
+	hederaSubscription := hederaSubscription {
 		endpoint:   hSubscr.Endpoint,
 		events:     channel,
 		accountId: 	hSubscr.AccountId,
@@ -63,12 +68,13 @@ func (hSubscr hederaSubscriber) SubscribeToEvents(channel chan<- subscriber.Even
 
 	//todo see where we lose the / - we losing the / on row 22 the "strings.TrimSuffix(sub.Endpoint.Url, "/")" operation removes last / from the string.
 
+	if len(hederaSubscribersMap[hederaSubscription.accountId]) == 0 {
+		var url = hederaSubscription.endpoint + "/"
+		var client = NewClient(url, 5)
+		hederaSubscription = client.WaitForTransaction(hederaSubscription.accountId, hederaSubscription)
+	}
 
-	var url = hederaSubscription.endpoint + "/"
-
-	var client = NewClient(url, 5)
-
-	hederaSubscription = client.WaitForTransaction("0.0.1943014", hederaSubscription)
+	addHederaSubscriber(hederaSubscription.accountId, hederaSubscription.jobid)
 
 	return hederaSubscription, nil
 }
@@ -156,6 +162,9 @@ func DecodeTransactionMemo(transactionMemo string) ([]byte, error) {
 
 // WaitForTransaction Polls the transaction at intervals.
 func (c Client) WaitForTransaction(accoutId string, hs hederaSubscription) hederaSubscription {
+
+	logger.Infof("Using Hedera Mirror endpoint: %s, Listening for events on account id: %v", hs.endpoint, hs.accountId)
+
 	go func() {
 		for {
 			response, err := c.GetAccountCreditTransactionsAfterTimestamp(accoutId, time.Now().Unix() - 10)
@@ -175,6 +184,7 @@ func (c Client) WaitForTransaction(accoutId string, hs hederaSubscription) heder
 						logger.Error("Failed decoding base64 NEAROracleRequestArgs.RequestSpec:", err)
 					}
 					logger.Infof("Decoded Memo: %s", decodedMemo)
+					logger.Infof("hederaSub account: %s", hs.accountId)
 
 					if !matchesJobID(hs.jobid, decodedMemo) {
 						continue
