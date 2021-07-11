@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Depado/ginprom"
@@ -200,7 +201,7 @@ func (srv *HttpService) CreateSubscription(c *gin.Context) {
 // DeleteSubscription deletes any job with the jobid
 // provided as parameter in the request.
 func (srv *HttpService) DeleteSubscription(c *gin.Context) {
-	jobid := c.Param("jobid")
+	jobid := strings.Replace(c.Param("jobid"), "-", "", -1) 
 	if err := srv.Store.DeleteJob(jobid); err != nil {
 		logger.Error(err)
 		c.JSON(http.StatusInternalServerError, nil)

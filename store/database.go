@@ -7,10 +7,12 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store/migrations"
@@ -55,6 +57,43 @@ func (arr SQLStringArray) Value() (driver.Value, error) {
 	}
 	w.Flush()
 	return buf.String(), nil
+}
+
+// SQLString2DArray is a 2 dimensional string array stored in the database as an array of comma separated values.
+type SQLString2DArray [][]string
+
+// Scan implements the sql Scanner interface.
+func (arr *SQLString2DArray) Scan(src interface{}) error {
+	if src == nil {
+		*arr = nil
+	}
+	sa := pq.StringArray{}
+	if err := sa.Scan(src); err != nil {
+		return errors.New("failed to scan string array")
+	}
+
+	var res [][]string
+	for _, str := range sa {
+		res = append(res, strings.Split(str, ","))
+	}
+
+	*arr = res
+	return nil
+}
+
+// Value implements the driver Valuer interface.
+func (arr SQLString2DArray) Value() (driver.Value, error) {
+	var vals []string
+
+	for _, el := range arr {
+		if len(el) == 0 || (len(el) == 1 && strings.ToLower(el[0]) == "null") {
+			vals = append(vals, "NULL")
+			continue
+		}
+		vals = append(vals, "\"" + strings.Join(el, ",") + "\"")
+	}
+
+	return "{" + strings.Join(vals, ",") + "}", nil
 }
 
 // SQLBytes is a byte slice stored in the database as a string.
@@ -308,7 +347,7 @@ type EthSubscription struct {
 	gorm.Model
 	SubscriptionId uint
 	Addresses      SQLStringArray
-	Topics         SQLStringArray
+	Topics         SQLString2DArray
 }
 
 type TezosSubscription struct {

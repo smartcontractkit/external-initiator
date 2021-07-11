@@ -185,9 +185,13 @@ func GetValidations(t string, params Params) []int {
 func CreateSubscription(sub *store.Subscription, params Params) {
 	switch sub.Endpoint.Type {
 	case ETH, HMY, IOTX, Klaytn:
+		var topics store.SQLString2DArray
+		for _, t := range params.Topics {
+			topics = append(topics, strings.Split(t, ","))
+		}
 		sub.Ethereum = store.EthSubscription{
 			Addresses: params.Addresses,
-			Topics:    params.Topics,
+			Topics:    topics,
 		}
 	case XTZ:
 		sub.Tezos = store.TezosSubscription{

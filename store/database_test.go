@@ -201,7 +201,7 @@ func TestClient_SaveSubscription(t *testing.T) {
 		EndpointName: "", // Missing name
 		Ethereum: EthSubscription{
 			Addresses: []string{"0x12345"},
-			Topics:    []string{"0xabcde"},
+			Topics:    [][]string{{"0xabcde"}},
 		},
 	}
 	err = db.SaveSubscription(&sub)
@@ -213,7 +213,7 @@ func TestClient_SaveSubscription(t *testing.T) {
 		EndpointName: "non-existent",
 		Ethereum: EthSubscription{
 			Addresses: []string{"0x12345"},
-			Topics:    []string{"0xabcde"},
+			Topics:    [][]string{{"0xabcde"}},
 		},
 	}
 	err = db.SaveSubscription(&sub)
@@ -225,7 +225,7 @@ func TestClient_SaveSubscription(t *testing.T) {
 		EndpointName: "test",
 		Ethereum: EthSubscription{
 			Addresses: []string{"0x12345"},
-			Topics:    []string{"0xabcde"},
+			Topics:    [][]string{{"0xabcde"}},
 		},
 	}
 	err = db.SaveSubscription(&sub)
@@ -317,7 +317,7 @@ func TestClient_prepareSubscription(t *testing.T) {
 		EndpointName: "test",
 		Ethereum: EthSubscription{
 			Addresses: []string{"0x12345"},
-			Topics:    []string{"0xabcde"},
+			Topics:    [][]string{{"0xabcde"}},
 		},
 	}
 	err = db.SaveSubscription(&sub)
@@ -355,7 +355,7 @@ func TestClient_LoadSubscription(t *testing.T) {
 		EndpointName: "test",
 		Ethereum: EthSubscription{
 			Addresses: []string{"0x12345"},
-			Topics:    []string{"0xabcde"},
+			Topics:    [][]string{{"0xabcde"}},
 		},
 	}
 	err = db.SaveSubscription(&sub)
@@ -390,7 +390,7 @@ func TestClient_DeleteEndpoint(t *testing.T) {
 		EndpointName: "test",
 		Ethereum: EthSubscription{
 			Addresses: []string{"0x12345"},
-			Topics:    []string{"0xabcde"},
+			Topics:    [][]string{{"0xabcde"}},
 		},
 	}
 	err = db.SaveSubscription(&sub)
@@ -426,7 +426,7 @@ func TestClient_DeleteAllEndpointsExcept(t *testing.T) {
 		EndpointName: "test",
 		Ethereum: EthSubscription{
 			Addresses: []string{"0x12345"},
-			Topics:    []string{"0xabcde"},
+			Topics:    [][]string{{"0xabcde"}},
 		},
 	}
 	err = db.SaveSubscription(&sub)
