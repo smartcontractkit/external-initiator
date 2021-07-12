@@ -16,10 +16,19 @@ import (
 )
 
 const HEDERA = "hedera"
-var hederaSubscribersMap = make(map[string][]string)
+var hederaSubscribersMap = make(map[string][]hederaSubscription)
 
-func addHederaSubscriber (key string, value string) {
+func addHederaSubscriber (key string, value hederaSubscription) {
 	hederaSubscribersMap[key] = append(hederaSubscribersMap[key], value)
+}
+
+func containsJobId(hederaSubscriptions []hederaSubscription, expected string) bool {
+	for _, hs := range hederaSubscriptions {
+		if hs.jobid == expected {
+			return true
+		}
+	}
+	return false
 }
 
 func createHederaSubscriber(sub store.Subscription) hederaSubscriber {
@@ -71,10 +80,10 @@ func (hSubscr hederaSubscriber) SubscribeToEvents(channel chan<- subscriber.Even
 	if len(hederaSubscribersMap[hederaSubscription.accountId]) == 0 {
 		var url = hederaSubscription.endpoint + "/"
 		var client = NewClient(url, 5)
-		hederaSubscription = client.WaitForTransaction(hederaSubscription.accountId, hederaSubscription)
+		go client.WaitForTransaction(hederaSubscription.accountId)
 	}
 
-	addHederaSubscriber(hederaSubscription.accountId, hederaSubscription.jobid)
+	addHederaSubscriber(hederaSubscription.accountId, hederaSubscription)
 
 	return hederaSubscription, nil
 }
@@ -161,50 +170,51 @@ func DecodeTransactionMemo(transactionMemo string) ([]byte, error) {
 }
 
 // WaitForTransaction Polls the transaction at intervals.
-func (c Client) WaitForTransaction(accoutId string, hs hederaSubscription) hederaSubscription {
+func (c Client) WaitForTransaction(accoutId string) {
 
-	logger.Infof("Using Hedera Mirror endpoint: %s, Listening for events on account id: %v", hs.endpoint, hs.accountId)
+	logger.Infof("Listening for events on account id: %v", accoutId)
 
-	go func() {
-		for {
-			response, err := c.GetAccountCreditTransactionsAfterTimestamp(accoutId, time.Now().Unix() - 10)
+	for {
+		response, err := c.GetAccountCreditTransactionsAfterTimestamp(accoutId, time.Now().Unix()-10)
 
-			if err != nil {
-				logger.Errorf("Error while trying to get account. Error: [%s].", err.Error())
-				return
-			}
+		if err != nil {
+			logger.Errorf("Error while trying to get account. Error: [%s].", err.Error())
+			return
+		}
 
-			if response != nil {
-				for i, transaction := range response.Transactions {
-					logger.Infof("Index: %d Transaction ID: %s, Memo: %s", i, transaction.TransactionID, transaction.MemoBase64)
+		if response != nil {
+			for i, transaction := range response.Transactions {
+				logger.Infof("Index: %d Transaction ID: %s, Memo: %s", i, transaction.TransactionID, transaction.MemoBase64)
 
-					// This request is targeting a specific jobID
-					decodedMemo, err := DecodeMemo(transaction.MemoBase64)
-					if err != nil {
-						logger.Error("Failed decoding base64 NEAROracleRequestArgs.RequestSpec:", err)
+				// This request is targeting a specific jobID
+				decodedMemo, err := DecodeMemo(transaction.MemoBase64)
+				if err != nil {
+					logger.Error("Failed decoding base64 NEAROracleRequestArgs.RequestSpec:", err)
+				}
+				logger.Infof("Decoded Memo: %s", decodedMemo)
+				logger.Infof("hederaSub account: %s", accoutId)
+
+				if !containsJobId(hederaSubscribersMap[accoutId], decodedMemo) {
+					continue
+				} else {
+					hederaSubs := hederaSubscribersMap[accoutId]
+					for _, hs := range hederaSubs {
+						if hs.jobid == decodedMemo {
+							in := "{}"
+							bytes, err := json.Marshal(in)
+							if err != nil {
+								logger.Errorf("error!")
+							}
+							logger.Infof("hs.jobId: %s", hs.jobid)
+							hs.events <- bytes
+						}
 					}
-					logger.Infof("Decoded Memo: %s", decodedMemo)
-					logger.Infof("hederaSub account: %s", hs.accountId)
-
-					if !matchesJobID(hs.jobid, decodedMemo) {
-						continue
-					}
-
-
-					in := "{}"
-
-					bytes, err:= json.Marshal(in)
-					if err != nil {
-						logger.Errorf("error!")
-					}
-					hs.events <- bytes
 				}
 			}
-
-			time.Sleep(c.pollingInterval * time.Second)
 		}
-	}()
-	return hs
+
+		time.Sleep(c.pollingInterval * time.Second)
+	}
 }
 
 
