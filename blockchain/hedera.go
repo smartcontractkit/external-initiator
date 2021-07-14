@@ -32,8 +32,9 @@ func containsJobId(hederaSubscriptions []hederaSubscription, expected string) bo
 }
 
 func createHederaSubscriber(sub store.Subscription) hederaSubscriber {
+
 	return hederaSubscriber{
-		Endpoint:  strings.TrimSuffix(sub.Endpoint.Url, "/"),
+		Endpoint:  sub.Endpoint.Url,
 		AccountId: sub.Hedera.AccountId,
 		JobID:     sub.Job,
 	}
@@ -54,8 +55,6 @@ type hederaSubscription struct {
 	jobid       string
 }
 
-
-
 func (hSubscr hederaSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ store.RuntimeConfig) (subscriber.ISubscription, error) {
 
 	hederaSubscription := hederaSubscription {
@@ -65,8 +64,6 @@ func (hSubscr hederaSubscriber) SubscribeToEvents(channel chan<- subscriber.Even
 		jobid:      hSubscr.JobID,
 	}
 
-
-
 	//todo implement logic to poll hedera mirror node - interval and accountid needed
 	//todo see how to use timestamps to request transaction for period after our last request
 	//todo parse result, extract info from memo
@@ -74,12 +71,10 @@ func (hSubscr hederaSubscriber) SubscribeToEvents(channel chan<- subscriber.Even
 	//todo map somehow task id from memo to a different jobspec? is that possible? what is jobID in hederaSubscription?
 	//todo check if payment was okay
 	//todo create tests - hedera_test.go & also elsewhere where we changed the code + db migration
-
-	//todo see where we lose the / - we losing the / on row 22 the "strings.TrimSuffix(sub.Endpoint.Url, "/")" operation removes last / from the string.
+	//todo remove last transaction timestamp from hedera_subscription database object if we're not going to save it
 
 	if len(hederaSubscribersMap[hederaSubscription.accountId]) == 0 {
-		var url = hederaSubscription.endpoint + "/"
-		var client = NewClient(url, 5)
+		var client = NewClient(hederaSubscription.endpoint, 5)
 		go client.WaitForTransaction(hederaSubscription.accountId)
 	}
 
@@ -205,7 +200,6 @@ func (c Client) WaitForTransaction(accoutId string) {
 							if err != nil {
 								logger.Errorf("error!")
 							}
-							logger.Infof("hs.jobId: %s", hs.jobid)
 							hs.events <- bytes
 						}
 					}
