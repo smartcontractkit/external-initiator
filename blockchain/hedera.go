@@ -154,9 +154,9 @@ func NewClient(mirrorNodeAPIAddress string, pollingInterval time.Duration) *Clie
 }
 
 func (c Client) GetAccountCreditTransactionsAfterTimestamp(accountID string, from int64) (*Response, error) {
-	transactionsDownloadQuery := fmt.Sprintf("?account.id=%s&type=credit&result=success&timestamp=gt:%d&order=asc&transactiontype=cryptotransfer",
+	transactionsDownloadQuery := fmt.Sprintf("?account.id=%s&type=credit&result=success&timestamp=gt:%s&order=asc&transactiontype=cryptotransfer",
 		accountID,
-		from)
+		String(from))
 	return c.getTransactionsByQuery(transactionsDownloadQuery)
 }
 
@@ -168,9 +168,9 @@ func DecodeTransactionMemo(transactionMemo string) ([]byte, error) {
 func (c Client) WaitForTransaction(accoutId string) {
 
 	logger.Infof("Listening for events on account id: %v", accoutId)
-
+	lastTransactionTimestamp := time.Now().UnixNano()
 	for {
-		response, err := c.GetAccountCreditTransactionsAfterTimestamp(accoutId, time.Now().Unix()-10)
+		response, err := c.GetAccountCreditTransactionsAfterTimestamp(accoutId, lastTransactionTimestamp)
 
 		if err != nil {
 			logger.Errorf("Error while trying to get account. Error: [%s].", err.Error())
@@ -178,25 +178,38 @@ func (c Client) WaitForTransaction(accoutId string) {
 		}
 
 		if response != nil {
+			numberOfTransactions := len(response.Transactions)
+			if numberOfTransactions != 0 {
+				transactionTimestamp, err := FromString(response.Transactions[numberOfTransactions -1].ConsensusTimestamp)
+				if err != nil {
+					logger.Errorf(err.Error())
+					return
+				}
+				lastTransactionTimestamp = transactionTimestamp
+			}
 			for i, transaction := range response.Transactions {
-				logger.Infof("Index: %d Transaction ID: %s, Memo: %s", i, transaction.TransactionID, transaction.MemoBase64)
-
 				// This request is targeting a specific jobID
 				decodedMemo, err := DecodeMemo(transaction.MemoBase64)
 				if err != nil {
 					logger.Error("Failed decoding base64 NEAROracleRequestArgs.RequestSpec:", err)
 				}
-				logger.Infof("Decoded Memo: %s", decodedMemo)
-				logger.Infof("hederaSub account: %s", accoutId)
 
-				if !containsJobId(hederaSubscribersMap[accoutId], decodedMemo) {
+				hederaTransactionInfo := strings.Fields(decodedMemo)
+				if (len(hederaTransactionInfo) != 2) {
+					logger.Error("Invalid transaction info format")
+					continue
+				}
+				extractedTopicId := hederaTransactionInfo[0]
+				extractedJobId := hederaTransactionInfo[1]
+
+				if !containsJobId(hederaSubscribersMap[accoutId], extractedJobId) {
 					continue
 				} else {
 					hederaSubs := hederaSubscribersMap[accoutId]
 					for _, hs := range hederaSubs {
-						if hs.jobid == decodedMemo {
-							in := "{}"
-							bytes, err := json.Marshal(in)
+						if hs.jobid == extractedJobId {
+							eventInfo := fmt.Sprintf("{\"hederaTopicId\": \"%s\"}", extractedTopicId)
+							bytes, err := json.Marshal(eventInfo)
 							if err != nil {
 								logger.Errorf("error!")
 							}

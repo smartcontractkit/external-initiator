@@ -376,5 +376,4 @@ type HederaSubscription struct {
 	gorm.Model
 	SubscriptionId			 uint
 	AccountId				 string
-	LastTransactionTimestamp int64
 }
