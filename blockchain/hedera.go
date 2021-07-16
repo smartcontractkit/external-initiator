@@ -16,9 +16,10 @@ import (
 )
 
 const HEDERA = "hedera"
+
 var hederaSubscribersMap = make(map[string][]hederaSubscription)
 
-func addHederaSubscriber (key string, value hederaSubscription) {
+func addHederaSubscriber(key string, value hederaSubscription) {
 	hederaSubscribersMap[key] = append(hederaSubscribersMap[key], value)
 }
 
@@ -48,20 +49,20 @@ type hederaSubscriber struct {
 
 type hederaSubscription struct {
 	endpoint    string
-	events		chan<- subscriber.Event
-	accountId	string
-	monitorResp	*http.Response
-	isDone		bool
+	events      chan<- subscriber.Event
+	accountId   string
+	monitorResp *http.Response
+	isDone      bool
 	jobid       string
 }
 
 func (hSubscr hederaSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ store.RuntimeConfig) (subscriber.ISubscription, error) {
 
-	hederaSubscription := hederaSubscription {
-		endpoint:   hSubscr.Endpoint,
-		events:     channel,
-		accountId: 	hSubscr.AccountId,
-		jobid:      hSubscr.JobID,
+	hederaSubscription := hederaSubscription{
+		endpoint:  hSubscr.Endpoint,
+		events:    channel,
+		accountId: hSubscr.AccountId,
+		jobid:     hSubscr.JobID,
 	}
 
 	//todo implement logic to poll hedera mirror node - interval and accountid needed
@@ -84,7 +85,20 @@ func (hSubscr hederaSubscriber) SubscribeToEvents(channel chan<- subscriber.Even
 }
 
 func (hSubscr hederaSubscriber) Test() error {
-	//hSubscr.SubscribeToEvents()
+	var client = NewClient(hSubscr.Endpoint, 0)
+	response, err := client.GetAccountByAccountId(hSubscr.AccountId)
+	if err != nil {
+		logger.Errorf("Error getAccount:", err)
+	}
+
+	if response != nil {
+		if response.Accounts != nil && len(response.Accounts) == 1 {
+			if response.Accounts[0].Deleted {
+				errorMessage := fmt.Sprintf("Account with ID: %s is deleted", hSubscr.AccountId)
+				return errors.New(errorMessage)
+			}
+		}
+	}
 	return nil
 }
 
@@ -124,6 +138,23 @@ type (
 		Transfers            []Transfer `json:"transfers"`
 		TokenTransfers       []Transfer `json:"token_transfers"`
 	}
+	Account struct {
+		Balance         Balance `json:"balance"`
+		Account         string  `json:"account"`
+		ExpiryTimestamp string  `json:"expiry_timestamp"`
+		AutoRenewPeriod int     `json:"auto_renew_period"`
+		Key             Key     `json:"key"`
+		Deleted         bool    `json:"deleted"`
+	}
+	Balance struct {
+		Timestamp string   `json:"timestamp"`
+		Balance   int64    `json:"balance"`
+		Tokens    []string `json:"tokens"`
+	}
+	Key struct {
+		Type string `json:"_type"`
+		Key  string `json:"key"`
+	}
 	// Transfer struct used by the Hedera Mirror node REST API
 	Transfer struct {
 		Account string `json:"account"`
@@ -135,6 +166,7 @@ type (
 	// account transactions are queried
 	Response struct {
 		Transactions []Transaction
+		Accounts     []Account
 		Status       `json:"_status"`
 	}
 	ErrorMessage struct {
@@ -160,6 +192,11 @@ func (c Client) GetAccountCreditTransactionsAfterTimestamp(accountID string, fro
 	return c.getTransactionsByQuery(transactionsDownloadQuery)
 }
 
+func (c Client) GetAccountByAccountId(accountID string) (*Response, error) {
+	accountQuery := fmt.Sprintf("?account.id=%s", accountID)
+	return c.getAccountByQuery(accountQuery)
+}
+
 func DecodeTransactionMemo(transactionMemo string) ([]byte, error) {
 	return base64.StdEncoding.DecodeString(transactionMemo)
 }
@@ -180,7 +217,7 @@ func (c Client) WaitForTransaction(accoutId string) {
 		if response != nil {
 			numberOfTransactions := len(response.Transactions)
 			if numberOfTransactions != 0 {
-				transactionTimestamp, err := FromString(response.Transactions[numberOfTransactions -1].ConsensusTimestamp)
+				transactionTimestamp, err := FromString(response.Transactions[numberOfTransactions-1].ConsensusTimestamp)
 				if err != nil {
 					logger.Errorf(err.Error())
 					return
@@ -195,7 +232,7 @@ func (c Client) WaitForTransaction(accoutId string) {
 				}
 
 				hederaTransactionInfo := strings.Fields(decodedMemo)
-				if (len(hederaTransactionInfo) != 2) {
+				if len(hederaTransactionInfo) != 2 {
 					logger.Error("Invalid transaction info format")
 					continue
 				}
@@ -223,8 +260,6 @@ func (c Client) WaitForTransaction(accoutId string) {
 		time.Sleep(c.pollingInterval * time.Second)
 	}
 }
-
-
 
 const (
 	nanosInSecond = 1000000000
@@ -267,6 +302,30 @@ func DecodeMemo(base64Memo string) (string, error) {
 	}
 
 	return string(decodedMemo), nil
+}
+
+func (c Client) getAccountByQuery(query string) (*Response, error) {
+	transactionsQuery := fmt.Sprintf("%s%s%s", c.mirrorAPIAddress, "accounts", query)
+	httpResponse, e := c.get(transactionsQuery)
+	if e != nil {
+		return nil, e
+	}
+
+	bodyBytes, e := readResponseBody(httpResponse)
+	if e != nil {
+		return nil, e
+	}
+
+	var response *Response
+	e = json.Unmarshal(bodyBytes, &response)
+	if e != nil {
+		return nil, e
+	}
+	if httpResponse.StatusCode >= 400 {
+		return response, errors.New(fmt.Sprintf(`Failed to execute query: [%s]. Error: [%s]`, query, response.Status.String()))
+	}
+
+	return response, nil
 }
 
 func (c Client) getTransactionsByQuery(query string) (*Response, error) {
