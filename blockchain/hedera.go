@@ -187,7 +187,7 @@ func (c Client) WaitForTransaction(accoutId string) {
 				}
 				lastTransactionTimestamp = transactionTimestamp
 			}
-			for i, transaction := range response.Transactions {
+			for _, transaction := range response.Transactions {
 				// This request is targeting a specific jobID
 				decodedMemo, err := DecodeMemo(transaction.MemoBase64)
 				if err != nil {
