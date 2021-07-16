@@ -88,7 +88,7 @@ func (hSubscr hederaSubscriber) Test() error {
 	var client = NewClient(hSubscr.Endpoint, 0)
 	response, err := client.GetAccountByAccountId(hSubscr.AccountId)
 	if err != nil {
-		logger.Errorf("Error getAccount:", err)
+		return errors.New("Error while getting the Account information")
 	}
 
 	if response != nil {
@@ -97,6 +97,8 @@ func (hSubscr hederaSubscriber) Test() error {
 				errorMessage := fmt.Sprintf("Account with ID: %s is deleted", hSubscr.AccountId)
 				return errors.New(errorMessage)
 			}
+		} else {
+			return errors.New("Please check that you have recorded the Hedera's AccountId correctly")
 		}
 	}
 	return nil
