@@ -18,7 +18,7 @@ import (
 
 const HEDERA = "hedera"
 const MINIMUM_LINK_PAYMENT = 1000000000
-var linkTokenId string
+var tokenId string
 var hederaSubscribersMap = make(map[string][]hederaSubscription)
 
 func addHederaSubscriber(key string, value hederaSubscription) {
@@ -107,7 +107,7 @@ func (hSubscr hederaSubscriber) Test() error {
 		return errors.New("LINK Token ID is missing! Please set LINK Token ID to .env configuration file")
 	}
 
-	linkTokenId = hederaConfig.LinkTopicId
+	tokenId = hederaConfig.LinkTopicId
 
 	var client = NewClient(hSubscr.Endpoint, 0)
 	response, err := client.GetAccountByAccountId(hSubscr.AccountId)
@@ -124,16 +124,16 @@ func (hSubscr hederaSubscriber) Test() error {
 			} else if account.Balance.Tokens != nil {
 				isAccountHasAssignedLinkToken := false
 				for _, token := range account.Balance.Tokens {
-					if token.TokenId == linkTokenId {
+					if token.TokenId == tokenId {
 						isAccountHasAssignedLinkToken = true
 					}
 				}
 				if !isAccountHasAssignedLinkToken {
-					errorMessage := fmt.Sprintf("Account with ID: %s is not assigned to LINK token with ID: %s", hSubscr.AccountId, linkTokenId)
+					errorMessage := fmt.Sprintf("Account with ID: %s is not assigned to LINK token with ID: %s", hSubscr.AccountId, tokenId)
 					return errors.New(errorMessage)
 				}
 			} else {
-				errorMessage := fmt.Sprintf("Account with ID: %s is not assigned to LINK token with ID: %s", hSubscr.AccountId, linkTokenId)
+				errorMessage := fmt.Sprintf("Account with ID: %s is not assigned to LINK token with ID: %s", hSubscr.AccountId, tokenId)
 				return errors.New(errorMessage)
 			}
 		} else {
@@ -346,7 +346,7 @@ func DecodeMemo(base64Memo string) (string, error) {
 
 func checkForValidTokenTransfer(tokenTransfers []Transfer, accountId string) bool {
 
-	if linkTokenId == "" {
+	if tokenId == "" {
 		logger.Error("LINK Token ID is missing! Please set LINK Token ID to .env configuration file.")
 		return false
 	}
@@ -354,7 +354,7 @@ func checkForValidTokenTransfer(tokenTransfers []Transfer, accountId string) boo
 	isValid := false
 	if tokenTransfers != nil && len(tokenTransfers) > 0  {
 		for _, tokenTransfer := range tokenTransfers {
-			if tokenTransfer.Token == linkTokenId && tokenTransfer.Account == accountId && tokenTransfer.Amount >= MINIMUM_LINK_PAYMENT {
+			if tokenTransfer.Token == tokenId && tokenTransfer.Account == accountId && tokenTransfer.Amount >= MINIMUM_LINK_PAYMENT {
 				isValid = true
 			}
 		}
