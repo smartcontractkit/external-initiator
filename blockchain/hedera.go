@@ -239,10 +239,6 @@ func (c Client) GetAccountByAccountId(accountID string) (*Response, error) {
 	return c.getAccountByQuery(accountQuery)
 }
 
-func DecodeTransactionMemo(transactionMemo string) ([]byte, error) {
-	return base64.StdEncoding.DecodeString(transactionMemo)
-}
-
 // WaitForTransaction Polls the transaction at intervals.
 func (c Client) WaitForTransaction(accoutId string) {
 
@@ -337,12 +333,6 @@ func String(timestamp int64) string {
 	seconds := timestamp / nanosInSecond
 	nano := timestamp % nanosInSecond
 	return fmt.Sprintf("%d.%d", seconds, nano)
-}
-
-// ToHumanReadable converts the timestamp into human readable string
-func ToHumanReadable(timestampNanos int64) string {
-	parsed := time.Unix(timestampNanos/nanosInSecond, timestampNanos&nanosInSecond)
-	return parsed.Format(time.RFC3339Nano)
 }
 
 func DecodeMemo(base64Memo string) (string, error) {
