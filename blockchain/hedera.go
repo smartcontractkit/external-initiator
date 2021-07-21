@@ -62,6 +62,10 @@ type HederaConfig struct {
 	LinkTopicId string `mapstructure:"LINK_TOPIC_ID"`
 }
 
+type EventInfo struct {
+	HederaTopicId string `json:"hederaTopicId"`
+}
+
 func LoadConfig(configName string) (hederaConfig HederaConfig, err error) {
 	viper.AddConfigPath(".")
 	viper.SetConfigType("env")
@@ -115,31 +119,33 @@ func (hSubscr hederaSubscriber) Test() error {
 		return errors.New("Error while getting the Account information")
 	}
 
-	if response != nil {
-		if response.Accounts != nil && len(response.Accounts) == 1 {
-			account := response.Accounts[0]
-			if account.Deleted {
-				errorMessage := fmt.Sprintf("Account with ID: %s is deleted", hSubscr.AccountId)
-				return errors.New(errorMessage)
-			} else if account.Balance.Tokens != nil {
-				isAccountHasAssignedLinkToken := false
-				for _, token := range account.Balance.Tokens {
-					if token.TokenId == tokenId {
-						isAccountHasAssignedLinkToken = true
-					}
-				}
-				if !isAccountHasAssignedLinkToken {
-					errorMessage := fmt.Sprintf("Account with ID: %s is not assigned to LINK token with ID: %s", hSubscr.AccountId, tokenId)
-					return errors.New(errorMessage)
-				}
-			} else {
-				errorMessage := fmt.Sprintf("Account with ID: %s is not assigned to LINK token with ID: %s", hSubscr.AccountId, tokenId)
-				return errors.New(errorMessage)
-			}
-		} else {
-			return errors.New("Please check that you have recorded the Hedera's AccountId correctly")
+	if response == nil || response.Accounts == nil || len(response.Accounts) != 1 {
+		return errors.New("Please check that you have recorded the Hedera's AccountId correctly")
+	}
+
+	account := response.Accounts[0]
+	if account.Deleted {
+		errorMessage := fmt.Sprintf("Account with ID: %s is deleted", hSubscr.AccountId)
+		return errors.New(errorMessage)
+	}
+
+	if account.Balance.Tokens == nil {
+		errorMessage := fmt.Sprintf("Account with ID: %s is not assigned to LINK token with ID: %s", hSubscr.AccountId, tokenId)
+		return errors.New(errorMessage)
+	}
+
+	isAccountHasAssignedLinkToken := false
+	for _, token := range account.Balance.Tokens {
+		if token.TokenId == tokenId {
+			isAccountHasAssignedLinkToken = true
 		}
 	}
+
+	if !isAccountHasAssignedLinkToken {
+		errorMessage := fmt.Sprintf("Account with ID: %s is not assigned to LINK token with ID: %s", hSubscr.AccountId, tokenId)
+		return errors.New(errorMessage)
+	}
+
 	return nil
 }
 
@@ -240,12 +246,12 @@ func (c Client) GetAccountByAccountId(accountID string) (*Response, error) {
 }
 
 // WaitForTransaction Polls the transaction at intervals.
-func (c Client) WaitForTransaction(accoutId string) {
+func (c Client) WaitForTransaction(accountId string) {
 
-	logger.Infof("Listening for events on account id: %v", accoutId)
+	logger.Infof("Listening for events on account id: %v", accountId)
 	lastTransactionTimestamp := time.Now().UnixNano()
 	for {
-		response, err := c.GetAccountCreditTransactionsAfterTimestamp(accoutId, lastTransactionTimestamp)
+		response, err := c.GetAccountCreditTransactionsAfterTimestamp(accountId, lastTransactionTimestamp)
 
 		if err != nil {
 			logger.Errorf("Error while trying to get account. Error: [%s].", err.Error())
@@ -263,7 +269,7 @@ func (c Client) WaitForTransaction(accoutId string) {
 				lastTransactionTimestamp = transactionTimestamp
 			}
 			for _, transaction := range response.Transactions {
-				if !checkForValidTokenTransfer(transaction.TokenTransfers, accoutId) {
+				if !checkForValidTokenTransfer(transaction.TokenTransfers, accountId) {
 					continue
 				}
 
@@ -285,14 +291,13 @@ func (c Client) WaitForTransaction(accoutId string) {
 				extractedTopicId := hederaTransactionInfo[0]
 				extractedJobId := hederaTransactionInfo[1]
 
-				if !containsJobId(hederaSubscribersMap[accoutId], extractedJobId) {
+				if !containsJobId(hederaSubscribersMap[accountId], extractedJobId) {
 					continue
 				} else {
-					hederaSubs := hederaSubscribersMap[accoutId]
+					hederaSubs := hederaSubscribersMap[accountId]
 					for _, hs := range hederaSubs {
 						if hs.jobid == extractedJobId {
-							eventInfo := fmt.Sprintf("{\"hederaTopicId\": \"%s\"}", extractedTopicId)
-							bytes, err := json.Marshal(eventInfo)
+							bytes, err := json.Marshal(EventInfo{HederaTopicId: extractedTopicId})
 							if err != nil {
 								logger.Errorf("error!")
 							}
@@ -345,12 +350,6 @@ func DecodeMemo(base64Memo string) (string, error) {
 }
 
 func checkForValidTokenTransfer(tokenTransfers []Transfer, accountId string) bool {
-
-	if tokenId == "" {
-		logger.Error("LINK Token ID is missing! Please set LINK Token ID to .env configuration file.")
-		return false
-	}
-
 	isValid := false
 	if tokenTransfers != nil && len(tokenTransfers) > 0  {
 		for _, tokenTransfer := range tokenTransfers {

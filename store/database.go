@@ -374,6 +374,6 @@ type AgoricSubscription struct {
 
 type HederaSubscription struct {
 	gorm.Model
-	SubscriptionId			 uint
-	AccountId				 string
+	SubscriptionId uint
+	AccountId      string
 }
