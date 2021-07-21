@@ -8,6 +8,7 @@ import (
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
+	"github.com/spf13/viper"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -16,7 +17,8 @@ import (
 )
 
 const HEDERA = "hedera"
-
+const MINIMUM_LINK_PAYMENT = 1000000000
+var linkTokenId string
 var hederaSubscribersMap = make(map[string][]hederaSubscription)
 
 func addHederaSubscriber(key string, value hederaSubscription) {
@@ -56,6 +58,26 @@ type hederaSubscription struct {
 	jobid       string
 }
 
+type HederaConfig struct {
+	LinkTopicId string `mapstructure:"LINK_TOPIC_ID"`
+}
+
+func LoadConfig(configName string) (hederaConfig HederaConfig, err error) {
+	viper.AddConfigPath(".")
+	viper.SetConfigType("env")
+	viper.SetConfigName(configName)
+
+	viper.AutomaticEnv()
+
+	err = viper.ReadInConfig()
+	if err != nil {
+		return
+	}
+
+	err = viper.Unmarshal(&hederaConfig)
+	return
+}
+
 func (hSubscr hederaSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ store.RuntimeConfig) (subscriber.ISubscription, error) {
 
 	hederaSubscription := hederaSubscription{
@@ -64,15 +86,6 @@ func (hSubscr hederaSubscriber) SubscribeToEvents(channel chan<- subscriber.Even
 		accountId: hSubscr.AccountId,
 		jobid:     hSubscr.JobID,
 	}
-
-	//todo implement logic to poll hedera mirror node - interval and accountid needed
-	//todo see how to use timestamps to request transaction for period after our last request
-	//todo parse result, extract info from memo
-	//todo trigger jobs on chainlink node
-	//todo map somehow task id from memo to a different jobspec? is that possible? what is jobID in hederaSubscription?
-	//todo check if payment was okay
-	//todo create tests - hedera_test.go & also elsewhere where we changed the code + db migration
-	//todo remove last transaction timestamp from hedera_subscription database object if we're not going to save it
 
 	if len(hederaSubscribersMap[hederaSubscription.accountId]) == 0 {
 		var client = NewClient(hederaSubscription.endpoint, 5)
@@ -85,6 +98,17 @@ func (hSubscr hederaSubscriber) SubscribeToEvents(channel chan<- subscriber.Even
 }
 
 func (hSubscr hederaSubscriber) Test() error {
+
+	hederaConfig, err := LoadConfig(".env")
+	if err != nil {
+		logger.Error(err)
+		return err
+	} else if hederaConfig.LinkTopicId == "" {
+		return errors.New("LINK Token ID is missing! Please set LINK Token ID to .env configuration file")
+	}
+
+	linkTokenId = hederaConfig.LinkTopicId
+
 	var client = NewClient(hSubscr.Endpoint, 0)
 	response, err := client.GetAccountByAccountId(hSubscr.AccountId)
 	if err != nil {
@@ -93,8 +117,23 @@ func (hSubscr hederaSubscriber) Test() error {
 
 	if response != nil {
 		if response.Accounts != nil && len(response.Accounts) == 1 {
-			if response.Accounts[0].Deleted {
+			account := response.Accounts[0]
+			if account.Deleted {
 				errorMessage := fmt.Sprintf("Account with ID: %s is deleted", hSubscr.AccountId)
+				return errors.New(errorMessage)
+			} else if account.Balance.Tokens != nil {
+				isAccountHasAssignedLinkToken := false
+				for _, token := range account.Balance.Tokens {
+					if token.TokenId == linkTokenId {
+						isAccountHasAssignedLinkToken = true
+					}
+				}
+				if !isAccountHasAssignedLinkToken {
+					errorMessage := fmt.Sprintf("Account with ID: %s is not assigned to LINK token with ID: %s", hSubscr.AccountId, linkTokenId)
+					return errors.New(errorMessage)
+				}
+			} else {
+				errorMessage := fmt.Sprintf("Account with ID: %s is not assigned to LINK token with ID: %s", hSubscr.AccountId, linkTokenId)
 				return errors.New(errorMessage)
 			}
 		} else {
@@ -111,9 +150,6 @@ func (hederaSubscription hederaSubscription) Unsubscribe() {
 		hederaSubscription.monitorResp.Body.Close()
 	}
 }
-
-//todo see what we need from here and tidy-up somehow
-// COPIED FROM HEDERA EVM BRIDGE
 
 type Client struct {
 	mirrorAPIAddress string
@@ -149,9 +185,13 @@ type (
 		Deleted         bool    `json:"deleted"`
 	}
 	Balance struct {
-		Timestamp string   `json:"timestamp"`
-		Balance   int64    `json:"balance"`
-		Tokens    []string `json:"tokens"`
+		Timestamp string  `json:"timestamp"`
+		Balance   int64   `json:"balance"`
+		Tokens    []Token `json:"tokens"`
+	}
+	Token struct {
+		TokenId string `json:"token_id"`
+		Balance int64  `json:"balance"`
 	}
 	Key struct {
 		Type string `json:"_type"`
@@ -227,10 +267,18 @@ func (c Client) WaitForTransaction(accoutId string) {
 				lastTransactionTimestamp = transactionTimestamp
 			}
 			for _, transaction := range response.Transactions {
-				// This request is targeting a specific jobID
+				if !checkForValidTokenTransfer(transaction.TokenTransfers, accoutId) {
+					continue
+				}
+
+				if len(transaction.MemoBase64) == 0 {
+					continue
+				}
+
 				decodedMemo, err := DecodeMemo(transaction.MemoBase64)
 				if err != nil {
 					logger.Error("Failed decoding base64 NEAROracleRequestArgs.RequestSpec:", err)
+					continue
 				}
 
 				hederaTransactionInfo := strings.Fields(decodedMemo)
@@ -304,6 +352,25 @@ func DecodeMemo(base64Memo string) (string, error) {
 	}
 
 	return string(decodedMemo), nil
+}
+
+func checkForValidTokenTransfer(tokenTransfers []Transfer, accountId string) bool {
+
+	if linkTokenId == "" {
+		logger.Error("LINK Token ID is missing! Please set LINK Token ID to .env configuration file.")
+		return false
+	}
+
+	isValid := false
+	if tokenTransfers != nil && len(tokenTransfers) > 0  {
+		for _, tokenTransfer := range tokenTransfers {
+			if tokenTransfer.Token == linkTokenId && tokenTransfer.Account == accountId && tokenTransfer.Amount >= MINIMUM_LINK_PAYMENT {
+				isValid = true
+			}
+		}
+	}
+
+	return isValid
 }
 
 func (c Client) getAccountByQuery(query string) (*Response, error) {
