@@ -59,7 +59,7 @@ type hederaSubscription struct {
 }
 
 type HederaConfig struct {
-	TopicId string `mapstructure:"TOPIC_ID"`
+	TokenId string `mapstructure:"TOKEN_ID"`
 }
 
 type EventInfo struct {
@@ -107,11 +107,11 @@ func (hSubscr hederaSubscriber) Test() error {
 	if err != nil {
 		logger.Error(err)
 		return err
-	} else if hederaConfig.TopicId == "" {
+	} else if hederaConfig.TokenId == "" {
 		return errors.New("LINK Token ID is missing! Please set LINK Token ID to .env configuration file")
 	}
 
-	tokenId = hederaConfig.TopicId
+	tokenId = hederaConfig.TokenId
 
 	var client = NewClient(hSubscr.Endpoint, 0)
 	response, err := client.GetAccountByAccountId(hSubscr.AccountId)
