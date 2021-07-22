@@ -59,7 +59,7 @@ type hederaSubscription struct {
 }
 
 type HederaConfig struct {
-	LinkTopicId string `mapstructure:"LINK_TOPIC_ID"`
+	TopicId string `mapstructure:"TOPIC_ID"`
 }
 
 type EventInfo struct {
@@ -107,11 +107,11 @@ func (hSubscr hederaSubscriber) Test() error {
 	if err != nil {
 		logger.Error(err)
 		return err
-	} else if hederaConfig.LinkTopicId == "" {
+	} else if hederaConfig.TopicId == "" {
 		return errors.New("LINK Token ID is missing! Please set LINK Token ID to .env configuration file")
 	}
 
-	tokenId = hederaConfig.LinkTopicId
+	tokenId = hederaConfig.TopicId
 
 	var client = NewClient(hSubscr.Endpoint, 0)
 	response, err := client.GetAccountByAccountId(hSubscr.AccountId)
@@ -279,7 +279,7 @@ func (c Client) WaitForTransaction(accountId string) {
 
 				decodedMemo, err := DecodeMemo(transaction.MemoBase64)
 				if err != nil {
-					logger.Error("Failed decoding base64 NEAROracleRequestArgs.RequestSpec:", err)
+					logger.Error("Failed decoding base64:", err)
 					continue
 				}
 
