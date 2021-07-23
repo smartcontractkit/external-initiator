@@ -1,12 +1,14 @@
 package blockchain
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
+	"github.com/spf13/viper"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -15,63 +17,135 @@ import (
 )
 
 const HEDERA = "hedera"
+const MINIMUM_LINK_PAYMENT = 1000000000
+var tokenId string
+var hederaSubscribersMap = make(map[string][]hederaSubscription)
+
+func addHederaSubscriber(key string, value hederaSubscription) {
+	hederaSubscribersMap[key] = append(hederaSubscribersMap[key], value)
+}
+
+func containsJobId(hederaSubscriptions []hederaSubscription, expected string) bool {
+	for _, hs := range hederaSubscriptions {
+		if hs.jobid == expected {
+			return true
+		}
+	}
+	return false
+}
 
 func createHederaSubscriber(sub store.Subscription) hederaSubscriber {
+
 	return hederaSubscriber{
-		Endpoint:  strings.TrimSuffix(sub.Endpoint.Url, "/"),
-		AccountIds: sub.Hedera.AccountIds,
+		Endpoint:  sub.Endpoint.Url,
+		AccountId: sub.Hedera.AccountId,
 		JobID:     sub.Job,
 	}
 }
 
 type hederaSubscriber struct {
 	Endpoint  string
-	AccountIds []string
+	AccountId string
 	JobID     string
 }
 
 type hederaSubscription struct {
 	endpoint    string
 	events      chan<- subscriber.Event
-	accountIds   []string
+	accountId   string
 	monitorResp *http.Response
 	isDone      bool
 	jobid       string
 }
 
-func (hSubscr hederaSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ store.RuntimeConfig) (subscriber.ISubscription, error) {
+type HederaConfig struct {
+	TokenId string `mapstructure:"TOKEN_ID"`
+}
 
-	logger.Infof("Using Hedera Mirror endpoint: %s\nListening for events on account ids: %v", hSubscr.Endpoint, hSubscr.AccountIds)
+type EventInfo struct {
+	HederaTopicId string `json:"hederaTopicId"`
+}
 
-	hederaSubscription := hederaSubscription{
-		endpoint:   hSubscr.Endpoint,
-		events:     channel,
-		accountIds: hSubscr.AccountIds,
-		jobid:      hSubscr.JobID,
+func LoadConfig(configName string) (hederaConfig HederaConfig, err error) {
+	viper.AddConfigPath(".")
+	viper.SetConfigType("env")
+	viper.SetConfigName(configName)
+
+	viper.AutomaticEnv()
+
+	err = viper.ReadInConfig()
+	if err != nil {
+		return
 	}
 
-	//todo implement logic to poll hedera mirror node - interval and accountid needed
-	//todo see how to use timestamps to request transaction for period after our last request
-	//todo parse result, extract info from memo
-	//todo trigger jobs on chainlink node
-	//todo map somehow task id from memo to a different jobspec? is that possible? what is jobID in hederaSubscription?
-	//todo check if payment was okay
-	//todo create tests - hedera_test.go & also elsewhere where we changed the code + db migration
+	err = viper.Unmarshal(&hederaConfig)
+	return
+}
 
-	//todo see where we lose the /
-	var url = hederaSubscription.endpoint + "/"
+func (hSubscr hederaSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ store.RuntimeConfig) (subscriber.ISubscription, error) {
 
+	hederaSubscription := hederaSubscription{
+		endpoint:  hSubscr.Endpoint,
+		events:    channel,
+		accountId: hSubscr.AccountId,
+		jobid:     hSubscr.JobID,
+	}
 
-	//go tzs.readMessagesWithRetry()
+	if len(hederaSubscribersMap[hederaSubscription.accountId]) == 0 {
+		var client = NewClient(hederaSubscription.endpoint, 5)
+		go client.WaitForTransaction(hederaSubscription.accountId)
+	}
 
-	var client = NewClient(url, 5)
-
-	client.GetAccountCreditTransactionsAfterTimestamp("0.0.1943014", 324324234234)
+	addHederaSubscriber(hederaSubscription.accountId, hederaSubscription)
 
 	return hederaSubscription, nil
 }
 
 func (hSubscr hederaSubscriber) Test() error {
+
+	hederaConfig, err := LoadConfig(".env")
+	if err != nil {
+		logger.Error(err)
+		return err
+	} else if hederaConfig.TokenId == "" {
+		return errors.New("LINK Token ID is missing! Please set LINK Token ID to .env configuration file")
+	}
+
+	tokenId = hederaConfig.TokenId
+
+	var client = NewClient(hSubscr.Endpoint, 0)
+	response, err := client.GetAccountByAccountId(hSubscr.AccountId)
+	if err != nil {
+		return errors.New("Error while getting the Account information")
+	}
+
+	if response == nil || response.Accounts == nil || len(response.Accounts) != 1 {
+		return errors.New("Please check that you have recorded the Hedera's AccountId correctly")
+	}
+
+	account := response.Accounts[0]
+	if account.Deleted {
+		errorMessage := fmt.Sprintf("Account with ID: %s is deleted", hSubscr.AccountId)
+		return errors.New(errorMessage)
+	}
+
+	if account.Balance.Tokens == nil {
+		errorMessage := fmt.Sprintf("Account with ID: %s is not assigned to LINK token with ID: %s", hSubscr.AccountId, tokenId)
+		return errors.New(errorMessage)
+	}
+
+	isAccountHasAssignedLinkToken := false
+	for _, token := range account.Balance.Tokens {
+		if token.TokenId == tokenId {
+			isAccountHasAssignedLinkToken = true
+		}
+	}
+
+	if !isAccountHasAssignedLinkToken {
+		errorMessage := fmt.Sprintf("Account with ID: %s is not assigned to LINK token with ID: %s", hSubscr.AccountId, tokenId)
+		return errors.New(errorMessage)
+	}
+
 	return nil
 }
 
@@ -82,9 +156,6 @@ func (hederaSubscription hederaSubscription) Unsubscribe() {
 		hederaSubscription.monitorResp.Body.Close()
 	}
 }
-
-//todo see what we need from here and tidy-up somehow
-// COPIED FROM HEDERA EVM BRIDGE
 
 type Client struct {
 	mirrorAPIAddress string
@@ -111,6 +182,27 @@ type (
 		Transfers            []Transfer `json:"transfers"`
 		TokenTransfers       []Transfer `json:"token_transfers"`
 	}
+	Account struct {
+		Balance         Balance `json:"balance"`
+		Account         string  `json:"account"`
+		ExpiryTimestamp string  `json:"expiry_timestamp"`
+		AutoRenewPeriod int     `json:"auto_renew_period"`
+		Key             Key     `json:"key"`
+		Deleted         bool    `json:"deleted"`
+	}
+	Balance struct {
+		Timestamp string  `json:"timestamp"`
+		Balance   int64   `json:"balance"`
+		Tokens    []Token `json:"tokens"`
+	}
+	Token struct {
+		TokenId string `json:"token_id"`
+		Balance int64  `json:"balance"`
+	}
+	Key struct {
+		Type string `json:"_type"`
+		Key  string `json:"key"`
+	}
 	// Transfer struct used by the Hedera Mirror node REST API
 	Transfer struct {
 		Account string `json:"account"`
@@ -122,6 +214,7 @@ type (
 	// account transactions are queried
 	Response struct {
 		Transactions []Transaction
+		Accounts     []Account
 		Status       `json:"_status"`
 	}
 	ErrorMessage struct {
@@ -145,6 +238,78 @@ func (c Client) GetAccountCreditTransactionsAfterTimestamp(accountID string, fro
 		accountID,
 		String(from))
 	return c.getTransactionsByQuery(transactionsDownloadQuery)
+}
+
+func (c Client) GetAccountByAccountId(accountID string) (*Response, error) {
+	accountQuery := fmt.Sprintf("?account.id=%s", accountID)
+	return c.getAccountByQuery(accountQuery)
+}
+
+// WaitForTransaction Polls the transaction at intervals.
+func (c Client) WaitForTransaction(accountId string) {
+
+	logger.Infof("Listening for events on account id: %v", accountId)
+	lastTransactionTimestamp := time.Now().UnixNano()
+	for {
+		response, err := c.GetAccountCreditTransactionsAfterTimestamp(accountId, lastTransactionTimestamp)
+
+		if err != nil {
+			logger.Errorf("Error while trying to get account. Error: [%s].", err.Error())
+			return
+		}
+
+		if response != nil {
+			numberOfTransactions := len(response.Transactions)
+			if numberOfTransactions != 0 {
+				transactionTimestamp, err := FromString(response.Transactions[numberOfTransactions-1].ConsensusTimestamp)
+				if err != nil {
+					logger.Errorf(err.Error())
+					return
+				}
+				lastTransactionTimestamp = transactionTimestamp
+			}
+			for _, transaction := range response.Transactions {
+				if !checkForValidTokenTransfer(transaction.TokenTransfers, accountId) {
+					continue
+				}
+
+				if len(transaction.MemoBase64) == 0 {
+					continue
+				}
+
+				decodedMemo, err := DecodeMemo(transaction.MemoBase64)
+				if err != nil {
+					logger.Error("Failed decoding base64:", err)
+					continue
+				}
+
+				hederaTransactionInfo := strings.Fields(decodedMemo)
+				if len(hederaTransactionInfo) != 2 {
+					logger.Error("Invalid transaction info format")
+					continue
+				}
+				extractedTopicId := hederaTransactionInfo[0]
+				extractedJobId := hederaTransactionInfo[1]
+
+				if !containsJobId(hederaSubscribersMap[accountId], extractedJobId) {
+					continue
+				} else {
+					hederaSubs := hederaSubscribersMap[accountId]
+					for _, hs := range hederaSubs {
+						if hs.jobid == extractedJobId {
+							bytes, err := json.Marshal(EventInfo{HederaTopicId: extractedTopicId})
+							if err != nil {
+								logger.Errorf("error!")
+							}
+							hs.events <- bytes
+						}
+					}
+				}
+			}
+		}
+
+		time.Sleep(c.pollingInterval * time.Second)
+	}
 }
 
 const (
@@ -175,10 +340,50 @@ func String(timestamp int64) string {
 	return fmt.Sprintf("%d.%d", seconds, nano)
 }
 
-// ToHumanReadable converts the timestamp into human readable string
-func ToHumanReadable(timestampNanos int64) string {
-	parsed := time.Unix(timestampNanos/nanosInSecond, timestampNanos&nanosInSecond)
-	return parsed.Format(time.RFC3339Nano)
+func DecodeMemo(base64Memo string) (string, error) {
+	decodedMemo, err := base64.StdEncoding.DecodeString(base64Memo)
+	if err != nil {
+		return "", err
+	}
+
+	return string(decodedMemo), nil
+}
+
+func checkForValidTokenTransfer(tokenTransfers []Transfer, accountId string) bool {
+	isValid := false
+	if tokenTransfers != nil && len(tokenTransfers) > 0  {
+		for _, tokenTransfer := range tokenTransfers {
+			if tokenTransfer.Token == tokenId && tokenTransfer.Account == accountId && tokenTransfer.Amount >= MINIMUM_LINK_PAYMENT {
+				isValid = true
+			}
+		}
+	}
+
+	return isValid
+}
+
+func (c Client) getAccountByQuery(query string) (*Response, error) {
+	transactionsQuery := fmt.Sprintf("%s%s%s", c.mirrorAPIAddress, "accounts", query)
+	httpResponse, e := c.get(transactionsQuery)
+	if e != nil {
+		return nil, e
+	}
+
+	bodyBytes, e := readResponseBody(httpResponse)
+	if e != nil {
+		return nil, e
+	}
+
+	var response *Response
+	e = json.Unmarshal(bodyBytes, &response)
+	if e != nil {
+		return nil, e
+	}
+	if httpResponse.StatusCode >= 400 {
+		return response, errors.New(fmt.Sprintf(`Failed to execute query: [%s]. Error: [%s]`, query, response.Status.String()))
+	}
+
+	return response, nil
 }
 
 func (c Client) getTransactionsByQuery(query string) (*Response, error) {

@@ -6,14 +6,13 @@ import (
 	"database/sql/driver"
 	"encoding/csv"
 	"fmt"
-	"io"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store/migrations"
+	"io"
 )
 
 const sqlDialect = "postgres"
@@ -376,5 +375,5 @@ type AgoricSubscription struct {
 type HederaSubscription struct {
 	gorm.Model
 	SubscriptionId uint
-	AccountIds     SQLStringArray
+	AccountId      string
 }
