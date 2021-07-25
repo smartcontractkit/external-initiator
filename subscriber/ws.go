@@ -183,7 +183,6 @@ func (wsc *websocketConnection) processIncomingMessage(payload json.RawMessage) 
 	var nonce uint64
 	err = json.Unmarshal(msg.ID, &nonce)
 	if err == nil && nonce > 0 {
-		logger.Error("some nonce error")
 		ch, ok := wsc.nonceListeners[nonce]
 		if ok {
 			ch <- msg.Result
