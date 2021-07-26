@@ -17,8 +17,8 @@ import (
 )
 
 const HEDERA = "hedera"
-const MINIMUM_LINK_PAYMENT = 1000000000
 var tokenId string
+var minPayment int64
 var hederaSubscribersMap = make(map[string][]hederaSubscription)
 
 func addHederaSubscriber(key string, value hederaSubscription) {
@@ -60,6 +60,7 @@ type hederaSubscription struct {
 
 type HederaConfig struct {
 	TokenId string `mapstructure:"TOKEN_ID"`
+	MinPayment int64 `mapstructure:"MIN_PAYMENT"`
 }
 
 type EventInfo struct {
@@ -112,6 +113,7 @@ func (hSubscr hederaSubscriber) Test() error {
 	}
 
 	tokenId = hederaConfig.TokenId
+	minPayment = hederaConfig.MinPayment
 
 	var client = NewClient(hSubscr.Endpoint, 0)
 	response, err := client.GetAccountByAccountId(hSubscr.AccountId)
@@ -353,7 +355,7 @@ func checkForValidTokenTransfer(tokenTransfers []Transfer, accountId string) boo
 	isValid := false
 	if tokenTransfers != nil && len(tokenTransfers) > 0  {
 		for _, tokenTransfer := range tokenTransfers {
-			if tokenTransfer.Token == tokenId && tokenTransfer.Account == accountId && tokenTransfer.Amount >= MINIMUM_LINK_PAYMENT {
+			if tokenTransfer.Token == tokenId && tokenTransfer.Account == accountId && tokenTransfer.Amount >= minPayment {
 				isValid = true
 			}
 		}
