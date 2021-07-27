@@ -10,6 +10,7 @@ import (
 
 func init() {
 	tokenId = "0.0.2138566"
+	minPayment = 1000000000
 }
 
 func TestHedera_CreateHederaSubscriber(t *testing.T) {
