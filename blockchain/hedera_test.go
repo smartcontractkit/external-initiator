@@ -148,7 +148,7 @@ func TestHedera_FromString(t *testing.T) {
 				t.Errorf("FromString(int64) got = %d, want %d", got, tt.want)
 			}
 			if err != nil && !assert.EqualError(t, err, tt.wantErr.Error()) {
-				t.Errorf("Error should be: %v, got: %v", tt.wantErr, err)
+				t.Errorf("FromString(int64) Error should be: %v, got: %v", tt.wantErr, err)
 			}
 		})
 	}
