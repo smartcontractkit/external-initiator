@@ -64,11 +64,11 @@ type FluxAggregatorConfig struct {
 }
 
 type RoundData struct {
-	RoundId         uint32
-	Answer          Value
-	StartedAt       uint64
-	UpdatedAt       uint64
-	AnsweredInRound uint32
+	RoundId         uint32 `json:"round_id"`
+	Answer          Value  `json:"answer"`
+	StartedAt       uint64 `json:"started_at"`
+	UpdatedAt       uint64 `json:"updated_at"`
+	AnsweredInRound uint32 `json:"answered_in_round"`
 }
 
 type OracleStatus struct {

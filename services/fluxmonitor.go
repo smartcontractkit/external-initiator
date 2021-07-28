@@ -120,10 +120,11 @@ type FluxMonitor struct {
 
 	blockchain common.FluxMonitorManager
 
-	latestResult           decimal.Decimal
-	latestResultTimestamp  time.Time
-	latestSubmittedRoundID uint32
-	latestInitiatedRoundID uint32
+	latestResult                decimal.Decimal
+	latestResultTimestamp       time.Time
+	latestSubmittedRoundID      uint32
+	latestSubmittedRoundSuccess bool
+	latestInitiatedRoundID      uint32
 
 	pollTicker     utils.PausableTicker
 	idleTimer      utils.ResettableTimer
@@ -226,6 +227,11 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 		select {
 		case rawEvent := <-ch:
 			switch event := rawEvent.(type) {
+			case common.FMSubmissionReceived:
+				fm.logger.Debug("Got submission received event: ", event)
+				if fm.latestSubmittedRoundID == event.RoundID {
+					fm.latestSubmittedRoundSuccess = true
+				}
 			case common.FMEventNewRound:
 				fm.logger.Debug("Got new round event: ", event)
 				fm.resetHeartbeatTimer()
@@ -259,21 +265,24 @@ func (fm *FluxMonitor) canSubmitToRound(initiate bool) bool {
 		return false
 	}
 
-	if initiate {
-		if int32(fm.state.RoundID+1-fm.latestInitiatedRoundID) <= fm.state.RestartDelay {
-			fm.logger.Info("Oracle needs to wait until restart delay passes until it can initiate a new round")
-			return false
+	if fm.latestSubmittedRoundSuccess {
+		if initiate {
+			if int32(fm.state.RoundID+1-fm.latestInitiatedRoundID) <= fm.state.RestartDelay {
+				fm.logger.Info("Oracle needs to wait until restart delay passes until it can initiate a new round")
+				return false
+			}
+
+			if fm.latestSubmittedRoundID >= fm.state.RoundID+1 {
+				fm.logger.Info("Oracle already initiated this round")
+				return false
+			}
+		} else {
+			if fm.latestSubmittedRoundID != 0 && fm.latestSubmittedRoundID >= fm.state.RoundID {
+				fm.logger.Info("Oracle already submitted to this round")
+				return false
+			}
 		}
 
-		if fm.latestSubmittedRoundID >= fm.state.RoundID+1 {
-			fm.logger.Info("Oracle already initiated this round")
-			return false
-		}
-	} else {
-		if fm.latestSubmittedRoundID != 0 && fm.latestSubmittedRoundID >= fm.state.RoundID {
-			fm.logger.Info("Oracle already submitted to this round")
-			return false
-		}
 	}
 
 	return true
@@ -308,6 +317,7 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 	fm.chJobTrigger <- jobRequest
 
 	fm.latestSubmittedRoundID = roundId
+	fm.latestSubmittedRoundSuccess = false
 	return nil
 }
 
@@ -339,6 +349,7 @@ func (fm *FluxMonitor) heartbeatTimer() {
 			if err != nil {
 				fm.logger.Error("Failed to initiate new round at heartbeat: ", err)
 			}
+			fm.idleTimer.Reset(fm.config.Heartbeat)
 		case <-fm.chClose:
 			fm.logger.Info("FluxMonitor stopped")
 			return

@@ -8,10 +8,10 @@ require (
 	github.com/avast/retry-go v2.6.0+incompatible
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869
 	github.com/centrifuge/go-substrate-rpc-client v2.0.0+incompatible
-	github.com/centrifuge/go-substrate-rpc-client/v3 v3.0.0
-	github.com/ethereum/go-ethereum v1.10.2
+	github.com/centrifuge/go-substrate-rpc-client/v3 v3.0.1-0.20210615133310-35e1b61fc8ac
+	github.com/ethereum/go-ethereum v1.10.3
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a
-	github.com/gin-gonic/gin v1.6.0
+	github.com/gin-gonic/gin v1.7.2
 	github.com/golang/mock v1.4.4
 	github.com/google/uuid v1.1.5
 	github.com/gorilla/websocket v1.4.2

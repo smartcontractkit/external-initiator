@@ -111,6 +111,11 @@ func CreateSubscription(sub store.Subscription, params Params) store.Subscriptio
 			Addresses: addresses,
 		}
 	case substrate.Name:
+		if params.FeedId == nil {
+			// to avoid nil pointer exception on RunLog
+			z := uint32(0)
+			params.FeedId = &z
+		}
 		sub.Substrate = store.SubstrateSubscription{
 			AccountIds: params.AccountIds,
 			FeedId:     *params.FeedId,
