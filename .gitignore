@@ -1,3 +1,5 @@
 db/
 .env
 external-initiator
+.DS_STORE
+.idea
