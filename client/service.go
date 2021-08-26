@@ -156,7 +156,8 @@ func (srv *Service) Run() error {
 		return err
 	}
 
-	for _, sub := range subs {
+	for i, _ := range subs {
+		sub := subs[i]
 		iSubscriber, err := srv.getAndTestSubscription(&sub)
 		if err != nil {
 			logger.Error(err)
