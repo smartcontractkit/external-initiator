@@ -305,7 +305,7 @@ type Subscription struct {
 	Keeper            KeeperSubscription
 	BSNIrita          BSNIritaSubscription
 	Agoric            AgoricSubscription
-	Hedera			  HederaSubscription
+	Hedera            HederaSubscription
 }
 
 type EthSubscription struct {
