@@ -53,13 +53,14 @@ func (tm *manager) Stop() {
 }
 
 func (tm *manager) query(ctx context.Context, address, query string, t interface{}) error {
-	// TODO! potentially use Tendermint http client
+	// TODO: use the provided endpoint to query instead of requiring seperate URL
 	url := fmt.Sprintf("%s/wasm/contracts/%s/store?query_msg=%s", os.Getenv("TERRA_URL"), address, query)
 	resp, err := http.Get(url)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
+
 
 	var decoded map[string]json.RawMessage
 	if err := json.NewDecoder(resp.Body).Decode(&decoded); err != nil {
@@ -69,6 +70,7 @@ func (tm *manager) query(ctx context.Context, address, query string, t interface
 	if err := json.Unmarshal(decoded["result"], &t); err != nil {
 		return err
 	}
+	logger.Debug(query, t)
 
 	return nil
 }
