@@ -43,8 +43,6 @@ type FluxAggregatorState struct {
 	CanSubmit     bool
 }
 
-type RunlogRequest map[string]interface{}
-
 type Manager interface {
 	Stop()
 }
@@ -54,12 +52,6 @@ type FluxMonitorManager interface {
 	GetState(ctx context.Context) (*FluxAggregatorState, error)
 	SubscribeEvents(ctx context.Context, ch chan<- interface{}) error
 	CreateJobRun(roundId uint32) map[string]interface{}
-}
-
-type RunlogManager interface {
-	Manager
-	SubscribeEvents(ctx context.Context, ch chan<- RunlogRequest) error
-	CreateJobRun(request RunlogRequest) map[string]interface{}
 }
 
 // JsonrpcMessage declares JSON-RPC message type

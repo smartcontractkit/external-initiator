@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pkg/errors"
@@ -122,46 +121,6 @@ func (client Client) prepareSubscription(rawSub *Subscription) (*Subscription, e
 	}
 
 	switch endpoint.Type {
-	case "ethereum", "iotex":
-		if err := client.db.Model(&sub).Related(&sub.Ethereum).Error; err != nil {
-			return nil, err
-		}
-	case "tezos":
-		if err := client.db.Model(&sub).Related(&sub.Tezos).Error; err != nil {
-			return nil, err
-		}
-	case "substrate":
-		if err := client.db.Model(&sub).Related(&sub.Substrate).Error; err != nil {
-			return nil, err
-		}
-	case "ontology":
-		if err := client.db.Model(&sub).Related(&sub.Ontology).Error; err != nil {
-			return nil, err
-		}
-	case "binance-smart-chain":
-		if err := client.db.Model(&sub).Related(&sub.BinanceSmartChain).Error; err != nil {
-			return nil, err
-		}
-	case "conflux":
-		if err := client.db.Model(&sub).Related(&sub.Conflux).Error; err != nil {
-			return nil, err
-		}
-	case "near":
-		if err := client.db.Model(&sub).Related(&sub.NEAR).Error; err != nil {
-			return nil, err
-		}
-	case "keeper":
-		if err := client.db.Model(&sub).Related(&sub.Keeper).Error; err != nil {
-			return nil, err
-		}
-	case "bsn-irita":
-		if err := client.db.Model(&sub).Related(&sub.BSNIrita).Error; err != nil {
-			return nil, err
-		}
-	case "agoric":
-		if err := client.db.Model(&sub).Related(&sub.Agoric).Error; err != nil {
-			return nil, err
-		}
 	case "terra":
 		if err := client.db.Model(&sub).Related(&sub.Terra).Error; err != nil {
 			return nil, err
@@ -313,87 +272,11 @@ type Endpoint struct {
 
 type Subscription struct {
 	gorm.Model
-	ReferenceId       string
-	Job               string
-	EndpointName      string
-	Endpoint          Endpoint `gorm:"-"`
-	Ethereum          EthSubscription
-	Tezos             TezosSubscription
-	Terra             TerraSubscription
-	Substrate         SubstrateSubscription
-	Ontology          OntSubscription
-	BinanceSmartChain BinanceSmartChainSubscription
-	NEAR              NEARSubscription
-	Conflux           CfxSubscription
-	Keeper            KeeperSubscription
-	BSNIrita          BSNIritaSubscription
-	Agoric            AgoricSubscription
-}
-
-type EthSubscription struct {
-	gorm.Model
-	SubscriptionId uint
-	Addresses      SQLStringArray
-	Topics         SQLStringArray
-}
-
-type TezosSubscription struct {
-	gorm.Model
-	SubscriptionId uint
-	Addresses      SQLStringArray
-}
-
-type SubstrateSubscription struct {
-	gorm.Model
-	SubscriptionId uint
-	AccountIds     SQLStringArray
-	FeedId         uint32
-	AccountId      string
-}
-
-type OntSubscription struct {
-	gorm.Model
-	SubscriptionId uint
-	Addresses      SQLStringArray
-}
-
-type BinanceSmartChainSubscription struct {
-	gorm.Model
-	SubscriptionId uint
-	Addresses      SQLStringArray
-}
-
-type NEARSubscription struct {
-	gorm.Model
-	SubscriptionId uint
-	AccountIds     SQLStringArray
-}
-
-type CfxSubscription struct {
-	gorm.Model
-	SubscriptionId uint
-	Addresses      SQLStringArray
-	Topics         SQLStringArray
-}
-
-type KeeperSubscription struct {
-	gorm.Model
-	SubscriptionId uint
-	Address        string
-	UpkeepID       string
-	From           common.Address
-}
-
-type BSNIritaSubscription struct {
-	gorm.Model
-	SubscriptionId uint
-	Addresses      SQLStringArray
-	ServiceName    string
-}
-
-type AgoricSubscription struct {
-	gorm.Model
-	SubscriptionId uint
+	ReferenceId  string
+	Job          string
+	EndpointName string
+	Endpoint     Endpoint `gorm:"-"`
+	Terra        TerraSubscription
 }
 
 type TerraSubscription struct {

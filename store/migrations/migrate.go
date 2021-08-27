@@ -3,22 +3,6 @@ package migrations
 import (
 	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
-	"github.com/smartcontractkit/external-initiator/store/migrations/migration0"
-	"github.com/smartcontractkit/external-initiator/store/migrations/migration1576509489"
-	"github.com/smartcontractkit/external-initiator/store/migrations/migration1576783801"
-	"github.com/smartcontractkit/external-initiator/store/migrations/migration1582671289"
-	"github.com/smartcontractkit/external-initiator/store/migrations/migration1587897988"
-	"github.com/smartcontractkit/external-initiator/store/migrations/migration1592829052"
-	"github.com/smartcontractkit/external-initiator/store/migrations/migration1594317706"
-	"github.com/smartcontractkit/external-initiator/store/migrations/migration1599849837"
-	"github.com/smartcontractkit/external-initiator/store/migrations/migration1603803454"
-	"github.com/smartcontractkit/external-initiator/store/migrations/migration1605288480"
-	"github.com/smartcontractkit/external-initiator/store/migrations/migration1608026935"
-	"github.com/smartcontractkit/external-initiator/store/migrations/migration1610281978"
-	"github.com/smartcontractkit/external-initiator/store/migrations/migration1611169747"
-	"github.com/smartcontractkit/external-initiator/store/migrations/migration1613356332"
-	"github.com/smartcontractkit/external-initiator/store/migrations/migration1616122557"
-	"github.com/smartcontractkit/external-initiator/store/migrations/migration1616768017"
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1623859956"
 	"gopkg.in/gormigrate.v1"
 )
@@ -31,86 +15,7 @@ func Migrate(db *gorm.DB) error {
 
 	migrations := []*gormigrate.Migration{
 		{
-			ID:      "0",
-			Migrate: migration0.Migrate,
-		},
-		{
-			ID:       "1576509489",
-			Migrate:  migration1576509489.Migrate,
-			Rollback: migration1576509489.Rollback,
-		},
-		{
-			ID:       "1576783801",
-			Migrate:  migration1576783801.Migrate,
-			Rollback: migration1576783801.Rollback,
-		},
-		{
-			ID:       "1582671289",
-			Migrate:  migration1582671289.Migrate,
-			Rollback: migration1582671289.Rollback,
-		},
-		{
-			ID:       "1587897988",
-			Migrate:  migration1587897988.Migrate,
-			Rollback: migration1587897988.Rollback,
-		},
-		{
-			ID:       "1592829052",
-			Migrate:  migration1592829052.Migrate,
-			Rollback: migration1592829052.Rollback,
-		},
-		{
-			ID:       "1594317706",
-			Migrate:  migration1594317706.Migrate,
-			Rollback: migration1594317706.Rollback,
-		},
-		{
-			ID:       "1599849837",
-			Migrate:  migration1599849837.Migrate,
-			Rollback: migration1599849837.Rollback,
-		},
-		{
-			ID:       "1603803454",
-			Migrate:  migration1603803454.Migrate,
-			Rollback: migration1603803454.Rollback,
-		},
-		{
-			ID:       "1605288480",
-			Migrate:  migration1605288480.Migrate,
-			Rollback: migration1605288480.Rollback,
-		},
-		{
-			ID:       "1608026935",
-			Migrate:  migration1608026935.Migrate,
-			Rollback: migration1608026935.Rollback,
-		},
-		{
-			ID:       "1610281978",
-			Migrate:  migration1610281978.Migrate,
-			Rollback: migration1610281978.Rollback,
-		},
-		{
-			ID:       "1611169747",
-			Migrate:  migration1611169747.Migrate,
-			Rollback: migration1611169747.Rollback,
-		},
-		{
-			ID:       "1613356332",
-			Migrate:  migration1613356332.Migrate,
-			Rollback: migration1613356332.Rollback,
-		},
-		{
-			ID:       "1616122557",
-			Migrate:  migration1616122557.Migrate,
-			Rollback: migration1616122557.Rollback,
-		},
-		{
-			ID:       "1616768017",
-			Migrate:  migration1616768017.Migrate,
-			Rollback: migration1616768017.Rollback,
-		},
-		{
-			ID:       "1616788127",
+			ID:       "1623859956",
 			Migrate:  migration1623859956.Migrate,
 			Rollback: migration1623859956.Rollback,
 		},

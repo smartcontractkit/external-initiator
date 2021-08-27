@@ -3,12 +3,9 @@ module github.com/smartcontractkit/external-initiator
 go 1.15
 
 require (
-	github.com/Conflux-Chain/go-conflux-sdk v1.0.4
 	github.com/Depado/ginprom v1.2.1-0.20200115153638-53bbba851bd8
 	github.com/avast/retry-go v2.6.0+incompatible
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869
-	github.com/centrifuge/go-substrate-rpc-client v2.0.0+incompatible
-	github.com/centrifuge/go-substrate-rpc-client/v3 v3.0.1-0.20210615133310-35e1b61fc8ac
 	github.com/ethereum/go-ethereum v1.10.3
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a
 	github.com/gin-gonic/gin v1.7.2

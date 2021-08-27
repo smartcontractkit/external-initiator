@@ -19,14 +19,13 @@ Initiate Chainlink job runs from external sources.
 | `EI_IC_SECRET`             | The Chainlink secret, used for traffic flowing from this service to Chainlink              | `h23MjHx17UJKBf3b0MWNI2P/UPh3c3O7/j8ivKCBhvcWH3H+xso4Gehny/lgpAht` |
 | `EI_CI_ACCESSKEY`          | The External Initiator access key, used for traffic flowing from Chainlink to this service | `0b7d4a293bff4baf8de852bfa1f1f78a`                                 |
 | `EI_CI_SECRET`             | The External Initiator secret, used for traffic flowing from Chainlink to this service     | `h23MjHx17UJKBf3b0MWNI2P/UPh3c3O7/j8ivKCBhvcWH3H+xso4Gehny/lgpAht` |
-| `EI_KEEPER_BLOCK_COOLDOWN` | Number of blocks to cool down before triggering a new run for a Keeper job.                | `3`                                                                |
 | `EI_FM_ADAPTER_TIMEOUT`    | Request timeout for FM adapter polls                                                       | `3s`                                                               |
 | `EI_FM_ADAPTER_RETRY_ATTEMPTS`     | Number of retry attempts for FM adapter polls                                      | `3`                                                                |
 | `EI_FM_ADAPTER_RETRY_DELAY`        | Timeout between attempts for FM adapter polls                                      | `3s`                                                               |
 
 ## Usage
 
-``` 
+```
 $ ./external-initiator --help
 Monitors external blockchains and relays events to Chainlink node. Supplying endpoint configs as args will delete all other stored configs. ENV variables can be set by prefixing flag with EI_: EI_ACCESSKEY
 
@@ -47,7 +46,6 @@ Flags:
   -h, --help                              help for external-initiator
       --ic_accesskey string               The Chainlink access key, used for traffic flowing from this Service to Chainlink
       --ic_secret string                  The Chainlink secret, used for traffic flowing from this Service to Chainlink
-      --keeper_block_cooldown int         Number of blocks to cool down before triggering a new run for a Keeper job (default 3)
       --mock                              Set to true if the External Initiator should expect mock events from the blockchains
       --port int                          The port for the EI API to listen on (default 8080)
 ```

@@ -20,7 +20,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/smartcontractkit/chainlink/core/logger"
-	"github.com/tidwall/gjson"
 )
 
 var (
@@ -70,7 +69,6 @@ func startService(
 			Delay:    config.ChainlinkRetryDelay,
 		},
 	}, store.RuntimeConfig{
-		KeeperBlockCooldown:    config.KeeperBlockCooldown,
 		FMAdapterTimeout:       config.FMAdapterTimeout,
 		FMAdapterRetryAttempts: config.FMAdapterRetryAttempts,
 		FMAdapterRetryDelay:    config.FMAdapterRetryDelay,
@@ -233,11 +231,7 @@ func (srv *Service) subscribe(sub store.Subscription) error {
 	var err error
 	triggerJobRun := make(chan subscriber.Event, 100)
 	js, err := srv.store.LoadJobSpec(sub.Job)
-	if err != nil || gjson.GetBytes(js.Spec, "fluxmonitor").Raw == "null" || gjson.GetBytes(js.Spec, "fluxmonitor").Raw == "" {
-		service, err = srv.subscribeRunlog(sub, triggerJobRun, js)
-	} else {
-		service, err = srv.subscribeFluxmonitor(sub, triggerJobRun, js)
-	}
+	service, err = srv.subscribeFluxmonitor(sub, triggerJobRun, js)
 	if err != nil {
 		return err
 	}
@@ -250,15 +244,6 @@ func (srv *Service) subscribe(sub store.Subscription) error {
 	go srv.jobTriggerListener(sub.Job, triggerJobRun)
 
 	return nil
-}
-
-func (srv Service) subscribeRunlog(sub store.Subscription, ch chan subscriber.Event, _ *store.JobSpec) (services.Service, error) {
-	blockchainManager, err := blockchain.CreateRunlogManager(sub)
-	if err != nil {
-		return nil, err
-	}
-
-	return services.NewRunlog(sub.Job, ch, blockchainManager)
 }
 
 func (srv *Service) subscribeFluxmonitor(sub store.Subscription, ch chan subscriber.Event, js *store.JobSpec) (services.Service, error) {

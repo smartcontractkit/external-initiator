@@ -1,1 +1,0 @@
-# External Initiator Scripts
