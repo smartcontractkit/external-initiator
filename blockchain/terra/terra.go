@@ -70,7 +70,7 @@ func (tm *manager) query(ctx context.Context, address, query string, t interface
 	if err := json.Unmarshal(decoded["result"], &t); err != nil {
 		return err
 	}
-	logger.Debug(query, t)
+	logger.Debug(url, t)
 
 	return nil
 }

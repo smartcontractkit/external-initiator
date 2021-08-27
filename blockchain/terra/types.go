@@ -9,8 +9,17 @@ type Value struct {
 }
 
 func (v *Value) UnmarshalJSON(data []byte) error {
+	// remove quotations from byte array
+	if data[0] == '"' {
+		data = data[1:]
+	}
+	if data[len(data)-1] == '"' {
+		data = data[0 : len(data)-1]
+	}
+
 	var i big.Int
-	*v = Value{*i.SetBytes(data)}
+	i.SetString(string(data), 10)
+	*v = Value{i}
 
 	return nil
 }

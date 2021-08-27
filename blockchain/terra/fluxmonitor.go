@@ -37,6 +37,7 @@ func (fm fluxMonitorManager) GetState(ctx context.Context) (*common.FluxAggregat
 	}
 
 	var latestAnswer big.Int
+	logger.Debug(round.Answer, round.Answer.String(), round.Answer.Int)
 	if round.Answer.String() != big.NewInt(0).String() {
 		latestAnswer = round.Answer.Int
 	} else {
