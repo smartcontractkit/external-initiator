@@ -11,6 +11,7 @@ import (
 	"github.com/smartcontractkit/external-initiator/blockchain/ethereum"
 	"github.com/smartcontractkit/external-initiator/blockchain/harmony"
 	"github.com/smartcontractkit/external-initiator/blockchain/substrate"
+	"github.com/smartcontractkit/external-initiator/blockchain/terra"
 	"github.com/smartcontractkit/external-initiator/store"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -33,12 +34,15 @@ type Params struct {
 
 	ethereum.EthParams
 	substrate.Params
+	terra.TerraParams
 }
 
 func CreateFluxMonitorManager(sub store.Subscription) (common.FluxMonitorManager, error) {
 	switch sub.Endpoint.Type {
 	case substrate.Name:
 		return substrate.CreateFluxMonitorManager(sub)
+	case terra.Name:
+		return terra.CreateFluxMonitorManager(sub)
 	}
 	return nil, fmt.Errorf("unknown endpoint type: %s", sub.Endpoint.Type)
 }
@@ -62,6 +66,7 @@ var blockchains = []string{
 	substrate.Name,
 	conflux.Name,
 	harmony.Name,
+	terra.Name,
 }
 
 func ValidBlockchain(name string) bool {
@@ -119,6 +124,11 @@ func CreateSubscription(sub store.Subscription, params Params) store.Subscriptio
 	case conflux.Name:
 		sub.Conflux = store.CfxSubscription{
 			Addresses: addresses,
+		}
+	case terra.Name:
+		sub.Terra = store.TerraSubscription{
+			ContractAddress: params.ContractAddress,
+			AccountAddress:  params.AccountAddress,
 		}
 	}
 

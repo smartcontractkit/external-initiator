@@ -32,6 +32,8 @@ func HandleRequest(conn, platform string, msg JsonrpcMessage) ([]JsonrpcMessage,
 		return handleKeeperRequest(conn, msg)
 	case "substrate":
 		return handleSubstrateRequest(conn, msg)
+	case "terra":
+		return handleTerraRequest(conn, msg)
 	default:
 		return nil, fmt.Errorf("unexpected platform: %v", platform)
 	}

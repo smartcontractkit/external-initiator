@@ -171,6 +171,7 @@ func (wsc *websocketConnection) read() {
 	}
 }
 
+// TODO! rethink
 func (wsc *websocketConnection) processIncomingMessage(payload json.RawMessage) {
 	var msg JsonrpcMessage
 	err := json.Unmarshal(payload, &msg)
@@ -183,33 +184,32 @@ func (wsc *websocketConnection) processIncomingMessage(payload json.RawMessage) 
 	err = json.Unmarshal(msg.ID, &nonce)
 	if err == nil && nonce > 0 {
 		ch, ok := wsc.nonceListeners[nonce]
-		if !ok {
+		if ok {
+			ch <- msg.Result
 			return
 		}
-		ch <- msg.Result
-		return
 	}
 
-	var params struct {
-		Subscription string          `json:"subscription"`
-		Result       json.RawMessage `json:"result"`
-	}
-	err = json.Unmarshal(msg.Params, &params)
-	if err != nil {
-		return
-	}
+	// var params struct {
+	// 	Subscription string          `json:"subscription"`
+	// 	Result       json.RawMessage `json:"result"`
+	// }
+	// err = json.Unmarshal(msg.Params, &params)
+	// if err != nil {
+	// 	return
+	// }
 
-	ch, ok := wsc.subscriptionListeners[params.Subscription]
+	ch, ok := wsc.subscriptionListeners["terra"]
 	if !ok {
 		// TODO: Should be improved in a way
 		time.Sleep(1 * time.Second)
-		ch, ok = wsc.subscriptionListeners[params.Subscription]
+		ch, ok = wsc.subscriptionListeners["terra"]
 		if !ok {
 			return
 		}
 	}
 
-	ch <- params.Result
+	ch <- msg.Result
 }
 
 func (wsc *websocketConnection) subscribe(req *subscribeRequest) error {
@@ -272,10 +272,13 @@ func (wsc *websocketConnection) getSubscriptionId(req *subscribeRequest) (string
 	defer timer.Stop()
 
 	select {
-	case result := <-listener:
-		var subscriptionId string
-		err = json.Unmarshal(result, &subscriptionId)
-		return subscriptionId, err
+	// WIP part
+	case <-listener:
+		// var subscriptionId string
+		// err = json.Unmarshal(result, &subscriptionId)
+		// subscriptionId = uuid.New().String()
+		// subscriptionId = fmt.Sprint(nonce)
+		return "terra", err
 	case <-timer.C:
 		return "", errorRequestTimeout
 	}

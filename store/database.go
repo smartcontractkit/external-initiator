@@ -162,6 +162,10 @@ func (client Client) prepareSubscription(rawSub *Subscription) (*Subscription, e
 		if err := client.db.Model(&sub).Related(&sub.Agoric).Error; err != nil {
 			return nil, err
 		}
+	case "terra":
+		if err := client.db.Model(&sub).Related(&sub.Terra).Error; err != nil {
+			return nil, err
+		}
 	}
 
 	return &sub, nil
@@ -315,6 +319,7 @@ type Subscription struct {
 	Endpoint          Endpoint `gorm:"-"`
 	Ethereum          EthSubscription
 	Tezos             TezosSubscription
+	Terra             TerraSubscription
 	Substrate         SubstrateSubscription
 	Ontology          OntSubscription
 	BinanceSmartChain BinanceSmartChainSubscription
@@ -389,6 +394,13 @@ type BSNIritaSubscription struct {
 type AgoricSubscription struct {
 	gorm.Model
 	SubscriptionId uint
+}
+
+type TerraSubscription struct {
+	gorm.Model
+	SubscriptionId  uint
+	ContractAddress string
+	AccountAddress  string
 }
 
 type JobSpec struct {
