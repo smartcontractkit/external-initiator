@@ -24,50 +24,58 @@ func CreateFluxMonitorManager(sub store.Subscription) (*fluxMonitorManager, erro
 }
 
 func (fm fluxMonitorManager) GetState(ctx context.Context) (*common.FluxAggregatorState, error) {
+	// get aggregator configs
 	var config FluxAggregatorConfig
 	err := fm.query(ctx, fm.contractAddress, `{"get_aggregator_config":{}}`, &config)
 	if err != nil {
 		return nil, err
 	}
 
+	// get last completed round data
 	var round RoundData
 	err = fm.query(ctx, fm.contractAddress, `{"get_latest_round_data":{}}`, &round)
 	if err != nil {
 		return nil, err
 	}
 
-	var latestAnswer big.Int
-	logger.Debug(round.Answer, round.Answer.String(), round.Answer.Int)
-	if round.Answer.String() != big.NewInt(0).String() {
-		latestAnswer = round.Answer.Int
-	} else {
-		latestAnswer = *big.NewInt(0)
+	// get last oracle submission data (used to be oracleIsEligibleToSubmit())
+	var status OracleStatus
+	var canSubmit bool
+	query := fmt.Sprintf(`{"get_oracle_status":{"oracle":"%s"}}`, fm.accountAddress)
+	err = fm.query(ctx, fm.contractAddress, query, &status)
+	if err != nil {
+		logger.Error(err)
+		canSubmit = false
+	}
+	canSubmit =  status.EndingRound == 0xffffffff // uint32 max
+	logger.Debugf("[terra/GetState/get_oracle_status] %+v", status)
+
+	// if node has reported to a newer incomplete round use it's latest submission & round
+	latestAnswer := round.Answer
+	latestRound := round.RoundId
+	if round.RoundId < status.LastReportedRound {
+		latestRound = status.LastReportedRound
+		latestAnswer = status.LatestSubmission
+	}
+	// if zero then set big.Int(0)
+	if latestAnswer.String() == big.NewInt(0).String() {
+		latestAnswer = Value{*big.NewInt(0)}
 	}
 
 	state := &common.FluxAggregatorState{
-		RoundID:       round.RoundId,
-		LatestAnswer:  latestAnswer,
+		RoundID:       latestRound,
+		LatestAnswer:  latestAnswer.Int,
 		Payment:       config.PaymentAmount.Int,
 		Timeout:       config.Timeout,
 		RestartDelay:  int32(config.RestartDelay),
 		MinSubmission: config.MinSubmissionValue.Int,
 		MaxSubmission: config.MaxSubmissionValue.Int,
-		CanSubmit:     fm.oracleIsEligibleToSubmit(ctx),
+		CanSubmit:     canSubmit,
 	}
+
+	logger.Debugf("[terra/GetState] %+v", state)
 
 	return state, nil
-}
-
-func (fm fluxMonitorManager) oracleIsEligibleToSubmit(ctx context.Context) bool {
-	var status OracleStatus
-	query := fmt.Sprintf(`{"get_oracle_status":{"oracle":"%s"}}`, fm.accountAddress)
-	err := fm.query(ctx, fm.contractAddress, query, &status)
-	if err != nil {
-		logger.Error(err)
-		return false
-	}
-
-	return status.EndingRound == 0xffffffff // uint32 max
 }
 
 func (fm fluxMonitorManager) SubscribeEvents(ctx context.Context, ch chan<- interface{}) error {
@@ -85,6 +93,7 @@ func (fm fluxMonitorManager) SubscribeEvents(ctx context.Context, ch chan<- inte
 			}
 			ch <- common.FMSubmissionReceived{
 				RoundID: uint32(round.RoundId),
+				LatestAnswer: round.Submission.Int,
 			}
 		}
 		for _, update := range event.AnswerUpdated {

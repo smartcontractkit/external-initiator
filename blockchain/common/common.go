@@ -21,7 +21,8 @@ type FMEventNewRound struct {
 }
 
 type FMSubmissionReceived struct {
-	RoundID uint32
+	RoundID      uint32
+	LatestAnswer big.Int
 }
 
 type FMEventAnswerUpdated struct {

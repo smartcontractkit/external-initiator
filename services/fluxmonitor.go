@@ -231,12 +231,13 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 				fm.logger.Debug("Got submission received event: ", event)
 				if fm.latestSubmittedRoundID == event.RoundID {
 					fm.latestSubmittedRoundSuccess = true
+					fm.state.LatestAnswer = event.LatestAnswer // tracks it's latest round submission between AnswerUpdated events (otherwise will keep trying to submit if rounds unfulfilled)
 				}
 			case common.FMEventNewRound:
 				fm.logger.Debug("Got new round event: ", event)
 				fm.resetHeartbeatTimer()
 				fm.state.RoundID = event.RoundID
-				if event.OracleInitiated {
+				if event.OracleInitiated || fm.latestSubmittedRoundID == event.RoundID {
 					fm.latestInitiatedRoundID = event.RoundID
 					continue
 				}
