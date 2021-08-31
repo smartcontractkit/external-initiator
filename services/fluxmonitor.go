@@ -124,6 +124,7 @@ type FluxMonitor struct {
 	latestResultTimestamp       time.Time
 	latestSubmittedRoundID      uint32
 	latestSubmittedRoundSuccess bool
+	latestRoundTimestamp        int64
 	latestInitiatedRoundID      uint32
 
 	pollTicker     utils.PausableTicker
@@ -237,6 +238,7 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 				fm.logger.Debug("Got new round event: ", event)
 				fm.resetHeartbeatTimer()
 				fm.state.RoundID = event.RoundID
+				fm.latestRoundTimestamp = time.Now().Unix() // track when new round is started to keep track of timeout for starting new round
 				if event.OracleInitiated || fm.latestSubmittedRoundID == event.RoundID {
 					fm.latestInitiatedRoundID = event.RoundID
 					continue
@@ -248,6 +250,7 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 			case common.FMEventAnswerUpdated:
 				fm.logger.Debug("Got answer updated event: ", event)
 				fm.state.LatestAnswer = event.LatestAnswer
+				fm.latestRoundTimestamp = 0 // set to 0 when round complete (timeout not needed to be taken into account, rounds can be initiated whenever)
 				fm.checkDeviation()
 			case common.FMEventPermissionsUpdated:
 				fm.logger.Debug("Got permissions updated event: ", event)
@@ -273,6 +276,14 @@ func (fm *FluxMonitor) canSubmitToRound(initiate bool) bool {
 				return false
 			}
 
+			// check if timeout parameter is met (timestamp of 0 means new round can be initiated without waiting for timeout)
+			current := time.Now().Unix()
+			if fm.latestRoundTimestamp > 0 && uint32(current-fm.latestRoundTimestamp) < fm.state.Timeout {
+				fm.logger.Info("Oracle needs to wait until timeout delay passes until it can ignore the current round and initiate a new round")
+				fm.logger.Debugf("[fluxmonitor/canSubmitToRound] latestRound (%d), current (%d), %d < %d", fm.latestRoundTimestamp, current, uint32(current-fm.latestRoundTimestamp), fm.state.Timeout)
+				return false
+			}
+
 			if fm.latestSubmittedRoundID >= fm.state.RoundID+1 {
 				fm.logger.Info("Oracle already initiated this round")
 				return false
@@ -283,7 +294,6 @@ func (fm *FluxMonitor) canSubmitToRound(initiate bool) bool {
 				return false
 			}
 		}
-
 	}
 
 	return true
