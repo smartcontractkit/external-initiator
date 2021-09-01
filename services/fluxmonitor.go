@@ -126,7 +126,7 @@ type FluxMonitor struct {
 	latestSubmittedRoundSuccess bool
 	latestRoundTimestamp        int64
 	latestInitiatedRoundID      uint32
-	canStart                    bool // when joining a feed, wait until a new round is initiated to start reporting
+	canStart                    bool // when joining a feed, wait until a new round is initiated to start reporting (prevent initial reverted txs)
 
 	pollTicker     utils.PausableTicker
 	idleTimer      utils.ResettableTimer
@@ -236,7 +236,7 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 					fm.state.LatestAnswer = event.LatestAnswer // tracks it's latest round submission between AnswerUpdated events (otherwise will keep trying to submit if rounds unfulfilled)
 				}
 			case common.FMEventNewRound:
-				fm.canStart = true
+				fm.canStart = true // once a new round is triggered, allows node to freely submit
 				fm.logger.Debug("Got new round event: ", event)
 				fm.resetHeartbeatTimer()
 				fm.state.RoundID = event.RoundID
@@ -272,7 +272,7 @@ func (fm *FluxMonitor) canSubmitToRound(initiate bool) bool {
 	}
 
 	if !fm.canStart {
-		fm.logger.Info("Oracle cannot submit yet waiting for new round trigger")
+		fm.logger.Info("Oracle is waiting for new round to begin submitting")
 		return false
 	}
 
