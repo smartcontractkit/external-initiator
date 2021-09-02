@@ -238,7 +238,6 @@ func (srv *HttpService) CreateSubscription(c *gin.Context) {
 // provided as parameter in the request.
 func (srv *HttpService) DeleteSubscription(c *gin.Context) {
 	jobid := c.Param("jobid")
-	jobid = strings.ReplaceAll(jobid, "-", "") // TODO: remove this when TOML job specs are implemented and JSON specs are removed
 	logger.Debugf("[client/DeleteSubscription]: %s", jobid)
 	if err := srv.Store.DeleteJob(jobid); err != nil {
 		logger.Error(err)

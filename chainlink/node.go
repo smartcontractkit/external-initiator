@@ -76,7 +76,7 @@ func (cl Node) TriggerJob(jobId string, data subscriber.Event) error {
 
 func (cl Node) sendJobrunTrigger(jobId string, data []byte) error {
 	u := cl.Endpoint
-	u.Path = fmt.Sprintf("/v2/specs/%s/runs", jobId)
+	u.Path = fmt.Sprintf("/v2/jobs/%s/runs", jobId)
 
 	request, err := http.NewRequest(http.MethodPost, u.String(), bytes.NewReader(data))
 	if err != nil {
