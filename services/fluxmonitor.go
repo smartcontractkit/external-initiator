@@ -230,14 +230,14 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 		case rawEvent := <-ch:
 			switch event := rawEvent.(type) {
 			case common.FMSubmissionReceived:
-				fm.logger.Debug("Got submission received event: ", event)
+				fm.logger.Debugf("Got submission received event: %+v", event)
 				if fm.latestSubmittedRoundID == event.RoundID {
 					fm.latestSubmittedRoundSuccess = true
 					fm.state.LatestAnswer = event.LatestAnswer // tracks it's latest round submission between AnswerUpdated events (otherwise will keep trying to submit if rounds unfulfilled)
 				}
 			case common.FMEventNewRound:
 				fm.canStart = true // once a new round is triggered, allows node to freely submit
-				fm.logger.Debug("Got new round event: ", event)
+				fm.logger.Debugf("Got new round event: %+v", event)
 				fm.resetHeartbeatTimer()
 				fm.state.RoundID = event.RoundID
 				fm.latestRoundTimestamp = time.Now().Unix() // track when new round is started to keep track of timeout for starting new round
@@ -250,14 +250,19 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 					fm.logger.Error(err)
 				}
 			case common.FMEventAnswerUpdated:
-				fm.logger.Debug("Got answer updated event: ", event)
+				fm.logger.Debugf("Got answer updated event: %=v", event)
 				fm.state.LatestAnswer = event.LatestAnswer
 				fm.latestRoundTimestamp = 0 // set to 0 when round complete (timeout not needed to be taken into account, rounds can be initiated whenever)
 				fm.checkDeviation()
 			case common.FMEventPermissionsUpdated:
-				fm.logger.Debug("Got permissions updated event: ", event)
+				fm.logger.Debugf("Got permissions updated event: %+v", event)
 				fm.state.CanSubmit = event.CanSubmit
 				fm.canSubmitUpdated()
+			case common.FMEventRoundDetailsUpdated:
+				fm.logger.Debugf("Got round details updated event: %+v", event)
+				fm.state.Payment = event.Payment
+				fm.state.Timeout = event.Timeout
+				fm.state.RestartDelay = event.RestartDelay
 			}
 		case <-fm.chClose:
 			return
@@ -271,8 +276,10 @@ func (fm *FluxMonitor) canSubmitToRound(initiate bool) bool {
 		return false
 	}
 
-	if !fm.canStart {
-		fm.logger.Info("Oracle is waiting for new round to begin submitting")
+	// wait for new round if there has been previously completed rounds or submissions
+	// do not wait if the on-chain answer is null or 0
+	if fm.state.LatestAnswer.Uint64() != 0 && !fm.canStart {
+		fm.logger.Info("Previous submissions found: oracle is waiting for new round to begin submitting")
 		return false
 	}
 

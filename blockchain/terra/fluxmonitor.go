@@ -47,7 +47,7 @@ func (fm fluxMonitorManager) GetState(ctx context.Context) (*common.FluxAggregat
 		logger.Error(err)
 		canSubmit = false
 	}
-	canSubmit =  status.EndingRound == 0xffffffff // uint32 max
+	canSubmit = status.EndingRound == 0xffffffff // uint32 max
 	logger.Debugf("[terra/GetState/get_oracle_status] %+v", status)
 
 	// if node has reported to a newer incomplete round use it's latest submission & round
@@ -92,7 +92,7 @@ func (fm fluxMonitorManager) SubscribeEvents(ctx context.Context, ch chan<- inte
 				continue
 			}
 			ch <- common.FMSubmissionReceived{
-				RoundID: uint32(round.RoundId),
+				RoundID:      uint32(round.RoundId),
 				LatestAnswer: round.Submission.Int,
 			}
 		}
@@ -109,11 +109,13 @@ func (fm fluxMonitorManager) SubscribeEvents(ctx context.Context, ch chan<- inte
 				CanSubmit: update.Bool,
 			}
 		}
-		// for _, update := range event.RoundDetailsUpdated {
-		// 	if update.FeedId != fm.feedId {
-		// 		continue
-		// 	}
-		// }
+		for _, update := range event.RoundDetailsUpdated {
+			ch <- common.FMEventRoundDetailsUpdated{
+				Payment:       update.PaymentAmount.Int,
+				Timeout:       update.Timeout,
+				RestartDelay:  int32(update.RestartDelay),
+			}
+		}
 	})
 }
 

@@ -33,6 +33,12 @@ type FMEventPermissionsUpdated struct {
 	CanSubmit bool
 }
 
+type FMEventRoundDetailsUpdated struct {
+	Payment       big.Int
+	Timeout       uint32
+	RestartDelay  int32
+}
+
 type FluxAggregatorState struct {
 	RoundID       uint32
 	LatestAnswer  big.Int

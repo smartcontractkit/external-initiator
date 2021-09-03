@@ -53,14 +53,12 @@ func (tm *manager) Stop() {
 }
 
 func (tm *manager) query(ctx context.Context, address, query string, t interface{}) error {
-	// TODO: use the provided endpoint to query instead of requiring seperate URL
 	url := fmt.Sprintf("%s/wasm/contracts/%s/store?query_msg=%s", os.Getenv("TERRA_URL"), address, query)
 	resp, err := http.Get(url)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-
 
 	var decoded map[string]json.RawMessage
 	if err := json.NewDecoder(resp.Body).Decode(&decoded); err != nil {
@@ -128,7 +126,7 @@ func extractEvents(data json.RawMessage) ([]types.Event, error) {
 
 func parseEvents(events []types.Event) (*EventRecords, error) {
 	var eventRecords EventRecords
-
+	logger.Debugf("[terra/parseEvents]: %+v", events)
 	for _, event := range events {
 		switch event.Type {
 		case "wasm-new_round":
@@ -155,6 +153,12 @@ func parseEvents(events []types.Event) (*EventRecords, error) {
 				return nil, err
 			}
 			eventRecords.OraclePermissionsUpdated = append(eventRecords.OraclePermissionsUpdated, permissionsUpdated...)
+		case "wasm-round_details_updated":
+			detailsUpdated, err := parseRoundDetailsUpdatedEvent(event)
+			if err != nil {
+				return nil, err
+			}
+			eventRecords.RoundDetailsUpdated = append(eventRecords.RoundDetailsUpdated, *detailsUpdated)
 		}
 	}
 
@@ -258,6 +262,32 @@ func parseOraclePermissionsUpdatedEvent(event types.Event) (events []EventOracle
 	}
 
 	return
+}
+
+func parseRoundDetailsUpdatedEvent(event types.Event) (*EventRoundDetailsUpdated, error) {
+	attributes, err := getRequiredAttributes(event, []string{"payment_amount", "restart_delay", "timeout"})
+	if err != nil {
+		return nil, err
+	}
+
+	payment := new(big.Int)
+	payment, _ = payment.SetString(attributes["payment_amount"], 10)
+
+	delay, err := strconv.Atoi(attributes["restart_delay"])
+	if err != nil {
+		return nil, err
+	}
+
+	timeout, err := strconv.Atoi(attributes["timeout"])
+	if err != nil {
+		return nil, err
+	}
+
+	return &EventRoundDetailsUpdated{
+		PaymentAmount:  Value{*payment},
+		RestartDelay:   uint32(delay),
+		Timeout:        uint32(timeout),
+	}, nil
 }
 
 func getAttributeValue(event types.Event, attributeKey string) (string, error) {

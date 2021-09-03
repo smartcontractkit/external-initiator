@@ -101,8 +101,6 @@ type EventNewRound struct {
 
 type EventRoundDetailsUpdated struct {
 	PaymentAmount  Value
-	MinSubmissions uint32
-	MaxSubmissions uint32
 	RestartDelay   uint32
 	Timeout        uint32
 }
