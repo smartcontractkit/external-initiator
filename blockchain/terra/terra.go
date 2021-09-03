@@ -58,6 +58,10 @@ func (tm *manager) query(ctx context.Context, address, query string, t interface
 	if err != nil {
 		return err
 	}
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("[terra/manager/query] query failed: %s %+v", url, resp)
+	}
+
 	defer resp.Body.Close()
 
 	var decoded map[string]json.RawMessage
@@ -68,7 +72,7 @@ func (tm *manager) query(ctx context.Context, address, query string, t interface
 	if err := json.Unmarshal(decoded["result"], &t); err != nil {
 		return err
 	}
-	logger.Debug(url, t)
+	logger.Debug("[terra/manager/query]", url, t)
 
 	return nil
 }
@@ -283,9 +287,9 @@ func parseRoundDetailsUpdatedEvent(event types.Event) (*EventRoundDetailsUpdated
 	}
 
 	return &EventRoundDetailsUpdated{
-		PaymentAmount:  Value{*payment},
-		RestartDelay:   uint32(delay),
-		Timeout:        uint32(timeout),
+		PaymentAmount: Value{*payment},
+		RestartDelay:  uint32(delay),
+		Timeout:       uint32(timeout),
 	}, nil
 }
 
