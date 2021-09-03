@@ -126,7 +126,6 @@ func extractEvents(data json.RawMessage) ([]types.Event, error) {
 
 func parseEvents(events []types.Event) (*EventRecords, error) {
 	var eventRecords EventRecords
-	logger.Debugf("[terra/parseEvents]: %+v", events)
 	for _, event := range events {
 		switch event.Type {
 		case "wasm-new_round":
