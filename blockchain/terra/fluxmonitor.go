@@ -71,6 +71,7 @@ func (fm fluxMonitorManager) GetState(ctx context.Context) (*common.FluxAggregat
 		MinSubmission: config.MinSubmissionValue.Int,
 		MaxSubmission: config.MaxSubmissionValue.Int,
 		CanSubmit:     canSubmit,
+		Decimals:      config.Decimals,
 	}
 
 	logger.Debugf("[terra/GetState] %+v", state)
@@ -111,9 +112,9 @@ func (fm fluxMonitorManager) SubscribeEvents(ctx context.Context, ch chan<- inte
 		}
 		for _, update := range event.RoundDetailsUpdated {
 			ch <- common.FMEventRoundDetailsUpdated{
-				Payment:       update.PaymentAmount.Int,
-				Timeout:       update.Timeout,
-				RestartDelay:  int32(update.RestartDelay),
+				Payment:      update.PaymentAmount.Int,
+				Timeout:      update.Timeout,
+				RestartDelay: int32(update.RestartDelay),
 			}
 		}
 	})

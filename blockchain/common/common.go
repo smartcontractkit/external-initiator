@@ -34,9 +34,9 @@ type FMEventPermissionsUpdated struct {
 }
 
 type FMEventRoundDetailsUpdated struct {
-	Payment       big.Int
-	Timeout       uint32
-	RestartDelay  int32
+	Payment      big.Int
+	Timeout      uint32
+	RestartDelay int32
 }
 
 type FluxAggregatorState struct {
@@ -48,6 +48,7 @@ type FluxAggregatorState struct {
 	Timeout       uint32
 	RestartDelay  int32
 	CanSubmit     bool
+	Decimals      uint8
 }
 
 type Manager interface {

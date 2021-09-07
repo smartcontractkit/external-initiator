@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/big"
 	"net/http"
 	"net/url"
 	"sort"
@@ -324,6 +325,17 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	// check if latest result to submit is within bounds
+	vString := strings.ReplaceAll(fm.latestResult.StringFixed(int32(fm.state.Decimals)), ".", "") // convert to scaled value
+	var value big.Int
+	value.SetString(vString, 10)
+	if value.Cmp(&fm.state.MinSubmission) < 0 {
+		return fmt.Errorf("[fluxmonitor/checkAndSendJob]: latest result (%s) below min submission (%s)", value.String(), fm.state.MinSubmission.String())
+	}
+	if value.Cmp(&fm.state.MaxSubmission) > 0 {
+		return fmt.Errorf("[fluxmonitor/checkAndSendJob]: latest result (%s) above max submission (%s)", value.String(), fm.state.MaxSubmission.String())
 	}
 
 	jobRequest := fm.blockchain.CreateJobRun(roundId)
