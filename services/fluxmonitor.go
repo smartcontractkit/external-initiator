@@ -249,7 +249,7 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 					fm.logger.Error(err)
 				}
 			case common.FMEventAnswerUpdated:
-				fm.logger.Debugf("Got answer updated event: %=v", event)
+				fm.logger.Debugf("Got answer updated event: %+v", event)
 				fm.state.LatestAnswer = event.LatestAnswer
 				fm.latestRoundTimestamp = 0 // set to 0 when round complete (timeout not needed to be taken into account, rounds can be initiated whenever)
 				fm.checkDeviation()
