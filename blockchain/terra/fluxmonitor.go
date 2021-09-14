@@ -100,6 +100,7 @@ func (fm fluxMonitorManager) SubscribeEvents(ctx context.Context, ch chan<- inte
 		for _, update := range event.AnswerUpdated {
 			ch <- common.FMEventAnswerUpdated{
 				LatestAnswer: update.Value.Int,
+				RoundID: update.RoundId,
 			}
 		}
 		for _, update := range event.OraclePermissionsUpdated {
