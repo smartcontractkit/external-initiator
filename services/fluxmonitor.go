@@ -190,10 +190,12 @@ func (fm *FluxMonitor) GetState() error {
 	}
 
 	// update state if there is a newer roundId
-	if fm.state.RoundID < state.RoundID{
+	if fm.state.RoundID < state.RoundID {
+		fm.logger.Infof("[GetState]: local RoundID (%d) < on-chain RoundID (%d), updating local state", fm.state.RoundID, state.RoundID)
 		fm.state = *state
+		return nil
 	}
-
+	fm.logger.Debugf("[GetState]: no need to update state, local RoundID (%d) >= on-chain RoundID (%d)", fm.state.RoundID, state.RoundID)
 	return nil
 }
 
