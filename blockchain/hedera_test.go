@@ -17,49 +17,58 @@ func TestHedera_CreateHederaSubscriber(t *testing.T) {
 	tests := []struct {
 		name string
 		args store.Subscription
-		want hederaSubscriber
+		want *hederaSubscriber
+		wantErr error
 	}{
 		{
 			"empty",
 			store.Subscription{},
-			hederaSubscriber{},
+			nil,
+			errors.New("The AccountIds array should contain only one account id"),
 		},
 		{
-			"enpoint only",
+			"endpoint only",
 			store.Subscription{
 				Endpoint: store.Endpoint{Url: "http://example.com/api"},
 			},
-			hederaSubscriber{Endpoint: "http://example.com/api"},
+			nil,
+			errors.New("The AccountIds array should contain only one account id"),
 		},
 		{
 			"endpoint and accountId only",
 			store.Subscription{
 				Endpoint: store.Endpoint{Url: "http://example.com/api"},
-				Hedera:   store.HederaSubscription{AccountId: "0.0.1234"},
+				Hedera:   store.HederaSubscription{AccountIds: []string{"0.0.1234"}},
 			},
-			hederaSubscriber{
+			&hederaSubscriber{
 				Endpoint:  "http://example.com/api",
 				AccountId: "0.0.1234",
 			},
+			nil,
 		},
 		{
 			"endpoint and accountId and jobId",
 			store.Subscription{
 				Endpoint: store.Endpoint{Url: "http://example.com/api"},
-				Hedera:   store.HederaSubscription{AccountId: "0.0.1234"},
+				Hedera:   store.HederaSubscription{AccountIds: []string{"0.0.1234"}},
 				Job:      "8fb39e9048844fe58de078d46d8bc9d0"},
-			hederaSubscriber{
+			&hederaSubscriber{
 				Endpoint:  "http://example.com/api",
 				AccountId: "0.0.1234",
 				JobID:     "8fb39e9048844fe58de078d46d8bc9d0",
 			},
+			nil,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sub := createHederaSubscriber(tt.args)
+			sub, err := createHederaSubscriber(tt.args)
 			if !reflect.DeepEqual(sub, tt.want) {
 				t.Errorf("createHederaSubscriber() = %s, want %s", sub, tt.want)
+			}
+
+			if err != nil && !assert.EqualError(t, err, tt.wantErr.Error()) {
+				t.Errorf("FromString(int64) Error should be: %v, got: %v", tt.wantErr, err)
 			}
 		})
 	}

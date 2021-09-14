@@ -1,4 +1,4 @@
-package migration1614545435
+package migration1631086126
 
 import (
 	"github.com/jinzhu/gorm"
@@ -18,7 +18,7 @@ import (
 type HederaSubscription struct {
 	gorm.Model
 	SubscriptionId uint
-	AccountId      string
+	AccountIds     string
 }
 
 type Subscription struct {

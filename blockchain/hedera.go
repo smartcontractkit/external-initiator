@@ -34,13 +34,17 @@ func containsJobId(hederaSubscriptions []hederaSubscription, expected string) bo
 	return false
 }
 
-func createHederaSubscriber(sub store.Subscription) hederaSubscriber {
+func createHederaSubscriber(sub store.Subscription) (*hederaSubscriber, error) {
 
-	return hederaSubscriber{
-		Endpoint:  sub.Endpoint.Url,
-		AccountId: sub.Hedera.AccountId,
-		JobID:     sub.Job,
+	if len(sub.Hedera.AccountIds) != 1 {
+		return nil, errors.New("The AccountIds array should contain only one account id")
 	}
+
+	return &hederaSubscriber{
+		Endpoint:  sub.Endpoint.Url,
+		AccountId: sub.Hedera.AccountIds[0],
+		JobID:     sub.Job,
+	}, nil
 }
 
 type hederaSubscriber struct {
