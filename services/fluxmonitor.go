@@ -188,7 +188,12 @@ func (fm *FluxMonitor) GetState() error {
 	} else if state == nil {
 		return errors.New("received nil FluxAggregatorState")
 	}
-	fm.state = *state
+
+	// update state if there is a newer roundId
+	if fm.state.RoundID < state.RoundID{
+		fm.state = *state
+	}
+
 	return nil
 }
 
