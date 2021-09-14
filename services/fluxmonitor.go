@@ -165,14 +165,10 @@ func NewFluxMonitor(job string, config FluxMonitorConfig, triggerJobRun chan sub
 
 	FAEvents := make(chan interface{})
 
-	state, err := fm.blockchain.GetState(context.TODO())
+	err := fm.GetState()
 	if err != nil {
 		return nil, err
-	} else if state == nil {
-		return nil, errors.New("received nil FluxAggregatorState")
 	}
-
-	fm.state = *state
 
 	err = fm.blockchain.SubscribeEvents(context.TODO(), FAEvents)
 	if err != nil {
@@ -183,6 +179,17 @@ func NewFluxMonitor(job string, config FluxMonitorConfig, triggerJobRun chan sub
 	go fm.eventListener(FAEvents)
 
 	return &fm, nil
+}
+
+func (fm *FluxMonitor) GetState() error {
+	state, err := fm.blockchain.GetState(context.TODO())
+	if err != nil {
+		return err
+	} else if state == nil {
+		return errors.New("received nil FluxAggregatorState")
+	}
+	fm.state = *state
+	return nil
 }
 
 func (fm *FluxMonitor) Stop() {
@@ -314,6 +321,15 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 
 	if !fm.canSubmitToRound(initiate) {
 		return errors.New("oracle can't submit to this round")
+	}
+
+	// if previous submission was not successful, try syncing the aggregator state
+	// this could be configured to trigger on a number of unsuccessful submissions with an additional state
+	if !fm.latestSubmittedRoundSuccess {
+		fm.logger.Infof("[checkAndSendJob] previous submission to round %d unsuccessful, syncing with aggregator state", fm.latestSubmittedRoundID)
+		if err := fm.GetState(); err != nil {
+			return err
+		}
 	}
 
 	roundId := fm.state.RoundID
