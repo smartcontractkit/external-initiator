@@ -53,25 +53,24 @@ func (fm fluxMonitorManager) GetState(ctx context.Context) (*common.FluxAggregat
 	// if node has reported to a newer incomplete round use it's latest submission & round
 	latestAnswer := round.Answer
 	latestRound := round.RoundId
-	if round.RoundId < status.LastReportedRound {
-		latestRound = status.LastReportedRound
-		latestAnswer = status.LatestSubmission
-	}
+	latestReportedRound := status.LastReportedRound
+
 	// if zero then set big.Int(0)
 	if latestAnswer.String() == big.NewInt(0).String() {
 		latestAnswer = Value{*big.NewInt(0)}
 	}
 
 	state := &common.FluxAggregatorState{
-		RoundID:       latestRound,
-		LatestAnswer:  latestAnswer.Int,
-		Payment:       config.PaymentAmount.Int,
-		Timeout:       config.Timeout,
-		RestartDelay:  int32(config.RestartDelay),
-		MinSubmission: config.MinSubmissionValue.Int,
-		MaxSubmission: config.MaxSubmissionValue.Int,
-		CanSubmit:     canSubmit,
-		Decimals:      config.Decimals,
+		RoundID:             latestRound,
+		LastReportedRoundId: latestReportedRound,
+		LatestAnswer:        latestAnswer.Int,
+		Payment:             config.PaymentAmount.Int,
+		Timeout:             config.Timeout,
+		RestartDelay:        int32(config.RestartDelay),
+		MinSubmission:       config.MinSubmissionValue.Int,
+		MaxSubmission:       config.MaxSubmissionValue.Int,
+		CanSubmit:           canSubmit,
+		Decimals:            config.Decimals,
 	}
 
 	logger.Debugf("[terra/GetState] %+v", state)
@@ -100,7 +99,7 @@ func (fm fluxMonitorManager) SubscribeEvents(ctx context.Context, ch chan<- inte
 		for _, update := range event.AnswerUpdated {
 			ch <- common.FMEventAnswerUpdated{
 				LatestAnswer: update.Value.Int,
-				RoundID: update.RoundId,
+				RoundID:      update.RoundId,
 			}
 		}
 		for _, update := range event.OraclePermissionsUpdated {

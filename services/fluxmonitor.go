@@ -121,12 +121,11 @@ type FluxMonitor struct {
 
 	blockchain common.FluxMonitorManager
 
-	latestResult                decimal.Decimal
-	latestResultTimestamp       time.Time
-	latestSubmittedRoundID      uint32
-	latestSubmittedRoundSuccess bool
-	latestRoundTimestamp        int64
-	latestInitiatedRoundID      uint32
+	latestResult           decimal.Decimal
+	latestResultTimestamp  time.Time
+	latestSubmittedRoundID uint32
+	latestRoundTimestamp   int64
+	latestInitiatedRoundID uint32
 
 	pollTicker     utils.PausableTicker
 	idleTimer      utils.ResettableTimer
@@ -189,13 +188,9 @@ func (fm *FluxMonitor) GetState() error {
 		return errors.New("received nil FluxAggregatorState")
 	}
 
-	// update state if there is a newer roundId
-	if fm.state.RoundID < state.RoundID {
-		fm.logger.Infof("[GetState]: local RoundID (%d) < on-chain RoundID (%d), updating local state", fm.state.RoundID, state.RoundID)
-		fm.state = *state
-		return nil
-	}
-	fm.logger.Debugf("[GetState]: no need to update state, local RoundID (%d) >= on-chain RoundID (%d)", fm.state.RoundID, state.RoundID)
+	fm.logger.Infof("[GetState]: local RoundID (%d), on-chain RoundID (%d), updating local state", fm.state.RoundID, state.RoundID)
+	fm.state = *state
+	fm.latestSubmittedRoundID = state.LastReportedRoundId
 	return nil
 }
 
@@ -246,7 +241,6 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 			case common.FMSubmissionReceived:
 				fm.logger.Debugf("Got submission received event: %+v", event)
 				if fm.latestSubmittedRoundID == event.RoundID {
-					fm.latestSubmittedRoundSuccess = true
 					fm.state.LatestAnswer = event.LatestAnswer // tracks it's latest round submission between AnswerUpdated events (otherwise will keep trying to submit if rounds unfulfilled)
 				}
 			case common.FMEventNewRound:
@@ -290,31 +284,31 @@ func (fm *FluxMonitor) canSubmitToRound(initiate bool) bool {
 		return false
 	}
 
-	if fm.latestSubmittedRoundSuccess {
-		if initiate {
-			if int32(fm.state.RoundID+1-fm.latestInitiatedRoundID) <= fm.state.RestartDelay {
-				fm.logger.Info("Oracle needs to wait until restart delay passes until it can initiate a new round")
-				return false
-			}
+	if initiate {
+		// temporarily disabling checks below
 
-			// check if timeout parameter is met (timestamp of 0 means new round can be initiated without waiting for timeout)
-			current := time.Now().Unix()
-			if fm.latestRoundTimestamp > 0 && uint32(current-fm.latestRoundTimestamp) < fm.state.Timeout {
-				fm.logger.Info("Oracle needs to wait until timeout delay passes until it can ignore the current round and initiate a new round")
-				fm.logger.Debugf("[fluxmonitor/canSubmitToRound] latestRound (%d), current (%d), %d < %d", fm.latestRoundTimestamp, current, uint32(current-fm.latestRoundTimestamp), fm.state.Timeout)
-				return false
-			}
-			fm.logger.Debugf("[fluxmonitor/canSubmitToRound] timeout check passed, %d > %d", uint32(current-fm.latestRoundTimestamp), fm.state.Timeout)
+		// if int32(fm.state.RoundID+1-fm.latestInitiatedRoundID) <= fm.state.RestartDelay {
+		// 	fm.logger.Info("Oracle needs to wait until restart delay passes until it can initiate a new round")
+		// 	return false
+		// }
 
-			if fm.latestSubmittedRoundID >= fm.state.RoundID+1 {
-				fm.logger.Info("Oracle already initiated this round")
-				return false
-			}
-		} else {
-			if fm.latestSubmittedRoundID != 0 && fm.latestSubmittedRoundID >= fm.state.RoundID {
-				fm.logger.Info("Oracle already submitted to this round")
-				return false
-			}
+		// // check if timeout parameter is met (timestamp of 0 means new round can be initiated without waiting for timeout)
+		// current := time.Now().Unix()
+		// if fm.latestRoundTimestamp > 0 && uint32(current-fm.latestRoundTimestamp) < fm.state.Timeout {
+		// 	fm.logger.Info("Oracle needs to wait until timeout delay passes until it can ignore the current round and initiate a new round")
+		// 	fm.logger.Debugf("[fluxmonitor/canSubmitToRound] latestRound (%d), current (%d), %d < %d", fm.latestRoundTimestamp, current, uint32(current-fm.latestRoundTimestamp), fm.state.Timeout)
+		// 	return false
+		// }
+		// fm.logger.Debugf("[fluxmonitor/canSubmitToRound] timeout check passed, %d > %d", uint32(current-fm.latestRoundTimestamp), fm.state.Timeout)
+
+		if fm.latestSubmittedRoundID >= fm.state.RoundID+1 {
+			fm.logger.Info("Oracle already initiated this round")
+			return false
+		}
+	} else {
+		if fm.latestSubmittedRoundID != 0 && fm.latestSubmittedRoundID >= fm.state.RoundID {
+			fm.logger.Info("Oracle already submitted to this round")
+			return false
 		}
 	}
 
@@ -325,23 +319,17 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 	// Add a lock for checks so we prevent multiple rounds being started at the same time
 	fm.checkMutex.Lock()
 	defer fm.checkMutex.Unlock()
+	if err := fm.GetState(); err != nil {
+		fm.logger.Error(err)
+	}
+	roundId := fm.state.RoundID
+
+	if initiate {
+		roundId = fm.state.RoundID + 1
+	}
 
 	if !fm.canSubmitToRound(initiate) {
 		return errors.New("oracle can't submit to this round")
-	}
-
-	// if previous submission was not successful, try syncing the aggregator state
-	// this could be configured to trigger on a number of unsuccessful submissions with an additional state
-	if !fm.latestSubmittedRoundSuccess {
-		fm.logger.Infof("[checkAndSendJob] previous submission to round %d unsuccessful, syncing with aggregator state", fm.latestSubmittedRoundID)
-		if err := fm.GetState(); err != nil {
-			return err
-		}
-	}
-
-	roundId := fm.state.RoundID
-	if initiate {
-		roundId++
 	}
 
 	if !fm.ValidLatestResult() {
@@ -370,7 +358,6 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 	fm.chJobTrigger <- jobRequest
 
 	fm.latestSubmittedRoundID = roundId
-	fm.latestSubmittedRoundSuccess = false
 	return nil
 }
 
@@ -546,8 +533,9 @@ func (fm *FluxMonitor) checkDeviation() {
 	if !outOfDeviation(decimal.NewFromBigInt(&fm.state.LatestAnswer, -fm.config.Multiply), fm.latestResult, fm.config.Threshold, fm.config.AbsoluteThreshold) {
 		return
 	}
-
-	logger.ErrorIf(fm.checkAndSendJob(true))
+	// Temporarily disabling it this way, to have the routines and process as usual, for better actual testing.
+	// Will need to disable the whole service potentially for Terra
+	// logger.ErrorIf(fm.checkAndSendJob(true))
 }
 
 func calculateMedian(prices []decimal.Decimal) decimal.Decimal {

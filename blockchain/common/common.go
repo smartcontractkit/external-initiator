@@ -41,15 +41,16 @@ type FMEventRoundDetailsUpdated struct {
 }
 
 type FluxAggregatorState struct {
-	RoundID       uint32
-	LatestAnswer  big.Int
-	MinSubmission big.Int
-	MaxSubmission big.Int
-	Payment       big.Int
-	Timeout       uint32
-	RestartDelay  int32
-	CanSubmit     bool
-	Decimals      uint8
+	RoundID             uint32
+	LastReportedRoundId uint32
+	LatestAnswer        big.Int
+	MinSubmission       big.Int
+	MaxSubmission       big.Int
+	Payment             big.Int
+	Timeout             uint32
+	RestartDelay        int32
+	CanSubmit           bool
+	Decimals            uint8
 }
 
 type Manager interface {
