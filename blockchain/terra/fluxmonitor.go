@@ -54,6 +54,7 @@ func (fm fluxMonitorManager) GetState(ctx context.Context) (*common.FluxAggregat
 	latestAnswer := round.Answer
 	latestRound := round.RoundId
 	latestReportedRound := status.LastReportedRound
+	latestStartedRound := status.LastStartedRound
 
 	// if zero then set big.Int(0)
 	if latestAnswer.String() == big.NewInt(0).String() {
@@ -63,6 +64,7 @@ func (fm fluxMonitorManager) GetState(ctx context.Context) (*common.FluxAggregat
 	state := &common.FluxAggregatorState{
 		RoundID:             latestRound,
 		LastReportedRoundId: latestReportedRound,
+		LastStartedRoundId:  latestStartedRound,
 		LatestAnswer:        latestAnswer.Int,
 		Payment:             config.PaymentAmount.Int,
 		Timeout:             config.Timeout,

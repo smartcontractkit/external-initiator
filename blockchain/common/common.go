@@ -43,6 +43,7 @@ type FMEventRoundDetailsUpdated struct {
 type FluxAggregatorState struct {
 	RoundID             uint32
 	LastReportedRoundId uint32
+	LastStartedRoundId  uint32
 	LatestAnswer        big.Int
 	MinSubmission       big.Int
 	MaxSubmission       big.Int

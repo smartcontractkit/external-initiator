@@ -188,9 +188,10 @@ func (fm *FluxMonitor) GetState() error {
 		return errors.New("received nil FluxAggregatorState")
 	}
 
-	fm.logger.Infof("[GetState]: local RoundID (%d), on-chain RoundID (%d), updating local state", fm.state.RoundID, state.RoundID)
+	fm.logger.Infof("[GetState]: local RoundID (%d), on-chain RoundID (%d),latestSubmittedRoundID (%d), latestInitiatedRoundID (%d), updating local state", state.LastReportedRoundId, state.LastStartedRoundId)
 	fm.state = *state
 	fm.latestSubmittedRoundID = state.LastReportedRoundId
+	fm.latestInitiatedRoundID = state.LastStartedRoundId
 	return nil
 }
 
@@ -248,8 +249,7 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 				fm.resetHeartbeatTimer()
 				fm.state.RoundID = event.RoundID
 				fm.latestRoundTimestamp = time.Now().Unix() // track when new round is started to keep track of timeout for starting new round
-				if event.OracleInitiated && fm.latestSubmittedRoundID == event.RoundID {
-					fm.latestInitiatedRoundID = event.RoundID
+				if event.OracleInitiated || fm.latestSubmittedRoundID >= event.RoundID {
 					continue
 				}
 				err := fm.checkAndSendJob(false)
