@@ -238,17 +238,17 @@ func (fm *FluxMonitor) eventListener(ch <-chan interface{}) {
 		select {
 		case rawEvent := <-ch:
 			switch event := rawEvent.(type) {
-			case common.FMSubmissionReceived:
-				fm.logger.Debugf("Got submission received event: %+v", event)
-				if fm.latestSubmittedRoundID == event.RoundID {
-					fm.state.LatestAnswer = event.LatestAnswer // tracks it's latest round submission between AnswerUpdated events (otherwise will keep trying to submit if rounds unfulfilled)
-				}
+			// case common.FMSubmissionReceived:
+			// 	fm.logger.Debugf("Got submission received event: %+v", event)
+			// 	if fm.latestSubmittedRoundID == event.RoundID {
+			// 		fm.state.LatestAnswer = event.LatestAnswer // tracks it's latest round submission between AnswerUpdated events (otherwise will keep trying to submit if rounds unfulfilled)
+			// 	}
 			case common.FMEventNewRound:
 				fm.logger.Debugf("Got new round event: %+v", event)
 				fm.resetHeartbeatTimer()
 				fm.state.RoundID = event.RoundID
 				fm.latestRoundTimestamp = time.Now().Unix() // track when new round is started to keep track of timeout for starting new round
-				if event.OracleInitiated || fm.latestSubmittedRoundID == event.RoundID {
+				if event.OracleInitiated && fm.latestSubmittedRoundID == event.RoundID {
 					fm.latestInitiatedRoundID = event.RoundID
 					continue
 				}
