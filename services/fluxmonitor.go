@@ -518,8 +518,8 @@ func (fm *FluxMonitor) poll() error {
 		values = append(values, *val)
 	}
 
-	if len(values) <= numSources/2 {
-		return errors.New("unable to get values from more than 50% of data sources")
+	if len(values) == 0 {
+		return errors.New("unable to get values from any of the data sources")
 	}
 
 	median := calculateMedian(values)
