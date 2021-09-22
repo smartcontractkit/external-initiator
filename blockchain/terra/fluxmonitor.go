@@ -26,14 +26,14 @@ func CreateFluxMonitorManager(sub store.Subscription) (*fluxMonitorManager, erro
 func (fm fluxMonitorManager) GetState(ctx context.Context) (*common.FluxAggregatorState, error) {
 	// get aggregator configs
 	var config FluxAggregatorConfig
-	err := fm.query(ctx, fm.contractAddress, `{"get_aggregator_config":{}}`, &config)
+	err := fm.query(ctx, fm.contractAddress, `{"aggregator_query":{"get_aggregator_config":{}}}`, &config)
 	if err != nil {
 		return nil, err
 	}
 
 	// get last completed round data
 	var round RoundData
-	err = fm.query(ctx, fm.contractAddress, `{"get_latest_round_data":{}}`, &round)
+	err = fm.query(ctx, fm.contractAddress, `{"aggregator_query":{"get_latest_round_data":{}}}`, &round)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func (fm fluxMonitorManager) GetState(ctx context.Context) (*common.FluxAggregat
 	// get last oracle submission data (used to be oracleIsEligibleToSubmit())
 	var status OracleStatus
 	var canSubmit bool
-	query := fmt.Sprintf(`{"get_oracle_status":{"oracle":"%s"}}`, fm.accountAddress)
+	query := fmt.Sprintf(`{"aggregator_query":{"get_oracle_status":{"oracle":"%s"}}}`, fm.accountAddress)
 	err = fm.query(ctx, fm.contractAddress, query, &status)
 	if err != nil {
 		logger.Error(err)
