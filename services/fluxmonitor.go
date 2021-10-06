@@ -325,7 +325,11 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 	roundId := fm.state.RoundID
 
 	if initiate {
-		roundId = fm.latestSubmittedRoundID + 1
+		if roundId < fm.latestSubmittedRoundID {
+			roundId = fm.latestSubmittedRoundID
+		}
+		roundId++
+
 	}
 
 	if !fm.canSubmitToRound(initiate) {
