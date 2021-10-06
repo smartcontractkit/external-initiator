@@ -285,26 +285,26 @@ func (fm *FluxMonitor) canSubmitToRound(initiate bool) bool {
 	}
 
 	if initiate {
-		// temporarily disabling checks below
+		// temporarily disabling some checks below
 
 		// if int32(fm.state.RoundID+1-fm.latestInitiatedRoundID) <= fm.state.RestartDelay {
 		// 	fm.logger.Info("Oracle needs to wait until restart delay passes until it can initiate a new round")
 		// 	return false
 		// }
 
-		// // check if timeout parameter is met (timestamp of 0 means new round can be initiated without waiting for timeout)
-		// current := time.Now().Unix()
-		// if fm.latestRoundTimestamp > 0 && uint32(current-fm.latestRoundTimestamp) < fm.state.Timeout {
-		// 	fm.logger.Info("Oracle needs to wait until timeout delay passes until it can ignore the current round and initiate a new round")
-		// 	fm.logger.Debugf("[fluxmonitor/canSubmitToRound] latestRound (%d), current (%d), %d < %d", fm.latestRoundTimestamp, current, uint32(current-fm.latestRoundTimestamp), fm.state.Timeout)
-		// 	return false
-		// }
-		// fm.logger.Debugf("[fluxmonitor/canSubmitToRound] timeout check passed, %d > %d", uint32(current-fm.latestRoundTimestamp), fm.state.Timeout)
-
-		if fm.latestInitiatedRoundID >= fm.state.RoundID+1 {
-			fm.logger.Info("Oracle already initiated this round")
+		// check if timeout parameter is met (timestamp of 0 means new round can be initiated without waiting for timeout)
+		current := time.Now().Unix()
+		if fm.latestRoundTimestamp > 0 && uint32(current-fm.latestRoundTimestamp) < fm.state.Timeout {
+			fm.logger.Info("Oracle needs to wait until timeout delay passes until it can ignore the current round and initiate a new round")
+			fm.logger.Debugf("[fluxmonitor/canSubmitToRound] latestRound (%d), current (%d), %d < %d", fm.latestRoundTimestamp, current, uint32(current-fm.latestRoundTimestamp), fm.state.Timeout)
 			return false
 		}
+		fm.logger.Debugf("[fluxmonitor/canSubmitToRound] timeout check passed, %d > %d", uint32(current-fm.latestRoundTimestamp), fm.state.Timeout)
+
+		// if fm.latestInitiatedRoundID >= fm.state.RoundID+1 {
+		// 	fm.logger.Info("Oracle already initiated this round")
+		// 	return false
+		// }
 	} else {
 		if fm.latestSubmittedRoundID != 0 && fm.latestSubmittedRoundID >= fm.state.RoundID {
 			fm.logger.Info("Oracle already submitted to this round")
@@ -325,7 +325,7 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 	roundId := fm.state.RoundID
 
 	if initiate {
-		roundId = fm.state.RoundID + 1
+		roundId = fm.latestSubmittedRoundID + 1
 	}
 
 	if !fm.canSubmitToRound(initiate) {
