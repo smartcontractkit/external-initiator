@@ -188,7 +188,7 @@ func (fm *FluxMonitor) GetState() error {
 		return errors.New("received nil FluxAggregatorState")
 	}
 
-	fm.logger.Infof("[GetState]: local RoundID (%d), on-chain RoundID (%d),latestSubmittedRoundID (%d), latestInitiatedRoundID (%d), updating local state", state.LastReportedRoundId, state.LastStartedRoundId)
+	fm.logger.Infof("[GetState]: (on-chain)LastReportedRoundId(%d), (on-chain)LastStartedRoundId (%d),(local)latestSubmittedRoundID (%d), (local)latestInitiatedRoundID (%d), syncing local state", state.LastReportedRoundId, state.LastStartedRoundId, fm.latestSubmittedRoundID, fm.latestInitiatedRoundID)
 	fm.state = *state
 	fm.latestSubmittedRoundID = state.LastReportedRoundId
 	fm.latestInitiatedRoundID = state.LastStartedRoundId
@@ -301,7 +301,7 @@ func (fm *FluxMonitor) canSubmitToRound(initiate bool) bool {
 		// }
 		// fm.logger.Debugf("[fluxmonitor/canSubmitToRound] timeout check passed, %d > %d", uint32(current-fm.latestRoundTimestamp), fm.state.Timeout)
 
-		if fm.latestSubmittedRoundID >= fm.state.RoundID+1 {
+		if fm.latestInitiatedRoundID >= fm.state.RoundID+1 {
 			fm.logger.Info("Oracle already initiated this round")
 			return false
 		}
@@ -358,6 +358,9 @@ func (fm *FluxMonitor) checkAndSendJob(initiate bool) error {
 	fm.chJobTrigger <- jobRequest
 
 	fm.latestSubmittedRoundID = roundId
+	if initiate {
+		fm.latestInitiatedRoundID = roundId
+	}
 	return nil
 }
 
