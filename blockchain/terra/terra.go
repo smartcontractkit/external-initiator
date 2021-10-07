@@ -49,7 +49,7 @@ func createManager(sub store.Subscription) (*manager, error) {
 }
 
 func (tm *manager) Stop() {
-	// TODO!
+	tm.subscriber.Stop()
 }
 
 func (tm *manager) query(ctx context.Context, address, query string, t interface{}) error {

@@ -223,8 +223,10 @@ func (wsc *websocketConnection) subscribe(req *subscribeRequest) error {
 
 	go func() {
 		defer func() {
+			wsc.conn.Close()
 			delete(wsc.subscriptionListeners, subscriptionId)
 			close(listener)
+			fmt.Println("Closed websocket connection:", subscriptionId)
 		}()
 
 		for {
