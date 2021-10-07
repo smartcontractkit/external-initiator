@@ -241,8 +241,14 @@ func (wsc *websocketConnection) subscribe(req *subscribeRequest) error {
 					return
 				}
 				logger.ErrorIf(wsc.sendMessage(payload))
-				return
 			case <-wsc.chClose:
+				wsc.stopped = true
+				payload, err := NewJsonrpcMessage(wsc.nonce.Inc(), "unsubscribe", []byte(fmt.Sprintf(`["%s"]`, subscriptionId)))
+				if err != nil {
+					logger.Error(err)
+					return
+				}
+				logger.ErrorIf(wsc.sendMessage(payload))
 				return
 			}
 		}
