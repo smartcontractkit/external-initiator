@@ -117,8 +117,10 @@ func (wss websocketSubscription) readMessages() {
 
 func (wss websocketSubscription) init() {
 	go wss.readMessages()
+	json := wss.manager.GetTriggerJson()
 
-	err := wss.conn.connection.WriteMessage(websocket.TextMessage, wss.manager.GetTriggerJson())
+	logger.Debugf("Subscribing to WS endpoint: %s, subscription JSON: %s", wss.endpoint, json)
+	err := wss.conn.connection.WriteMessage(websocket.TextMessage, json)
 	if err != nil {
 		wss.forceClose()
 		return
