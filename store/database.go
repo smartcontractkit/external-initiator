@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"database/sql/driver"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -55,6 +56,40 @@ func (arr SQLStringArray) Value() (driver.Value, error) {
 	}
 	w.Flush()
 	return buf.String(), nil
+}
+
+type SQLStringArrayArray [][]string
+
+// Scan implements the sql Scanner interface.
+func (arr *SQLStringArrayArray) Scan(src interface{}) error {
+	if src == nil {
+		*arr = SQLStringArrayArray{}
+	}
+	v, ok := src.(SQLStringArrayArray)
+	if !ok {
+		return nil
+	}
+
+	str, err := json.Marshal(v)
+	if err != nil {
+		return nil
+	}
+	var ret SQLStringArrayArray
+	json.Unmarshal([]byte(str), &ret)
+	if err != nil {
+		return nil
+	}
+	*arr = ret
+	return nil
+}
+
+// Value implements the driver Valuer interface.
+func (arr SQLStringArrayArray) Value() (driver.Value, error) {
+	str, err := json.Marshal(arr)
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid SQLStringArrayArray ([][]string) value")
+	}
+	return str, nil
 }
 
 // SQLBytes is a byte slice stored in the database as a string.
@@ -308,7 +343,7 @@ type EthSubscription struct {
 	gorm.Model
 	SubscriptionId uint
 	Addresses      SQLStringArray
-	Topics         SQLStringArray
+	Topics         SQLStringArrayArray
 }
 
 type TezosSubscription struct {

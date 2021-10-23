@@ -49,14 +49,14 @@ var blockchains = []string{
 }
 
 type Params struct {
-	Endpoint    string   `json:"endpoint"`
-	Addresses   []string `json:"addresses"`
-	Topics      []string `json:"topics"`
-	AccountIds  []string `json:"accountIds"`
-	Address     string   `json:"address"`
-	UpkeepID    string   `json:"upkeepId"`
-	ServiceName string   `json:"serviceName"`
-	From        string   `json:"from"`
+	Endpoint    string     `json:"endpoint"`
+	Addresses   []string   `json:"addresses"`
+	Topics      [][]string `json:"topics"`
+	AccountIds  []string   `json:"accountIds"`
+	Address     string     `json:"address"`
+	UpkeepID    string     `json:"upkeepId"`
+	ServiceName string     `json:"serviceName"`
+	From        string     `json:"from"`
 }
 
 // CreateJsonManager creates a new instance of a JSON blockchain manager with the provided
@@ -137,7 +137,7 @@ func GetValidations(t string, params Params) []int {
 	switch t {
 	case ETH, HMY, IOTX, Klaytn:
 		return []int{
-			len(params.Addresses) + len(params.Topics),
+			len(params.Addresses) + len(params.Topics), // TODO len of topics with values
 		}
 	case XTZ:
 		return []int{
@@ -212,7 +212,7 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 	case CFX:
 		sub.Conflux = store.CfxSubscription{
 			Addresses: params.Addresses,
-			Topics:    params.Topics,
+			Topics:    params.Topics[0],
 		}
 	case Keeper:
 		from := common.HexToAddress(params.From)
