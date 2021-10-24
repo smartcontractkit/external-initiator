@@ -44,7 +44,7 @@ func TestMain(m *testing.M) {
 			return
 		}
 
-		if r.URL.Path == fmt.Sprintf("/v2/specs/%s/runs", jobIdWPayload) {
+		if r.URL.Path == fmt.Sprintf("/v2/jobs/%s/runs", jobIdWPayload) {
 			body, err := ioutil.ReadAll(r.Body)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
@@ -55,7 +55,7 @@ func TestMain(m *testing.M) {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-		} else if r.URL.Path != fmt.Sprintf("/v2/specs/%s/runs", jobId) {
+		} else if r.URL.Path != fmt.Sprintf("/v2/jobs/%s/runs", jobId) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
