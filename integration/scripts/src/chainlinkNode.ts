@@ -58,7 +58,7 @@ export class ChainlinkNode {
   }
 
   async createJob(jobspec: JobSpec): Promise<Response<JobSpec>> {
-    const Job = await this.postAuthenticated('/v2/specs', jobspec)
+    const Job = await this.postAuthenticated('/v2/jobs', jobspec)
     return Job.data
   }
 
@@ -68,7 +68,7 @@ export class ChainlinkNode {
   }
 
   async getJobs(): Promise<Response<ResponseData[]>> {
-    const { data } = await this.getAuthenticated('/v2/specs')
+    const { data } = await this.getAuthenticated('/v2/jobs')
     return data
   }
 
