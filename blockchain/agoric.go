@@ -3,8 +3,6 @@ package blockchain
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
-	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/smartcontractkit/chainlink/core/logger"
@@ -16,13 +14,6 @@ import (
 // blockchain integration.
 const Agoric = "agoric"
 
-// linkDecimals is the number of decimal places in $LINK
-const linkDecimals = 18
-
-// linkAgoricDecimals is the number of decimal places in a uaglink token
-// FIXME: Ideally the same as linkDecimals.
-const linkAgoricDecimals = 6
-
 type agoricFilter struct {
 	JobID string
 }
@@ -30,12 +21,6 @@ type agoricFilter struct {
 type agoricManager struct {
 	endpointName string
 	filter       agoricFilter
-}
-
-func init() {
-	if linkAgoricDecimals > linkDecimals {
-		panic(fmt.Errorf("linkAgoricDecimals %d must be less than or equal to linkDecimals %d", linkAgoricDecimals, linkDecimals))
-	}
 }
 
 func createAgoricManager(t subscriber.Type, conf store.Subscription) (*agoricManager, error) {
@@ -63,7 +48,7 @@ type agoricEvent struct {
 type agoricOnQueryData struct {
 	QueryID string          `json:"queryId"`
 	Query   json.RawMessage `json:"query"`
-	Fee     int64           `json:"fee"`
+	Fee     string          `json:"fee"`
 }
 
 type chainlinkQuery struct {
@@ -122,8 +107,7 @@ func (sm *agoricManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 		requestParams = query.Params
 	}
 	requestParams["request_id"] = onQueryData.QueryID
-	requestParams["payment"] = fmt.Sprint(onQueryData.Fee) +
-		strings.Repeat("0", linkDecimals-linkAgoricDecimals)
+	requestParams["payment"] = onQueryData.Fee
 
 	event, err := json.Marshal(requestParams)
 	if err != nil {
