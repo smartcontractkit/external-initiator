@@ -158,7 +158,7 @@ func (client Client) prepareSubscription(rawSub *Subscription) (*Subscription, e
 			return nil, err
 		}
 	case "agoric":
-		if err := client.db.Model(&sub).Related(&sub.Agoric).Error; err != nil {
+		if err := client.db.Model(&sub).Error; err != nil {
 			return nil, err
 		}
 	}
