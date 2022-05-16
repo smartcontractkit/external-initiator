@@ -150,10 +150,6 @@ func (client Client) prepareSubscription(rawSub *Subscription) (*Subscription, e
 		if err := client.db.Model(&sub).Related(&sub.NEAR).Error; err != nil {
 			return nil, err
 		}
-<<<<<<< HEAD
-	case "eth-call":
-		if err := client.db.Model(&sub).Related(&sub.EthCall).Error; err != nil {
-=======
 	case "keeper":
 		if err := client.db.Model(&sub).Related(&sub.Keeper).Error; err != nil {
 			return nil, err
@@ -164,7 +160,6 @@ func (client Client) prepareSubscription(rawSub *Subscription) (*Subscription, e
 		}
 	case "agoric":
 		if err := client.db.Model(&sub).Related(&sub.Agoric).Error; err != nil {
->>>>>>> c8a538596d61f226ae9c220962667ff5379119d6
 			return nil, err
 		}
 	}
@@ -305,13 +300,9 @@ type Subscription struct {
 	BinanceSmartChain BinanceSmartChainSubscription
 	NEAR              NEARSubscription
 	Conflux           CfxSubscription
-<<<<<<< HEAD
-	EthCall           EthCallSubscription
-=======
 	Keeper            KeeperSubscription
 	BSNIrita          BSNIritaSubscription
 	Agoric            AgoricSubscription
->>>>>>> c8a538596d61f226ae9c220962667ff5379119d6
 }
 
 type EthSubscription struct {
@@ -358,17 +349,6 @@ type CfxSubscription struct {
 	Topics         SQLStringArray
 }
 
-<<<<<<< HEAD
-type EthCallSubscription struct {
-	gorm.Model
-	SubscriptionId   uint
-	Address          string
-	ABI              SQLBytes
-	ResponseKey      string
-	MethodName       string
-	FunctionSelector models.FunctionSelector
-	ReturnType       string
-=======
 type KeeperSubscription struct {
 	gorm.Model
 	SubscriptionId uint
@@ -387,5 +367,4 @@ type BSNIritaSubscription struct {
 type AgoricSubscription struct {
 	gorm.Model
 	SubscriptionId uint
->>>>>>> c8a538596d61f226ae9c220962667ff5379119d6
 }

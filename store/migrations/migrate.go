@@ -13,13 +13,10 @@ import (
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1599849837"
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1603803454"
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1605288480"
-<<<<<<< HEAD
-=======
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1608026935"
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1610281978"
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1611169747"
 	"github.com/smartcontractkit/external-initiator/store/migrations/migration1613356332"
->>>>>>> c8a538596d61f226ae9c220962667ff5379119d6
 	"gopkg.in/gormigrate.v1"
 )
 
@@ -79,8 +76,6 @@ func Migrate(db *gorm.DB) error {
 			Migrate:  migration1605288480.Migrate,
 			Rollback: migration1605288480.Rollback,
 		},
-<<<<<<< HEAD
-=======
 		{
 			ID:       "1608026935",
 			Migrate:  migration1608026935.Migrate,
@@ -101,7 +96,6 @@ func Migrate(db *gorm.DB) error {
 			Migrate:  migration1613356332.Migrate,
 			Rollback: migration1613356332.Rollback,
 		},
->>>>>>> c8a538596d61f226ae9c220962667ff5379119d6
 	}
 
 	m := gormigrate.New(db, &options, migrations)

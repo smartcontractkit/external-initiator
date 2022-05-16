@@ -29,15 +29,10 @@ func HandleRequest(conn, platform string, msg JsonrpcMessage) ([]JsonrpcMessage,
 		return handleNEARRequest(conn, msg)
 	case "cfx":
 		return handleCfxRequest(conn, msg)
-<<<<<<< HEAD
-	case "eth-call":
-		return handleEthCallRequest(conn, msg)
-=======
 	case "keeper":
 		return handleKeeperRequest(conn, msg)
 	case "klaytn":
 		return handleKlaytnRequest(conn, msg)
->>>>>>> c8a538596d61f226ae9c220962667ff5379119d6
 	default:
 		return nil, fmt.Errorf("unexpected platform: %v", platform)
 	}
