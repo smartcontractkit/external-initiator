@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pkg/errors"
@@ -121,7 +122,7 @@ func (client Client) prepareSubscription(rawSub *Subscription) (*Subscription, e
 	}
 
 	switch endpoint.Type {
-	case "ethereum", "iotex":
+	case "ethereum", "iotex", "klaytn":
 		if err := client.db.Model(&sub).Related(&sub.Ethereum).Error; err != nil {
 			return nil, err
 		}
@@ -149,8 +150,21 @@ func (client Client) prepareSubscription(rawSub *Subscription) (*Subscription, e
 		if err := client.db.Model(&sub).Related(&sub.NEAR).Error; err != nil {
 			return nil, err
 		}
+<<<<<<< HEAD
 	case "eth-call":
 		if err := client.db.Model(&sub).Related(&sub.EthCall).Error; err != nil {
+=======
+	case "keeper":
+		if err := client.db.Model(&sub).Related(&sub.Keeper).Error; err != nil {
+			return nil, err
+		}
+	case "bsn-irita":
+		if err := client.db.Model(&sub).Related(&sub.BSNIrita).Error; err != nil {
+			return nil, err
+		}
+	case "agoric":
+		if err := client.db.Model(&sub).Related(&sub.Agoric).Error; err != nil {
+>>>>>>> c8a538596d61f226ae9c220962667ff5379119d6
 			return nil, err
 		}
 	}
@@ -198,7 +212,7 @@ func (client Client) SaveSubscription(sub *Subscription) error {
 	}
 	e, _ := client.LoadEndpoint(sub.EndpointName)
 	if e.Name != sub.EndpointName {
-		return fmt.Errorf("Unable to get endpoint %s", sub.EndpointName)
+		return fmt.Errorf("unable to get endpoint %s", sub.EndpointName)
 	}
 	return client.db.Create(sub).Error
 }
@@ -291,7 +305,13 @@ type Subscription struct {
 	BinanceSmartChain BinanceSmartChainSubscription
 	NEAR              NEARSubscription
 	Conflux           CfxSubscription
+<<<<<<< HEAD
 	EthCall           EthCallSubscription
+=======
+	Keeper            KeeperSubscription
+	BSNIrita          BSNIritaSubscription
+	Agoric            AgoricSubscription
+>>>>>>> c8a538596d61f226ae9c220962667ff5379119d6
 }
 
 type EthSubscription struct {
@@ -338,6 +358,7 @@ type CfxSubscription struct {
 	Topics         SQLStringArray
 }
 
+<<<<<<< HEAD
 type EthCallSubscription struct {
 	gorm.Model
 	SubscriptionId   uint
@@ -347,4 +368,24 @@ type EthCallSubscription struct {
 	MethodName       string
 	FunctionSelector models.FunctionSelector
 	ReturnType       string
+=======
+type KeeperSubscription struct {
+	gorm.Model
+	SubscriptionId uint
+	Address        string
+	UpkeepID       string
+	From           common.Address
+}
+
+type BSNIritaSubscription struct {
+	gorm.Model
+	SubscriptionId uint
+	Addresses      SQLStringArray
+	ServiceName    string
+}
+
+type AgoricSubscription struct {
+	gorm.Model
+	SubscriptionId uint
+>>>>>>> c8a538596d61f226ae9c220962667ff5379119d6
 }

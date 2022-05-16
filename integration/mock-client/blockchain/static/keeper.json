@@ -1,0 +1,26 @@
+{
+  "eth_blockNumber": [
+    {
+      "jsonrpc": "2.0",
+      "result": "0x4"
+    }
+  ],
+  "eth_subscribe": [
+    {
+      "jsonrpc": "2.0",
+      "method": "eth_subscription",
+      "result": "0x1"
+    },
+    {
+      "jsonrpc": "2.0",
+      "method": "eth_subscription",
+      "params": {
+        "subscription": "0x1",
+        "result": {
+          "number": "0x4",
+          "hash": "0xabc123"
+        }
+      }
+    }
+  ]
+}

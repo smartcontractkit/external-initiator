@@ -19,7 +19,7 @@ import (
 // and secret as provided on protected routes.
 func RunWebserver() {
 	srv := NewHTTPService()
-	err := srv.Router.Run("0.0.0.0:8080")
+	err := srv.Router.Run(":8080")
 	if err != nil {
 		logger.Error(err)
 	}
@@ -73,8 +73,7 @@ func (srv *HttpService) HandleRpc(c *gin.Context) {
 		response.Version = req.Version
 		if err != nil {
 			logger.Error(err)
-			var errintf interface{}
-			errintf = err.Error()
+			errintf := interface{}(err.Error())
 			response.Error = &errintf
 		}
 		c.JSON(http.StatusBadRequest, resp)
@@ -93,7 +92,7 @@ func (srv *HttpService) HandleWs(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, nil)
 		return
 	}
-	defer conn.Close()
+	defer logger.ErrorIfCalling(conn.Close)
 
 	for {
 		mt, message, err := conn.ReadMessage()

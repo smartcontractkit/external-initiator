@@ -10,18 +10,20 @@ Initiate Chainlink job runs from external sources.
 
 ### Environment variables
 
-| Key               | Description                                                                                | Example                                                            |
-| ----------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
-| `EI_DATABASEURL`  | Postgres connection URL                                                                    | `postgresql://user:pass@localhost:5432/ei`                         |
-| `EI_CHAINLINKURL` | The URL of the Chainlink Core service                                                      | `http://localhost:6688`                                            |
-| `EI_IC_ACCESSKEY` | The Chainlink access key, used for traffic flowing from this service to Chainlink          | `0b7d4a293bff4baf8de852bfa1f1f78a`                                 |
-| `EI_IC_SECRET`    | The Chainlink secret, used for traffic flowing from this service to Chainlink              | `h23MjHx17UJKBf3b0MWNI2P/UPh3c3O7/j8ivKCBhvcWH3H+xso4Gehny/lgpAht` |
-| `EI_CI_ACCESSKEY` | The External Initiator access key, used for traffic flowing from Chainlink to this service | `0b7d4a293bff4baf8de852bfa1f1f78a`                                 |
-| `EI_CI_SECRET`    | The External Initiator secret, used for traffic flowing from Chainlink to this service     | `h23MjHx17UJKBf3b0MWNI2P/UPh3c3O7/j8ivKCBhvcWH3H+xso4Gehny/lgpAht` |
+| Key                        | Description                                                                                | Example                                                            |
+| -------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| `EI_PORT`                  | The port for the EI API to listen on                                                       | `8080`                                                             |
+| `EI_DATABASEURL`           | Postgres connection URL                                                                    | `postgresql://user:pass@localhost:5432/ei`                         |
+| `EI_CHAINLINKURL`          | The URL of the Chainlink Core service                                                      | `http://localhost:6688`                                            |
+| `EI_IC_ACCESSKEY`          | The Chainlink access key, used for traffic flowing from this service to Chainlink          | `0b7d4a293bff4baf8de852bfa1f1f78a`                                 |
+| `EI_IC_SECRET`             | The Chainlink secret, used for traffic flowing from this service to Chainlink              | `h23MjHx17UJKBf3b0MWNI2P/UPh3c3O7/j8ivKCBhvcWH3H+xso4Gehny/lgpAht` |
+| `EI_CI_ACCESSKEY`          | The External Initiator access key, used for traffic flowing from Chainlink to this service | `0b7d4a293bff4baf8de852bfa1f1f78a`                                 |
+| `EI_CI_SECRET`             | The External Initiator secret, used for traffic flowing from Chainlink to this service     | `h23MjHx17UJKBf3b0MWNI2P/UPh3c3O7/j8ivKCBhvcWH3H+xso4Gehny/lgpAht` |
+| `EI_KEEPER_BLOCK_COOLDOWN` | Number of blocks to cool down before triggering a new run for a Keeper job.                | `3`                                                                |
 
 ## Usage
 
-```
+``` 
 $ ./external-initiator --help
 Monitors external blockchains and relays events to Chainlink node. Supplying endpoint configs as args will delete all other stored configs. ENV variables can be set by prefixing flag with EI_: EI_ACCESSKEY
 
@@ -29,17 +31,19 @@ Usage:
   external-initiator [endpoint configs] [flags]
 
 Flags:
-      --chainlinkurl string       The URL of the Chainlink Core Service (default "localhost:6688")
-      --ci_accesskey string       The External Initiator access key, used for traffic flowing from Chainlink to this Service
-      --ci_secret string          The External Initiator secret, used for traffic flowing from Chainlink to this Service
-      --cl_retry_attempts uint    The maximum number of attempts that will be made for job run triggers (default 3)
-      --cl_retry_delay duration   The delay between attempts for job run triggers (default 1s)
-      --cl_timeout duration       The timeout for job run triggers to the Chainlink node (default 5s)
-      --databaseurl string        DatabaseURL configures the URL for external initiator to connect to. This must be a properly formatted URL, with a valid scheme (postgres://). (default "postgresql://postgres:password@localhost:5432/ei?sslmode=disable")
-  -h, --help                      help for external-initiator
-      --ic_accesskey string       The Chainlink access key, used for traffic flowing from this Service to Chainlink
-      --ic_secret string          The Chainlink secret, used for traffic flowing from this Service to Chainlink
-      --mock                      Set to true if the External Initiator should expect mock events from the blockchains
+      --chainlinkurl string         The URL of the Chainlink Core Service (default "localhost:6688")
+      --ci_accesskey string         The External Initiator access key, used for traffic flowing from Chainlink to this Service
+      --ci_secret string            The External Initiator secret, used for traffic flowing from Chainlink to this Service
+      --cl_retry_attempts uint      The maximum number of attempts that will be made for job run triggers (default 3)
+      --cl_retry_delay duration     The delay between attempts for job run triggers (default 1s)
+      --cl_timeout duration         The timeout for job run triggers to the Chainlink node (default 5s)
+      --databaseurl string          DatabaseURL configures the URL for external initiator to connect to. This must be a properly formatted URL, with a valid scheme (postgres://). (default "postgresql://postgres:password@localhost:5432/ei?sslmode=disable")
+  -h, --help                        help for external-initiator
+      --ic_accesskey string         The Chainlink access key, used for traffic flowing from this Service to Chainlink
+      --ic_secret string            The Chainlink secret, used for traffic flowing from this Service to Chainlink
+      --keeper_block_cooldown int   Number of blocks to cool down before triggering a new run for a Keeper job (default 3)
+      --mock                        Set to true if the External Initiator should expect mock events from the blockchains
+      --port int                    The port for the EI API to listen on (default 8080)
 ```
 
 ### Supply Endpoint configs via HTTP
@@ -99,6 +103,12 @@ Simply run the automated integration tests script:
 
 ```bash
 ./integration/run_test
+```
+
+If you want to test a subset of the blockchains, you can provide them as arguments:
+
+```bash
+./integration/run_test substrate bsc
 ```
 
 ### Stopping

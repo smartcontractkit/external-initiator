@@ -8,6 +8,8 @@ import (
 
 // Config contains the startup configuration parameters.
 type Config struct {
+	// The port for the EI API to listen on
+	Port int
 	// The URL of the ChainlinkURL Core Service
 	ChainlinkURL string
 	// InitiatorToChainlinkAccessKey is the access key to identity the node to ChainlinkURL
@@ -29,11 +31,14 @@ type Config struct {
 	ChainlinkRetryAttempts uint
 	// ChainlinkRetryDelay sets the delay between attempts for job run triggers
 	ChainlinkRetryDelay time.Duration
+	// KeeperBlockCooldown sets a number of blocks to cool down before triggering a new run for a job.
+	KeeperBlockCooldown int64
 }
 
 // newConfigFromViper returns a Config based on the values supplied by viper.
 func newConfigFromViper(v *viper.Viper) Config {
 	return Config{
+		Port:                          v.GetInt("port"),
 		ChainlinkURL:                  v.GetString("chainlinkurl"),
 		InitiatorToChainlinkAccessKey: v.GetString("ic_accesskey"),
 		InitiatorToChainlinkSecret:    v.GetString("ic_secret"),
@@ -44,5 +49,6 @@ func newConfigFromViper(v *viper.Viper) Config {
 		ChainlinkTimeout:              v.GetDuration("cl_timeout"),
 		ChainlinkRetryAttempts:        v.GetUint("cl_retry_attempts"),
 		ChainlinkRetryDelay:           v.GetDuration("cl_retry_delay"),
+		KeeperBlockCooldown:           v.GetInt64("keeper_block_cooldown"),
 	}
 }

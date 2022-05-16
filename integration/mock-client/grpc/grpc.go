@@ -10,6 +10,7 @@ import (
 )
 
 func RunServer() {
+	/* #nosec */
 	lis, err := net.Listen("tcp", ":8090")
 	if err != nil {
 		logger.Error(err)

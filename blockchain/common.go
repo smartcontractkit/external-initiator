@@ -9,9 +9,24 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/smartcontractkit/chainlink/core/store/models"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+)
+
+var (
+	promLastSourcePing = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "ei_last_source_ping",
+		Help: "The timestamp of the last source of life from the source",
+	}, []string{"endpoint", "jobid"})
+)
+
+var (
+	ErrConnectionType = errors.New("unknown connection type")
+	ErrSubscriberType = errors.New("unknown subscriber type")
 )
 
 // ExpectsMock variable is set when we run in a mock context
@@ -27,20 +42,21 @@ var blockchains = []string{
 	NEAR,
 	IOTX,
 	CFX,
-	ETH_CALL,
+	Keeper,
+	BIRITA,
+	Agoric,
+	Klaytn,
 }
 
 type Params struct {
-	Endpoint         string                  `json:"endpoint"`
-	Addresses        []string                `json:"addresses"`
-	Topics           []string                `json:"topics"`
-	AccountIds       []string                `json:"accountIds"`
-	Address          string                  `json:"address"`
-	ABI              json.RawMessage         `json:"abi"`
-	MethodName       string                  `json:"methodName"`
-	ResponseKey      string                  `json:"responseKey"`
-	FunctionSelector models.FunctionSelector `json:"functionSelector"`
-	ReturnType       string                  `json:"returnType"`
+	Endpoint    string   `json:"endpoint"`
+	Addresses   []string `json:"addresses"`
+	Topics      []string `json:"topics"`
+	AccountIds  []string `json:"accountIds"`
+	Address     string   `json:"address"`
+	UpkeepID    string   `json:"upkeepId"`
+	ServiceName string   `json:"serviceName"`
+	From        string   `json:"from"`
 }
 
 // CreateJsonManager creates a new instance of a JSON blockchain manager with the provided
@@ -59,6 +75,10 @@ func CreateJsonManager(t subscriber.Type, sub store.Subscription) (subscriber.Js
 		return createNearManager(t, sub)
 	case CFX:
 		return createCfxManager(t, sub), nil
+	case Agoric:
+		return createAgoricManager(t, sub)
+	case Klaytn:
+		return createKlaytnManager(t, sub), nil
 	}
 
 	return nil, fmt.Errorf("unknown blockchain type %v for JSON manager", sub.Endpoint.Type)
@@ -74,8 +94,10 @@ func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error)
 		return createOntSubscriber(sub), nil
 	case IOTX:
 		return createIoTeXSubscriber(sub)
-	case ETH_CALL:
-		return createEthCallSubscriber(sub)
+	case Keeper:
+		return createKeeperSubscriber(sub)
+	case BIRITA:
+		return createBSNIritaSubscriber(sub)
 	}
 
 	return nil, errors.New("unknown blockchain type for Client subscription")
@@ -84,7 +106,7 @@ func CreateClientManager(sub store.Subscription) (subscriber.ISubscriber, error)
 func GetConnectionType(endpoint store.Endpoint) (subscriber.Type, error) {
 	switch endpoint.Type {
 	// Add blockchain implementations that encapsulate entire connection here
-	case XTZ, ONT, IOTX, ETH_CALL:
+	case XTZ, ONT, IOTX, Keeper, BIRITA:
 		return subscriber.Client, nil
 	default:
 		u, err := url.Parse(endpoint.Url)
@@ -113,7 +135,7 @@ func ValidBlockchain(name string) bool {
 
 func GetValidations(t string, params Params) []int {
 	switch t {
-	case ETH, HMY, IOTX:
+	case ETH, HMY, IOTX, Klaytn:
 		return []int{
 			len(params.Addresses) + len(params.Topics),
 		}
@@ -141,11 +163,19 @@ func GetValidations(t string, params Params) []int {
 		return []int{
 			len(params.Addresses) + len(params.Topics),
 		}
-	case ETH_CALL:
+	case Keeper:
 		return []int{
 			len(params.Address),
-			len(params.ABI) + len(params.ReturnType),
-			len(params.MethodName) + len(params.FunctionSelector.Bytes()),
+			len(params.UpkeepID),
+			len(params.From),
+		}
+	case BIRITA:
+		return []int{
+			len(params.Addresses),
+		}
+	case Agoric:
+		return []int{
+			1,
 		}
 	}
 
@@ -154,7 +184,7 @@ func GetValidations(t string, params Params) []int {
 
 func CreateSubscription(sub *store.Subscription, params Params) {
 	switch sub.Endpoint.Type {
-	case ETH, HMY, IOTX:
+	case ETH, HMY, IOTX, Klaytn:
 		sub.Ethereum = store.EthSubscription{
 			Addresses: params.Addresses,
 			Topics:    params.Topics,
@@ -184,19 +214,20 @@ func CreateSubscription(sub *store.Subscription, params Params) {
 			Addresses: params.Addresses,
 			Topics:    params.Topics,
 		}
-	case ETH_CALL:
-		key := params.ResponseKey
-		if key == "" {
-			key = defaultResponseKey
+	case Keeper:
+		from := common.HexToAddress(params.From)
+		sub.Keeper = store.KeeperSubscription{
+			Address:  params.Address,
+			UpkeepID: params.UpkeepID,
+			From:     from,
 		}
-		sub.EthCall = store.EthCallSubscription{
-			Address:          params.Address,
-			ABI:              store.SQLBytes(params.ABI),
-			ResponseKey:      key,
-			MethodName:       params.MethodName,
-			FunctionSelector: params.FunctionSelector,
-			ReturnType:       params.ReturnType,
+	case BIRITA:
+		sub.BSNIrita = store.BSNIritaSubscription{
+			Addresses:   params.Addresses,
+			ServiceName: params.ServiceName,
 		}
+	case Agoric:
+		sub.Agoric = store.AgoricSubscription{}
 	}
 }
 

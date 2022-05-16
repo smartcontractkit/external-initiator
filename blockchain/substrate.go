@@ -7,6 +7,7 @@ import (
 
 	"github.com/centrifuge/go-substrate-rpc-client/scale"
 	"github.com/centrifuge/go-substrate-rpc-client/types"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
@@ -22,9 +23,10 @@ type substrateFilter struct {
 }
 
 type substrateManager struct {
-	filter substrateFilter
-	meta   *types.Metadata
-	key    types.StorageKey
+	filter       substrateFilter
+	meta         *types.Metadata
+	key          types.StorageKey
+	endpointName string
 }
 
 func createSubstrateManager(t subscriber.Type, conf store.Subscription) (*substrateManager, error) {
@@ -47,6 +49,7 @@ func createSubstrateManager(t subscriber.Type, conf store.Subscription) (*substr
 			JobID:   types.NewText(conf.Job),
 			Address: addresses,
 		},
+		endpointName: conf.EndpointName,
 	}, nil
 }
 
@@ -135,6 +138,16 @@ type EventChainlinkOracleRequest struct {
 	Topics             []types.Hash
 }
 
+type EventChainlinkOracleAnswer struct {
+	Phase              types.Phase
+	OracleAccountID    types.AccountID
+	RequestIdentifier  types.U64
+	RequesterAccountID types.AccountID
+	Bytes              types.Text
+	Payment            types.U32
+	Topics             []types.Hash
+}
+
 type EventChainlinkOperatorRegistered struct {
 	Phase     types.Phase
 	AccountID types.AccountID
@@ -156,17 +169,20 @@ type EventChainlinkKillRequest struct {
 type EventRecords struct {
 	types.EventRecords
 	Chainlink_OracleRequest        []EventChainlinkOracleRequest        //nolint:stylecheck,golint
+	Chainlink_OracleAnswer         []EventChainlinkOracleAnswer         //nolint:stylecheck,golint
 	Chainlink_OperatorRegistered   []EventChainlinkOperatorRegistered   //nolint:stylecheck,golint
 	Chainlink_OperatorUnregistered []EventChainlinkOperatorUnregistered //nolint:stylecheck,golint
 	Chainlink_KillRequest          []EventChainlinkKillRequest          //nolint:stylecheck,golint
 }
 
 type substrateSubscribeResponse struct {
-	Subscription int             `json:"subscription"`
+	Subscription string          `json:"subscription"`
 	Result       json.RawMessage `json:"result"`
 }
 
 func (sm *substrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
+	promLastSourcePing.With(prometheus.Labels{"endpoint": sm.endpointName, "jobid": string(sm.filter.JobID)}).SetToCurrentTime()
+
 	var msg JsonrpcMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
@@ -191,13 +207,18 @@ func (sm *substrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool
 	var subEvents []subscriber.Event
 	for _, change := range changes.Changes {
 		if !types.Eq(change.StorageKey, sm.key) || !change.HasStorageData {
+			logger.Error("Does not match storage")
 			continue
 		}
 
 		events := EventRecords{}
 		err = types.EventRecordsRaw(change.StorageData).DecodeEventRecords(sm.meta, &events)
 		if err != nil {
-			logger.Error("Failed parsing EventRecords:", err)
+			logger.Errorw("Failed parsing EventRecords:",
+				"err", err,
+				"change.StorageData", change.StorageData,
+				"sm.key", sm.key,
+				"types.EventRecordsRaw", types.EventRecordsRaw(change.StorageData))
 			continue
 		}
 
@@ -206,6 +227,7 @@ func (sm *substrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool
 			jobID := fmt.Sprint(sm.filter.JobID)
 			specIndex := fmt.Sprint(request.SpecIndex)
 			if !matchesJobID(jobID, specIndex) {
+				logger.Errorf("Does not match job : expected %s, requested %s", jobID, specIndex)
 				continue
 			}
 
@@ -219,6 +241,7 @@ func (sm *substrateManager) ParseResponse(data []byte) ([]subscriber.Event, bool
 				}
 			}
 			if !found {
+				logger.Errorf("Does not match OracleAccountID, requested is %s", request.OracleAccountID)
 				continue
 			}
 

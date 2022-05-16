@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Depado/ginprom"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -16,6 +17,8 @@ import (
 	"github.com/smartcontractkit/external-initiator/blockchain"
 	"github.com/smartcontractkit/external-initiator/store"
 )
+
+var ginPrometheus *ginprom.Prometheus
 
 const (
 	externalInitiatorAccessKeyHeader = "X-Chainlink-EA-AccessKey"
@@ -29,14 +32,28 @@ type subscriptionStorer interface {
 	SaveEndpoint(endpoint *store.Endpoint) error
 }
 
+func init() {
+	gin.DebugPrintRouteFunc = printRoutes
+
+	// ensure metrics are regsitered once per instance to avoid registering
+	// metrics multiple times (panic)
+	ginPrometheus = ginprom.New(ginprom.Namespace("service"))
+}
+
+func printRoutes(httpMethod, absolutePath, handlerName string, nuHandlers int) {
+	logger.Debugf("%-6s %-25s --> %s (%d handlers)", httpMethod, absolutePath, handlerName, nuHandlers)
+}
+
 // RunWebserver starts a new web server using the access key
 // and secret as provided on protected routes.
 func RunWebserver(
 	accessKey, secret string,
 	store subscriptionStorer,
+	port int,
 ) {
 	srv := NewHTTPService(accessKey, secret, store)
-	err := srv.Router.Run("0.0.0.0:8080")
+	addr := fmt.Sprintf(":%v", port)
+	err := srv.Router.Run(addr)
 	if err != nil {
 		logger.Error(err)
 	}
@@ -73,12 +90,18 @@ func (srv *HttpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (srv *HttpService) createRouter() {
-	r := gin.New()
-	r.Use(gin.Recovery())
-	r.Use(loggerFunc())
-	r.GET("/health", srv.ShowHealth)
+	engine := gin.New()
 
-	auth := r.Group("/")
+	ginPrometheus.Use(engine)
+	engine.Use(
+		gin.Recovery(),
+		loggerFunc(),
+		ginPrometheus.Instrument(),
+	)
+
+	engine.GET("/health", srv.ShowHealth)
+
+	auth := engine.Group("/")
 	auth.Use(authenticate(srv.AccessKey, srv.Secret))
 	{
 		auth.POST("/jobs", srv.CreateSubscription)
@@ -86,7 +109,7 @@ func (srv *HttpService) createRouter() {
 		auth.POST("/config", srv.CreateEndpoint)
 	}
 
-	srv.Router = r
+	srv.Router = engine
 }
 
 func authenticate(accessKey, secret string) gin.HandlerFunc {

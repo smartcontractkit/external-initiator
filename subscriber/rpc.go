@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/chainlink/core/logger"
+	"github.com/smartcontractkit/external-initiator/store"
 )
 
 // RpcSubscriber holds the configuration for
@@ -92,7 +93,7 @@ func sendPostRequest(url string, body []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer r.Body.Close()
+	defer logger.ErrorIfCalling(r.Body.Close)
 
 	if r.StatusCode < 200 || r.StatusCode >= 400 {
 		return nil, errors.New("got unexpected status code")
@@ -101,7 +102,7 @@ func sendPostRequest(url string, body []byte) ([]byte, error) {
 	return ioutil.ReadAll(r.Body)
 }
 
-func (rpc RpcSubscriber) SubscribeToEvents(channel chan<- Event, confirmation ...interface{}) (ISubscription, error) {
+func (rpc RpcSubscriber) SubscribeToEvents(channel chan<- Event, _ store.RuntimeConfig) (ISubscription, error) {
 	logger.Infof("Using RPC endpoint: %s\n", rpc.Endpoint)
 
 	subscription := rpcSubscription{

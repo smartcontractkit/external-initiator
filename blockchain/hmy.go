@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/store"
@@ -16,16 +17,20 @@ const HMY = "harmony"
 // The hmyManager implements the subscriber.JsonManager interface and allows
 // for interacting with HMY nodes over RPC or WS.
 type hmyManager struct {
-	fq *filterQuery
-	p  subscriber.Type
+	fq           *filterQuery
+	p            subscriber.Type
+	endpointName string
+	jobid        string
 }
 
 // createHmyManager creates a new instance of hmyManager with the provided
 // connection type and store.EthSubscription config.
 func createHmyManager(p subscriber.Type, config store.Subscription) hmyManager {
 	return hmyManager{
-		fq: createEvmFilterQuery(config.Job, config.Ethereum.Addresses),
-		p:  p,
+		fq:           createEvmFilterQuery(config.Job, config.Ethereum.Addresses),
+		p:            p,
+		endpointName: config.EndpointName,
+		jobid:        config.Job,
 	}
 }
 
@@ -64,6 +69,9 @@ func (h hmyManager) GetTriggerJson() []byte {
 	case subscriber.RPC:
 		msg.Method = "hmy_getLogs"
 		msg.Params = json.RawMessage(`[` + string(filterBytes) + `]`)
+	default:
+		logger.Errorw(ErrSubscriberType.Error(), "type", h.p)
+		return nil
 	}
 
 	bytes, err := json.Marshal(msg)
@@ -134,7 +142,8 @@ func (h hmyManager) ParseTestResponse(data []byte) error {
 // If hmyManager is using RPC:
 // If there are new events, update hmyManager with
 // the latest block number it sees.
-func (e hmyManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
+func (h hmyManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
+	promLastSourcePing.With(prometheus.Labels{"endpoint": h.endpointName, "jobid": h.jobid}).SetToCurrentTime()
 	logger.Debugw("Parsing response", "ExpectsMock", ExpectsMock)
 
 	var msg JsonrpcMessage
@@ -145,7 +154,7 @@ func (e hmyManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 
 	var events []subscriber.Event
 
-	switch e.p {
+	switch h.p {
 	case subscriber.WS:
 		var res ethSubscribeResponse
 		if err := json.Unmarshal(msg.Params, &res); err != nil {
@@ -208,18 +217,22 @@ func (e hmyManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 			curBlkn := &big.Int{}
 			curBlkn = curBlkn.Add(big.NewInt(int64(evt.BlockNumber)), big.NewInt(1))
 
-			fromBlkn, err := hexutil.DecodeBig(e.fq.FromBlock)
-			if err != nil && !(e.fq.FromBlock == "latest" || e.fq.FromBlock == "") {
+			fromBlkn, err := hexutil.DecodeBig(h.fq.FromBlock)
+			if err != nil && !(h.fq.FromBlock == "latest" || h.fq.FromBlock == "") {
 				logger.Error("Failed to get block number from event:", err)
 				continue
 			}
 
 			// If our query "fromBlock" is "latest", or our current "fromBlock" is in the past compared to
 			// the last event we received, we want to update the query
-			if e.fq.FromBlock == "latest" || e.fq.FromBlock == "" || curBlkn.Cmp(fromBlkn) > 0 {
-				e.fq.FromBlock = hexutil.EncodeBig(curBlkn)
+			if h.fq.FromBlock == "latest" || h.fq.FromBlock == "" || curBlkn.Cmp(fromBlkn) > 0 {
+				h.fq.FromBlock = hexutil.EncodeBig(curBlkn)
 			}
 		}
+
+	default:
+		logger.Errorw(ErrSubscriberType.Error(), "type", h.p)
+		return nil, false
 	}
 
 	return events, true

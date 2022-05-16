@@ -3,6 +3,8 @@
 // subscribes to.
 package subscriber
 
+import "github.com/smartcontractkit/external-initiator/store"
+
 // Type holds the connection type for the subscription
 type Type int
 
@@ -61,7 +63,7 @@ type ISubscriber interface {
 	// as set in ISubscriber. All events will be sent in the channel. If anything is
 	// passed as a param after channel, it will not expect to receive any confirmation
 	// message after opening the initial subscription.
-	SubscribeToEvents(channel chan<- Event, confirmation ...interface{}) (ISubscription, error)
+	SubscribeToEvents(channel chan<- Event, runtimeConfig store.RuntimeConfig) (ISubscription, error)
 	// Test attempts to open a connection using the endpoint and configuration
 	// as set in ISubscriber. If connection is succesful, it sends GetTestJson() as a payload
 	// and attempts to parse response with ParseTestResponse().

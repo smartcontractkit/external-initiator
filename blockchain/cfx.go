@@ -3,11 +3,14 @@ package blockchain
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
 	"strings"
 
+	"github.com/Conflux-Chain/go-conflux-sdk/types/cfxaddress"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/external-initiator/store"
@@ -19,16 +22,19 @@ const CFX = "conflux"
 // The cfxManager implements the subscriber.JsonManager interface and allows
 // for interacting with CFX nodes over RPC.
 type cfxManager struct {
-	fq *cfxFilterQuery
-	p  subscriber.Type
+	fq           *cfxFilterQuery
+	p            subscriber.Type
+	endpointName string
+	jobid        string
 }
 
 // createCfxManager creates a new instance of cfxManager with the provided
 // connection type and store.cfxSubscription config.
 func createCfxManager(p subscriber.Type, config store.Subscription) cfxManager {
-	var addresses []common.Address
+	var addresses []cfxaddress.Address
 	for _, a := range config.Conflux.Addresses {
-		addresses = append(addresses, common.HexToAddress(a))
+		base32Addr := cfxaddress.MustNewFromBase32(a) // NOTE: if configured an invalid base32 address, will panic here
+		addresses = append(addresses, base32Addr)
 	}
 
 	// Hard-set the topics to match the OracleRequest()
@@ -44,7 +50,9 @@ func createCfxManager(p subscriber.Type, config store.Subscription) cfxManager {
 			Addresses: addresses,
 			Topics:    topics,
 		},
-		p: p,
+		p:            p,
+		endpointName: config.EndpointName,
+		jobid:        config.Job,
 	}
 }
 
@@ -76,10 +84,13 @@ func (e cfxManager) GetTriggerJson() []byte {
 	switch e.p {
 	case subscriber.WS:
 		msg.Method = "cfx_subscribe"
-		msg.Params = json.RawMessage(`["logs",` + string(filterBytes) + `]`)
+		msg.Params = json.RawMessage(fmt.Sprintf("[%s,%s]", `"logs"`, filterBytes))
 	case subscriber.RPC:
 		msg.Method = "cfx_getLogs"
-		msg.Params = json.RawMessage(`[` + string(filterBytes) + `]`)
+		msg.Params = json.RawMessage(fmt.Sprintf("[%s]", filterBytes))
+	default:
+		logger.Errorw(ErrSubscriberType.Error(), "type", e.p)
+		return nil
 	}
 
 	bytes, err := json.Marshal(msg)
@@ -138,14 +149,14 @@ func (e cfxManager) ParseTestResponse(data []byte) error {
 }
 
 type cfxLogResponse struct {
-	LogIndex         string         `json:"logIndex"`
-	EpochNumber      string         `json:"epochNumber"`
-	BlockHash        common.Hash    `json:"blockHash"`
-	TransactionHash  common.Hash    `json:"transactionHash"`
-	TransactionIndex string         `json:"transactionIndex"`
-	Address          common.Address `json:"address"`
-	Data             string         `json:"data"`
-	Topics           []common.Hash  `json:"topics"`
+	LogIndex         string             `json:"logIndex"`
+	EpochNumber      string             `json:"epochNumber"`
+	BlockHash        common.Hash        `json:"blockHash"`
+	TransactionHash  common.Hash        `json:"transactionHash"`
+	TransactionIndex string             `json:"transactionIndex"`
+	Address          cfxaddress.Address `json:"address"`
+	Data             string             `json:"data"`
+	Topics           []common.Hash      `json:"topics"`
 }
 
 //convert cfxLogResponse type to eth.Log type
@@ -166,9 +177,8 @@ func Cfx2EthResponse(cfx cfxLogResponse) (models.Log, error) {
 	}
 
 	data := common.Hex2Bytes(cfx.Data[2:])
-
 	return models.Log{
-		Address:     cfx.Address,
+		Address:     common.HexToAddress(cfx.Address.GetHexAddress()),
 		Topics:      cfx.Topics,
 		Data:        data,
 		BlockNumber: blockNumber,
@@ -187,6 +197,7 @@ func Cfx2EthResponse(cfx cfxLogResponse) (models.Log, error) {
 // If there are new events, update cfxManager with
 // the latest block number it sees.
 func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
+	promLastSourcePing.With(prometheus.Labels{"endpoint": e.endpointName, "jobid": e.jobid}).SetToCurrentTime()
 	logger.Debugw("Parsing response", "ExpectsMock", ExpectsMock)
 
 	var msg JsonrpcMessage
@@ -211,8 +222,8 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 			return nil, false
 		}
 
-		//filter out revert logs (https://developer.conflux-chain.org/docs/conflux-doc/docs/pubsub)
-		if check := strings.Contains(string(res.Result), "revertTo"); check == true {
+		// filter out revert logs (https://developer.conflux-chain.org/docs/conflux-doc/docs/pubsub)
+		if strings.Contains(string(res.Result), "revertTo") {
 			logger.Debug("Conflux revertTo log ignored")
 			return nil, false
 		}
@@ -285,16 +296,20 @@ func (e cfxManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 				e.fq.FromEpoch = hexutil.EncodeBig(curBlkn)
 			}
 		}
+
+	default:
+		logger.Errorw(ErrSubscriberType.Error(), "type", e.p)
+		return nil, false
 	}
 
 	return events, true
 }
 
 type cfxFilterQuery struct {
-	BlockHash *common.Hash     // used by cfx_getLogs, return logs only from block with this hash
-	FromEpoch string           // beginning of the queried range, nil means genesis block
-	ToEpoch   string           // end of the range, nil means latest block
-	Addresses []common.Address // restricts matches to events created by specific contracts
+	BlockHash *common.Hash         // used by cfx_getLogs, return logs only from block with this hash
+	FromEpoch string               // beginning of the queried range, nil means genesis block
+	ToEpoch   string               // end of the range, nil means latest block
+	Addresses []cfxaddress.Address // restricts matches to events created by specific contracts
 
 	// The Topic list restricts matches to particular event topics. Each event has a list
 	// of topics. Topics matches a prefix of that list. An empty element slice matches any

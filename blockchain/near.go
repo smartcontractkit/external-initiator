@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
@@ -118,6 +119,7 @@ type nearFilter struct {
 type nearManager struct {
 	filter         *nearFilter
 	connectionType subscriber.Type
+	endpointName   string
 }
 
 // createNearManager creates a new instance of nearManager with the provided
@@ -134,6 +136,7 @@ func createNearManager(connectionType subscriber.Type, config store.Subscription
 			Nonces:     nil,
 		},
 		connectionType: connectionType,
+		endpointName:   config.EndpointName,
 	}, nil
 }
 
@@ -194,6 +197,7 @@ func (m nearManager) GetTriggerJson() []byte {
 
 // ParseResponse generates []subscriber.Event from JSON-RPC response, requested using the GetTriggerJson message
 func (m nearManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
+	promLastSourcePing.With(prometheus.Labels{"endpoint": m.endpointName, "jobid": m.filter.JobID}).SetToCurrentTime()
 	logger.Debugw("Parsing NEAR response", "ExpectsMock", ExpectsMock)
 
 	var msg JsonrpcMessage

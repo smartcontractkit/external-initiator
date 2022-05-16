@@ -31,6 +31,9 @@ func generateCmd() *cobra.Command {
 		Run:  func(_ *cobra.Command, args []string) { runCallback(v, args, startService) },
 	}
 
+	newcmd.Flags().Int("port", 8080, "The port for the EI API to listen on")
+	must(v.BindPFlag("port", newcmd.Flags().Lookup("port")))
+
 	newcmd.Flags().String("databaseurl", "postgresql://postgres:password@localhost:5432/ei?sslmode=disable", "DatabaseURL configures the URL for external initiator to connect to. This must be a properly formatted URL, with a valid scheme (postgres://).")
 	must(v.BindPFlag("databaseurl", newcmd.Flags().Lookup("databaseurl")))
 
@@ -61,6 +64,9 @@ func generateCmd() *cobra.Command {
 	newcmd.Flags().Duration("cl_retry_delay", 1*time.Second, "The delay between attempts for job run triggers")
 	must(v.BindPFlag("cl_retry_delay", newcmd.Flags().Lookup("cl_retry_delay")))
 
+	newcmd.Flags().Int64("keeper_block_cooldown", 3, "Number of blocks to cool down before triggering a new run for a Keeper job")
+	must(v.BindPFlag("keeper_block_cooldown", newcmd.Flags().Lookup("keeper_block_cooldown")))
+
 	v.SetEnvPrefix("EI")
 	v.AutomaticEnv()
 
@@ -68,6 +74,7 @@ func generateCmd() *cobra.Command {
 }
 
 var requiredConfig = []string{
+	"port",
 	"chainlinkurl",
 	"ic_accesskey",
 	"ic_secret",
@@ -95,7 +102,7 @@ func runCallback(v *viper.Viper, args []string, runner runner) {
 		logger.Error(err)
 		return
 	}
-	defer db.Close()
+	defer logger.ErrorIfCalling(db.Close)
 
 	runner(config, db, args)
 }

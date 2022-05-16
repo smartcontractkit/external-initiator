@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
@@ -24,35 +25,39 @@ const (
 
 func createTezosSubscriber(sub store.Subscription) tezosSubscriber {
 	return tezosSubscriber{
-		Endpoint:  strings.TrimSuffix(sub.Endpoint.Url, "/"),
-		Addresses: sub.Tezos.Addresses,
-		JobID:     sub.Job,
+		Endpoint:     strings.TrimSuffix(sub.Endpoint.Url, "/"),
+		EndpointName: sub.EndpointName,
+		Addresses:    sub.Tezos.Addresses,
+		JobID:        sub.Job,
 	}
 }
 
 type tezosSubscriber struct {
-	Endpoint  string
-	Addresses []string
-	JobID     string
+	Endpoint     string
+	EndpointName string
+	Addresses    []string
+	JobID        string
 }
 
 type tezosSubscription struct {
-	endpoint    string
-	events      chan<- subscriber.Event
-	addresses   []string
-	monitorResp *http.Response
-	isDone      bool
-	jobid       string
+	endpoint     string
+	endpointName string
+	events       chan<- subscriber.Event
+	addresses    []string
+	monitorResp  *http.Response
+	isDone       bool
+	jobid        string
 }
 
-func (tz tezosSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ ...interface{}) (subscriber.ISubscription, error) {
+func (tz tezosSubscriber) SubscribeToEvents(channel chan<- subscriber.Event, _ store.RuntimeConfig) (subscriber.ISubscription, error) {
 	logger.Infof("Using Tezos RPC endpoint: %s\nListening for events on addresses: %v", tz.Endpoint, tz.Addresses)
 
 	tzs := tezosSubscription{
-		endpoint:  tz.Endpoint,
-		events:    channel,
-		addresses: tz.Addresses,
-		jobid:     tz.JobID,
+		endpoint:     tz.Endpoint,
+		endpointName: tz.EndpointName,
+		events:       channel,
+		addresses:    tz.Addresses,
+		jobid:        tz.JobID,
 	}
 
 	go tzs.readMessagesWithRetry()
@@ -65,8 +70,7 @@ func (tz tezosSubscriber) Test() error {
 	if err != nil {
 		return err
 	}
-	resp.Body.Close()
-	return nil
+	return resp.Body.Close()
 }
 
 func (tzs tezosSubscription) readMessagesWithRetry() {
@@ -86,7 +90,7 @@ func (tzs tezosSubscription) readMessages() {
 		logger.Error(err)
 		return
 	}
-	defer resp.Body.Close()
+	defer logger.ErrorIfCalling(resp.Body.Close)
 	logger.Debugf("Connected to RPC endpoint at %s, waiting for heads...\n", tzs.endpoint)
 
 	reader := bufio.NewReader(resp.Body)
@@ -95,36 +99,35 @@ func (tzs tezosSubscription) readMessages() {
 	go tzs.readLines(lines, reader)
 
 	for {
-		select {
-		case line, ok := <-lines:
-			if !ok {
-				return
-			}
+		line, ok := <-lines
+		if !ok {
+			return
+		}
+		promLastSourcePing.With(prometheus.Labels{"endpoint": tzs.endpointName, "jobid": tzs.jobid}).SetToCurrentTime()
 
-			blockID, err := extractBlockIDFromHeaderJSON(line)
-			if err != nil {
-				logger.Error(err)
-				return
-			}
+		blockID, err := extractBlockIDFromHeaderJSON(line)
+		if err != nil {
+			logger.Error(err)
+			return
+		}
 
-			logger.Debugf("Got new Tezos head: %s\n", blockID)
-			blockJSON, err := tzs.getBlock(blockID)
-			if err != nil {
-				logger.Error(err)
-				return
-			}
+		logger.Debugf("Got new Tezos head: %s\n", blockID)
+		blockJSON, err := tzs.getBlock(blockID)
+		if err != nil {
+			logger.Error(err)
+			return
+		}
 
-			events, err := extractEventsFromBlock(blockJSON, tzs.addresses, tzs.jobid)
-			if err != nil {
-				logger.Error(err)
-				return
-			}
+		events, err := extractEventsFromBlock(blockJSON, tzs.addresses, tzs.jobid)
+		if err != nil {
+			logger.Error(err)
+			return
+		}
 
-			logger.Debugf("%v events matching addresses %v\n", len(events), tzs.addresses)
+		logger.Debugf("%v events matching addresses %v\n", len(events), tzs.addresses)
 
-			for _, event := range events {
-				tzs.events <- event
-			}
+		for _, event := range events {
+			tzs.events <- event
 		}
 	}
 }
@@ -135,12 +138,12 @@ func monitor(endpoint string) (*http.Response, error) {
 		return nil, err
 	}
 	if resp.StatusCode == 400 {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		return nil, fmt.Errorf("%s returned 400. This endpoint may not support calls to /monitor", endpoint)
 	}
 	if resp.StatusCode != 200 {
-		resp.Body.Close()
-		return nil, fmt.Errorf("Unexpected status code %v from endpoint %s", resp.StatusCode, endpoint)
+		_ = resp.Body.Close()
+		return nil, fmt.Errorf("unexpected status code %v from endpoint %s", resp.StatusCode, endpoint)
 	}
 	return resp, nil
 }
@@ -170,7 +173,7 @@ func (tzs tezosSubscription) getBlock(blockID string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer logger.ErrorIfCalling(resp.Body.Close)
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -184,7 +187,7 @@ func (tzs tezosSubscription) Unsubscribe() {
 	logger.Info("Unsubscribing from Tezos endpoint", tzs.endpoint)
 	tzs.isDone = true
 	if tzs.monitorResp != nil {
-		tzs.monitorResp.Body.Close()
+		logger.ErrorIf(tzs.monitorResp.Body.Close())
 	}
 }
 

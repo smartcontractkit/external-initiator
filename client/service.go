@@ -2,6 +2,7 @@ package client
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/url"
 	"os"
 	"os/signal"
@@ -9,11 +10,20 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/blockchain"
 	"github.com/smartcontractkit/external-initiator/chainlink"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
+)
+
+var (
+	promActiveSubscriptions = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "ei_subscriptions_active",
+		Help: "The total number of active subscriptions",
+	}, []string{"endpoint"})
 )
 
 type storeInterface interface {
@@ -53,6 +63,8 @@ func startService(
 			Attempts: config.ChainlinkRetryAttempts,
 			Delay:    config.ChainlinkRetryDelay,
 		},
+	}, store.RuntimeConfig{
+		KeeperBlockCooldown: config.KeeperBlockCooldown,
 	})
 
 	var names []string
@@ -86,7 +98,7 @@ func startService(
 		}
 	}()
 
-	go RunWebserver(config.ChainlinkToInitiatorAccessKey, config.ChainlinkToInitiatorSecret, srv)
+	go RunWebserver(config.ChainlinkToInitiatorAccessKey, config.ChainlinkToInitiatorSecret, srv, config.Port)
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt)
@@ -102,6 +114,7 @@ type Service struct {
 	clNode        chainlink.Node
 	store         storeInterface
 	subscriptions map[string]*activeSubscription
+	runtimeConfig store.RuntimeConfig
 }
 
 func validateEndpoint(endpoint store.Endpoint) error {
@@ -126,11 +139,13 @@ func validateEndpoint(endpoint store.Endpoint) error {
 func NewService(
 	dbClient storeInterface,
 	clNode chainlink.Node,
+	runtimeConfig store.RuntimeConfig,
 ) *Service {
 	return &Service{
 		store:         dbClient,
 		clNode:        clNode,
 		subscriptions: make(map[string]*activeSubscription),
+		runtimeConfig: runtimeConfig,
 	}
 }
 
@@ -214,7 +229,7 @@ func (srv *Service) subscribe(sub *store.Subscription, iSubscriber subscriber.IS
 
 	events := make(chan subscriber.Event)
 
-	subscription, err := iSubscriber.SubscribeToEvents(events)
+	subscription, err := iSubscriber.SubscribeToEvents(events, srv.runtimeConfig)
 	if err != nil {
 		return err
 	}
@@ -227,7 +242,12 @@ func (srv *Service) subscribe(sub *store.Subscription, iSubscriber subscriber.IS
 	}
 	srv.subscriptions[sub.Job] = as
 
+	counter := promActiveSubscriptions.With(prometheus.Labels{"endpoint": sub.EndpointName})
+	counter.Inc()
+
 	go func() {
+		defer counter.Dec()
+
 		// Add a second of delay to let services (Chainlink core)
 		// sync up before sending the first job run trigger.
 		time.Sleep(1 * time.Second)
@@ -325,9 +345,9 @@ func getSubscriber(sub store.Subscription) (subscriber.ISubscriber, error) {
 		return subscriber.WebsocketSubscriber{Endpoint: sub.Endpoint.Url, Manager: manager}, nil
 	case subscriber.RPC:
 		return subscriber.RpcSubscriber{Endpoint: sub.Endpoint.Url, Interval: time.Duration(sub.Endpoint.RefreshInt) * time.Second, Manager: manager}, nil
+	default:
+		return nil, fmt.Errorf("unknown subscriber type: %v", connType)
 	}
-
-	return nil, errors.New("unknown Endpoint type")
 }
 
 func normalizeLocalhost(endpoint string) string {

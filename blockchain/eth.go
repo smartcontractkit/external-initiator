@@ -6,6 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store"
 	"github.com/smartcontractkit/external-initiator/subscriber"
@@ -16,8 +17,10 @@ const ETH = "ethereum"
 // The ethManager implements the subscriber.JsonManager interface and allows
 // for interacting with ETH nodes over RPC or WS.
 type ethManager struct {
-	fq *filterQuery
-	p  subscriber.Type
+	fq           *filterQuery
+	p            subscriber.Type
+	endpointName string
+	jobid        string
 }
 
 // createEthManager creates a new instance of ethManager with the provided
@@ -43,7 +46,9 @@ func createEthManager(p subscriber.Type, config store.Subscription) ethManager {
 			Addresses: addresses,
 			Topics:    topics,
 		},
-		p: p,
+		p:            p,
+		endpointName: config.EndpointName,
+		jobid:        config.Job,
 	}
 }
 
@@ -82,6 +87,9 @@ func (e ethManager) GetTriggerJson() []byte {
 	case subscriber.RPC:
 		msg.Method = "eth_getLogs"
 		msg.Params = json.RawMessage(`[` + string(filterBytes) + `]`)
+	default:
+		logger.Errorw(ErrSubscriberType.Error(), "type", e.p)
+		return nil
 	}
 
 	bytes, err := json.Marshal(msg)
@@ -169,6 +177,7 @@ type ethLogResponse struct {
 // If there are new events, update ethManager with
 // the latest block number it sees.
 func (e ethManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
+	promLastSourcePing.With(prometheus.Labels{"endpoint": e.endpointName, "jobid": e.jobid}).SetToCurrentTime()
 	logger.Debugw("Parsing response", "ExpectsMock", ExpectsMock)
 
 	var msg JsonrpcMessage
@@ -198,7 +207,6 @@ func (e ethManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 			logger.Error("marshal:", err)
 			return nil, false
 		}
-
 		events = append(events, event)
 
 	case subscriber.RPC:
@@ -234,6 +242,10 @@ func (e ethManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 				e.fq.FromBlock = hexutil.EncodeBig(curBlkn)
 			}
 		}
+
+	default:
+		logger.Errorw(ErrSubscriberType.Error(), "type", e.p)
+		return nil, false
 	}
 
 	return events, true
