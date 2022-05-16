@@ -12,7 +12,7 @@ require (
 	github.com/cmars/basen v0.0.0-20150613233007-fe3947df716e // indirect
 	github.com/ethereum/go-ethereum v1.9.25
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a
-	github.com/gin-gonic/gin v1.6.0
+	github.com/gin-gonic/gin v1.7.0
 	github.com/golang/mock v1.4.4
 	github.com/google/uuid v1.1.2
 	github.com/gorilla/websocket v1.4.2
