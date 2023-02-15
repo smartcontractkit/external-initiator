@@ -24,7 +24,7 @@ require (
 	github.com/ontio/ontology-go-sdk v1.11.1
 	github.com/pierrec/xxHash v0.1.5 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.8.0
+	github.com/prometheus/client_golang v1.11.1
 	github.com/smartcontractkit/chainlink v0.9.5-0.20201214122441-66aaea171293
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/viper v1.7.1
