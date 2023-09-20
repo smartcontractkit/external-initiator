@@ -1,3 +1,8 @@
+# This repo has been archived
+
+Active development is no longer happening - however, this repo will continue to serve as example implementations 
+on how to use [external initiators](https://docs.chain.link/chainlink-nodes/external-initiators/external-initiators-introduction) and [webhooks](https://docs.chain.link/chainlink-nodes/oracle-jobs/all-jobs/#webhook-jobs). 
+
 # External Initiator
 
 Initiate Chainlink job runs from external sources.
