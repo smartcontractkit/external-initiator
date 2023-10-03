@@ -29,11 +29,11 @@ require (
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/objx v0.2.0 // indirect
-	github.com/stretchr/testify v1.6.1
-	github.com/tendermint/tendermint v0.34.0
+	github.com/stretchr/testify v1.7.0
+	github.com/tendermint/tendermint v0.34.9
 	github.com/tidwall/gjson v1.6.3
 	go.uber.org/zap v1.16.0
-	google.golang.org/grpc v1.33.2
+	google.golang.org/grpc v1.35.0
 	gopkg.in/gormigrate.v1 v1.6.0
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
