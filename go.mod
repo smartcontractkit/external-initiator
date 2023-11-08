@@ -31,7 +31,7 @@ require (
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.6.1
 	github.com/tendermint/tendermint v0.34.0
-	github.com/tidwall/gjson v1.6.3
+	github.com/tidwall/gjson v1.9.3
 	go.uber.org/zap v1.16.0
 	google.golang.org/grpc v1.33.2
 	gopkg.in/gormigrate.v1 v1.6.0
