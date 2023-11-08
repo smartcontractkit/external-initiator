@@ -6,14 +6,13 @@ import (
 	"database/sql/driver"
 	"encoding/csv"
 	"fmt"
-	"io"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/external-initiator/store/migrations"
+	"io"
 )
 
 const sqlDialect = "postgres"
@@ -161,6 +160,10 @@ func (client Client) prepareSubscription(rawSub *Subscription) (*Subscription, e
 		if err := client.db.Model(&sub).Related(&sub.Agoric).Error; err != nil {
 			return nil, err
 		}
+	case "hedera":
+		if err := client.db.Model(&sub).Related(&sub.Hedera).Error; err != nil {
+			return nil, err
+		}
 	}
 
 	return &sub, nil
@@ -302,6 +305,7 @@ type Subscription struct {
 	Keeper            KeeperSubscription
 	BSNIrita          BSNIritaSubscription
 	Agoric            AgoricSubscription
+	Hedera            HederaSubscription
 }
 
 type EthSubscription struct {
@@ -366,4 +370,10 @@ type BSNIritaSubscription struct {
 type AgoricSubscription struct {
 	gorm.Model
 	SubscriptionId uint
+}
+
+type HederaSubscription struct {
+	gorm.Model
+	SubscriptionId uint
+	AccountIds     SQLStringArray
 }
