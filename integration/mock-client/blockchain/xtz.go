@@ -13,6 +13,7 @@ import (
 func setXtzRoutes(router *gin.Engine) {
 	router.GET("/http/xtz/monitor/heads/:chain_id", handleXtzMonitorRequest)
 	router.GET("/http/xtz/chains/main/blocks/:block_id/operations", handleXtzOperationsRequest)
+	router.POST("/http/xtz/chains/main/blocks/:block_id/context/contracts/:contract_id/script/normalized", handleXtzContractScriptRequest)
 }
 
 type xtzResponses map[string]interface{}
@@ -50,6 +51,17 @@ func handleXtzMonitorRequest(c *gin.Context) {
 
 func handleXtzOperationsRequest(c *gin.Context) {
 	resp, err := getXtzResponse("operations")
+	if err != nil {
+		logger.Error(err)
+		c.JSON(http.StatusBadRequest, resp)
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func handleXtzContractScriptRequest(c *gin.Context) {
+	resp, err := getXtzResponse("contractScript")
 	if err != nil {
 		logger.Error(err)
 		c.JSON(http.StatusBadRequest, resp)

@@ -1,0 +1,44 @@
+[
+    {
+        "prim": "Pair",
+        "args": [
+            {
+                "string": "from"
+            },
+            {
+                "prim": "Right",
+                "args": [
+                    {
+                        "prim": "Right",
+                        "args": [
+                            {
+                                "string": "EUR"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "prim": "Pair",
+        "args": [
+            {
+                "string": "to"
+            },
+            {
+                "prim": "Right",
+                "args": [
+                    {
+                        "prim": "Right",
+                        "args": [
+                            {
+                                "string": "XTZ"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+]
