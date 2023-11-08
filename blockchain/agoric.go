@@ -56,6 +56,8 @@ type chainlinkQuery struct {
 	Params map[string]interface{} `json:"params"`
 }
 
+var lastRequestId = ""
+
 func (sm *agoricManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	promLastSourcePing.With(prometheus.Labels{"endpoint": sm.endpointName, "jobid": string(sm.filter.JobID)}).SetToCurrentTime()
 
@@ -108,15 +110,22 @@ func (sm *agoricManager) ParseResponse(data []byte) ([]subscriber.Event, bool) {
 	}
 	requestParams["request_id"] = onQueryData.QueryID
 	requestParams["payment"] = onQueryData.Fee
+	
+	//send request only if request id is not like last request
+	if onQueryData.QueryID != lastRequestId { 
+		lastRequestId = onQueryData.QueryID
+		event, err := json.Marshal(requestParams)
+		if err != nil {
+			logger.Error(err)
+			return nil, false
+		}
+		subEvents = append(subEvents, event)
 
-	event, err := json.Marshal(requestParams)
-	if err != nil {
-		logger.Error(err)
-		return nil, false
-	}
-	subEvents = append(subEvents, event)
-
-	return subEvents, true
+		return subEvents, true
+	} else {
+                logger.Error("Request already submitted for ",onQueryData.QueryID)
+                return nil, false
+        }
 }
 
 func (sm *agoricManager) GetTestJson() []byte {
